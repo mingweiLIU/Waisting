@@ -1,0 +1,102 @@
+#include "SceneManager.h"
+#include <osgDB/ReadFile>
+#include <osgGA/TrackballManipulator>
+
+#include "OperationTools.h"
+
+class FindNameNode : public osg::NodeVisitor
+{
+public:
+	explicit FindNameNode(const std::string& name)
+		:osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
+		, m_name(name) {}
+
+	virtual void apply(osg::Node& node)override {
+		if (node.getName() == m_name)
+		{
+			m_node = &node;
+		}
+		else
+		{
+			traverse(node);
+		}
+	}
+	osg::Node* getNode() const { return m_node; }
+private:
+	std::string m_name;
+	osg::Node* m_node = nullptr;
+};
+
+SceneManager::SceneManager()
+{
+	initOSG();
+}
+
+SceneManager& SceneManager::getInstance()
+{
+	static SceneManager sceneManager;
+	return sceneManager;
+}
+
+osg::ref_ptr<osgViewer::Viewer> SceneManager::getViewer()
+{
+	return viewer;
+}
+
+void SceneManager::addOperation(osg::Operation* operation)
+{
+	operationQueue->add(operation);
+}
+
+void SceneManager::addNode(osg::Node* childNode, osg::Group* parent /*= nullptr*/)
+{
+	auto parentGroupNode = (parent == nullptr) ? root.get()->asGroup() : parent->asGroup();
+	if (parentGroupNode == nullptr) {
+		return;
+	}
+	auto op = new AddChildOperation(childNode, parentGroupNode);
+	addOperation(op);
+}
+
+osg::ref_ptr<osgGA::EventQueue> SceneManager::getEventQueue()
+{
+	return std::move(eventQueue);
+}
+
+osg::Node* SceneManager::getNode(std::string name)
+{
+	if (root == nullptr) return nullptr;
+
+	FindNameNode findNodeVisitor(name);
+	root->accept(findNodeVisitor);
+	auto nodeFound = findNodeVisitor.getNode();
+	if (nodeFound == nullptr) {
+		return nullptr;
+	}
+	return nodeFound;
+}
+
+void SceneManager::initOSG()
+{
+	if (viewer) return;
+
+	eventQueue = new osgGA::EventQueue;
+	operationQueue = new osg::OperationQueue;
+	viewer = new osgViewer::Viewer;
+
+	auto manipulator = new osgGA::TrackballManipulator;
+	manipulator->setAllowThrow(false);
+	viewer->setCameraManipulator(manipulator);
+	viewer->setUpViewerAsEmbeddedInWindow(0, 0, 300, 300);
+	auto graphicsWindow = dynamic_cast<osgViewer::GraphicsWindow*>(viewer->getCamera()->getGraphicsContext());
+	graphicsWindow->setEventQueue(eventQueue);
+	viewer->setUpdateOperations(operationQueue);
+
+	root = new osg::Group;
+	osg::ref_ptr<osg::Node> node = osgDB::readNodeFile("D:\\Code\\OSG\\OSGHandler\\TestData\\Data\\Tile_+011_+014\\Tile_+011_+014.osgb");
+	if (node)
+	{
+		root->addChild(node);
+	}
+	viewer->setSceneData(root.get());
+}
