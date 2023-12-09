@@ -32,7 +32,7 @@ Window{
     //左侧菜单栏
     Rectangle{
         id:leftMenu
-        width:leftMenuWidth
+        width:leftMenuWidth-splitlineWidth
         height:parent.height
         color:leftMenuColor
         anchors{
@@ -44,7 +44,7 @@ Window{
         Rectangle{
             height: parent.height
             width:splitlineWidth
-            anchors.left: parent.right
+            anchors.right: parent.right
             border.color: splitlineColor
         }
 
@@ -138,7 +138,7 @@ Window{
         Rectangle{
             height: parent.height
             width:splitlineWidth
-            anchors.right: parent.left
+            anchors.left: parent.left
             border.color: splitlineColor
         }
     }
@@ -155,7 +155,7 @@ Window{
         Rectangle{
             width: parent.width
             height:splitlineWidth
-            anchors.bottom: parent.top
+            anchors.top: parent.top
             border.color: splitlineColor
         }
     }
@@ -173,12 +173,17 @@ Window{
         }
         color:workAreaColor
 
-//        WSpliter{
-//            anchors.fill:parent
-//        }
-        WTOSGViewer{
-        anchors.fill:parent
+        WSpliter{
+            anchors.fill:parent
+            leftItemWidth:300
+            leftItemMinWidth:200
+            rightItem:[
+                 WTOSGViewer{
+                    anchors.fill:parent
+                }
+            ]
         }
+
     }
 
     Rectangle{
@@ -198,6 +203,7 @@ Window{
             width: 2
             color: "#43454a"
         }
+        visible: false
     }
 
     QtObject{

@@ -1,16 +1,15 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QtQuick/QQuickView>
-#include "quickosgviewer.h"
-#include "squircle.h"
+#include <QIcon>
 #include "WTOSGViewer.h"
 
 int main(int argc, char *argv[])
 {
 	QGuiApplication app(argc, argv);
+	app.setWindowIcon(QIcon(":/qt/qml/Waisting/icon/app.png"));//qrc在qml文件中写 在c++中不要qrc
 	QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
 
-	qmlRegisterType<QuickOSGViewer>("Test", 1, 0, "QuickOSGViewer");
 	qmlRegisterType<WTOSGViewer>("Test", 1, 0, "WTOSGViewer");
 
 	QQmlApplicationEngine engine;

@@ -4,12 +4,16 @@ Item {
     id:root
     property int preX
     property bool moveSplit: false
-    property real spliteRatio:0.5
+    property real leftItemWidth:200
+    property real leftItemMinWidth: 100
+
+    property alias leftItem: leftItem.children
+    property alias rightItem: rightItem.children
 
 
     Rectangle{
-        id:left
-        color:"gray"
+        id:leftItem
+        color:"#2b2d30"
         anchors{
             left:parent.left
             top:parent.top
@@ -18,7 +22,7 @@ Item {
         }
     }
     Rectangle{
-        id:right
+        id:rightItem
         color:"green"
         anchors{
             right: parent.right
@@ -29,10 +33,10 @@ Item {
     }
     Rectangle{
         id:spliter
-        color: "blue"
+        color: "#1e1f22"
         height: parent.height
         width: 2
-        x: spliteRatio*parent.width
+        x: leftItemWidth
 
         MouseArea{
             anchors.fill: parent
@@ -45,10 +49,10 @@ Item {
             onMouseXChanged: {
                 if(root.moveSplit){
                     var offset=mouseX-root.preX
-
                     var xPos=offset+spliter.x
+                    if(xPos<leftItemMinWidth) return
                     if(xPos>=0&&xPos<root.width){
-                        spliter.x+=offset
+                        spliter.x=xPos
                     }
                 }
             }

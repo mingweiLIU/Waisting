@@ -88,6 +88,7 @@ void SceneManager::initOSG()
 	manipulator->setAllowThrow(false);
 	viewer->setCameraManipulator(manipulator);
 	viewer->setUpViewerAsEmbeddedInWindow(0, 0, 300, 300);
+	viewer->getCamera()->setClearColor(osg::Vec4(56 / 255.0, 56 / 255.0, 56 / 255.0,1.0));//现在用的偏亮点，后面这个偏黑些(30 / 255.0, 31 / 255.0, 34 / 255.0, 1.0));
 	auto graphicsWindow = dynamic_cast<osgViewer::GraphicsWindow*>(viewer->getCamera()->getGraphicsContext());
 	graphicsWindow->setEventQueue(eventQueue);
 	viewer->setUpdateOperations(operationQueue);
