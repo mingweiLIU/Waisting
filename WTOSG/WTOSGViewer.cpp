@@ -59,6 +59,9 @@ QQuickFramebufferObject::Renderer* WTOSGViewer::createRenderer() const
 {
 	auto viewer = const_cast<WTOSGViewer*>(this);
 	auto renderer = new WTOSGRenderer(viewer);
+
+	//∞Û∂®–≈œ¢
+	//connect(&)
 	return renderer;
 }
 

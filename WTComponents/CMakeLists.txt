@@ -24,7 +24,8 @@ WTGetTypeFilesRelative(
 find_package(Qt6 6.5 REQUIRED COMPONENTS Quick)
 qt_standard_project_setup(REQUIRES 6.5)
 
-qt_add_library(${modelName} STATIC)
+qt_add_library(${modelName} STATIC
+    WImageLabelButton.qml)
 set_target_properties(${modelName} PROPERTIES AUTOMOC ON)
 target_link_libraries(${modelName} PRIVATE Qt6::Quick)
 

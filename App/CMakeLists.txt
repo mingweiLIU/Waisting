@@ -8,6 +8,18 @@ find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Qml Quick)
 
 qt_standard_project_setup(REQUIRES 6.5)
 
+
+WTGetTypeFilesRelative(
+    FileType "*.h"
+    OutRelative HeaderFileNames
+    Recurse OFF
+)
+WTGetTypeFilesRelative(
+    FileType "*.cpp"
+    OutRelative SourceFileNames
+    Recurse OFF
+)
+
 WTGetTypeFilesRelative(
     FileType "*.png"
     OutRelative PNGFileNames
@@ -21,7 +33,7 @@ WTGetTypeFilesRelative(
 )
 
 qt_add_executable(appWaisting
-    main.cpp
+    ${HeaderFileNames} ${SourceFileNames}
 )
 
 qt_add_qml_module(appWaisting
@@ -31,7 +43,9 @@ qt_add_qml_module(appWaisting
     RESOURCES qtquickcontrols2.conf
     RESOURCES ${PNGFileNames}
     RESOURCES ${SVGFileNames}
+    SOURCES ${HeaderFileNames} ${SourceFileNames}
     QML_FILES Main.qml
+    QML_FILES DataHandlerTool.qml
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.

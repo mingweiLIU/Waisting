@@ -2,7 +2,7 @@
 #include <QOpenGLFramebufferObject>
 #include "SceneManager.h"
 #include "WTOSGViewer.h"
-
+#include "../App/OpenFileObject.h"
 
 WTOSGRenderer::WTOSGRenderer(WTOSGViewer* oneWTOSGViewer)
 	:mWTOSGViewer(oneWTOSGViewer)
@@ -31,4 +31,10 @@ QOpenGLFramebufferObject* WTOSGRenderer::createFramebufferObject(const QSize& si
 void WTOSGRenderer::synchronize(QQuickFramebufferObject* item)
 {
 	mWTOSGViewer = qobject_cast<WTOSGViewer*>(item);
+}
+
+
+void WTOSGRenderer::onLoadFile(QString filepath)
+{
+	SceneManager::getInstance().addNode(filepath.toLocal8Bit().constData());
 }

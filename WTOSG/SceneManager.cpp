@@ -58,6 +58,15 @@ void SceneManager::addNode(osg::Node* childNode, osg::Group* parent /*= nullptr*
 	addOperation(op);
 }
 
+void SceneManager::addNode(std::string filePath, osg::Group* parentNode /*= nullptr*/)
+{
+	osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(filePath);
+	if (node)
+	{
+		this->addNode(node.get(), parentNode);
+	}
+}
+
 osg::ref_ptr<osgGA::EventQueue> SceneManager::getEventQueue()
 {
 	return std::move(eventQueue);

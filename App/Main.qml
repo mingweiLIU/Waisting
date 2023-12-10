@@ -3,8 +3,9 @@ import QtQuick.Controls
 import QtQuick.Window
 
 import WTComponents
-import Test 1.0
 import WTOSG
+import Test 1.0
+import Waisting 1.0
 
 Window{
     id:mainwindow
@@ -175,8 +176,19 @@ Window{
 
         WSpliter{
             anchors.fill:parent
-            leftItemWidth:300
+            leftItemWidth:295
             leftItemMinWidth:200
+            leftItem: [
+                DataHandlerTool{
+                    anchors.fill: parent
+                }
+//                Rectangle{
+//                    width:32
+//                    height:30
+//                    color:"red"
+//                }
+
+            ]
             rightItem:[
                  WTOSGViewer{
                     anchors.fill:parent
@@ -204,6 +216,10 @@ Window{
             color: "#43454a"
         }
         visible: false
+    }
+
+    WFileObject{
+        id:globe_FileObject
     }
 
     QtObject{
