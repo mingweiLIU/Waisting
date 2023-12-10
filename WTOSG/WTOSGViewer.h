@@ -34,6 +34,8 @@ signals:
 	void hoverEnabledChanged();
 	void defaultFboChanged(QOpenGLFramebufferObject* defaultFbo);
 
+public slots:
+	void loadFile(QString filePath);
 protected:
 	virtual QQuickFramebufferObject::Renderer* createRenderer() const override; 
 	virtual void geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry) override;

@@ -8,15 +8,16 @@ import WTComponents
 Item {
     id:root
 
+    signal selectedFileEvent(string filePath)
+
     FileDialog {
          id: fileDialog
          title: "选择一个文件"
          nameFilters: ["osgb (*.osgb)", "其他三维模型 (*.*)"]
          currentFolder: StandardPaths.standardLocations(StandardPaths.PicturesLocation)[0]
          onAccepted: {
-             globe_FileObject.selectedPath=selectedFile
-             globe_FileObject.handleType=WFileObject.OPENFILE
-             globe_FileObject.handleFile()
+             var filePath=JSON.stringify(selectedFile)
+             selectedFileEvent(JSON.parse(filePath.replace("file:///","")))//去掉"file:///"
          }
      }
 
@@ -75,5 +76,9 @@ Item {
             label:"lmw"
             source: "qrc:/qt/qml/Waisting/icon/zhuanli.png"
         }
+    }
+
+    Component.onCompleted: {
+        selectedFileEvent.connect(wtOSGViewer.loadFile)
     }
 }

@@ -18,5 +18,8 @@ int main(int argc, char *argv[])
 		Qt::QueuedConnection);
 	engine.loadFromModule("Waisting", "Main");
 
+	QObject* root = nullptr;
+	QList<QObject*>rootOjects = engine.rootObjects();
+
 	return app.exec();
 }

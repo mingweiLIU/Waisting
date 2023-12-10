@@ -191,6 +191,7 @@ Window{
             ]
             rightItem:[
                  WTOSGViewer{
+                    id:wtOSGViewer
                     anchors.fill:parent
                 }
             ]

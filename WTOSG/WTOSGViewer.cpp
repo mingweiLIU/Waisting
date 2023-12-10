@@ -55,6 +55,11 @@ void WTOSGViewer::setHoverEnabled(bool newHoverEnabled)
 	emit hoverEnabledChanged();
 }
 
+void WTOSGViewer::loadFile(QString filePath)
+{
+	SceneManager::getInstance().addNode(filePath.toLocal8Bit().constData());
+}
+
 QQuickFramebufferObject::Renderer* WTOSGViewer::createRenderer() const
 {
 	auto viewer = const_cast<WTOSGViewer*>(this);
