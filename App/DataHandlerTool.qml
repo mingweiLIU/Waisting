@@ -28,7 +28,7 @@ Item {
         WImageLabelButton{
             width:60
             height:62
-            label:"打开osgb文件"
+            label:"加载模型"
             source: "qrc:/qt/qml/Waisting/icon/dakaiwenjian1.png"
             onClicked:{
                 fileDialog.open()
