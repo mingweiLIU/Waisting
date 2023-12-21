@@ -1,8 +1,10 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
+#include <QQmlContext>
 #include <QtQuick/QQuickView>
 #include <QIcon>
 #include "WTOSGViewer.h"
+#include "WLayerTreeModel.h"
 
 int main(int argc, char *argv[])
 {
@@ -11,8 +13,10 @@ int main(int argc, char *argv[])
 	QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
 
 	qmlRegisterType<WTOSGViewer>("Test", 1, 0, "WTOSGViewer");
-
 	QQmlApplicationEngine engine;
+	WT::WLayerTreeModel* model = new WT::WLayerTreeModel();
+	engine.rootContext()->setContextProperty("myModel", model);
+
 	QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed,
 		&app, []() { QCoreApplication::exit(-1); },
 		Qt::QueuedConnection);
