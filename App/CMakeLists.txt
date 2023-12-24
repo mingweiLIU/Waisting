@@ -46,6 +46,7 @@ qt_add_qml_module(appWaisting
     SOURCES ${HeaderFileNames} ${SourceFileNames}
     QML_FILES Main.qml
     QML_FILES DataHandlerTool.qml
+    QML_FILES
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.

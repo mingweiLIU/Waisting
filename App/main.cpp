@@ -9,18 +9,17 @@
 int main(int argc, char *argv[])
 {
 	QGuiApplication app(argc, argv);
-	app.setWindowIcon(QIcon(":/qt/qml/Waisting/icon/app.png"));//qrcÔÚqmlÎÄ¼þÖÐÐ´ ÔÚc++ÖÐ²»Òªqrc
+	app.setWindowIcon(QIcon(":/qt/qml/Waisting/icon/app.png"));//qrcï¿½ï¿½qmlï¿½Ä¼ï¿½ï¿½ï¿½Ð´ ï¿½ï¿½c++ï¿½Ð²ï¿½Òªqrc
 	QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
 
 	qmlRegisterType<WTOSGViewer>("Test", 1, 0, "WTOSGViewer");
 	QQmlApplicationEngine engine;
-	WT::WLayerTreeModel* model = new WT::WLayerTreeModel();
-	engine.rootContext()->setContextProperty("myModel", model);
+	auto* wLayerTree=engine.singletonInstance<WT::WLayerTreeModel*>("WTOSG", "WLayerTreeModel");
 
 	QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed,
 		&app, []() { QCoreApplication::exit(-1); },
 		Qt::QueuedConnection);
-	engine.loadFromModule("Waisting", "Main");
+    engine.loadFromModule("Waisting", "Main");
 
 	QObject* root = nullptr;
 	QList<QObject*>rootOjects = engine.rootObjects();

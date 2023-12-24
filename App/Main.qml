@@ -174,71 +174,25 @@ Window{
         }
         color:workAreaColor
 
-//        WSpliter{
-//            anchors.fill:parent
-//            leftItemWidth:295
-//            leftItemMinWidth:200
-//            leftItem: [
+        WSpliter{
+            anchors.fill:parent
+            leftItemWidth:295
+            leftItemMinWidth:200
+            leftItem: [
 //                DataHandlerTool{
 //                    anchors.fill: parent
 //                }
-
-
-////                Rectangle{
-////                    width:32
-////                    height:30
-////                    color:"red"
-////                }
-
-//            ]
-//            rightItem:[
-//                 WTOSGViewer{
-//                    id:wtOSGViewer
-//                    anchors.fill:parent
-//                }
-//            ]
-//        }
-        TreeView{
-            anchors.fill: parent
-            model: myModel
-
-            delegate: Item {
-                id: treeDelegate
-                implicitWidth: padding + label.x + label.implicitWidth + padding
-                implicitHeight: label.implicitHeight * 1.5
-
-                readonly property real indent: 20
-                readonly property real padding: 5
-
-                // Assigned to by TreeView:
-                required property TreeView treeView
-                required property bool isTreeNode
-                required property bool expanded
-                required property int hasChildren
-                required property int depth
-
-                TapHandler {
-                    onTapped: treeView.toggleExpanded(row)
+                WLayerTree{
+                    anchors.fill: parent
                 }
 
-                Text {
-                    id: indicator
-                    visible: treeDelegate.isTreeNode && treeDelegate.hasChildren
-                    x: padding + (treeDelegate.depth * treeDelegate.indent)
-                    anchors.verticalCenter: label.verticalCenter
-                    text: "▶"
-                    rotation: treeDelegate.expanded ? 90 : 0
+            ]
+            rightItem:[
+                 WTOSGViewer{
+                    id:wtOSGViewer
+                    anchors.fill:parent
                 }
-
-                Text {
-                    id: label
-                    x: padding + (treeDelegate.isTreeNode ? (treeDelegate.depth + 1) * treeDelegate.indent : 0)
-                    width: treeDelegate.width - treeDelegate.padding - x
-                    clip: true
-                    text: model.name
-                }
-            }
-
+            ]
         }
 
     }

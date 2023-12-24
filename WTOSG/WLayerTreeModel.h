@@ -2,6 +2,7 @@
 #define WLAYERTREEMODEL_H
 #include <QAbstractItemModel>
 #include <QVariantList>
+#include <QQmlEngine>
 #include "WTDefines.h"
 #pragma execution_character_set("utf-8")
 WTNAMESPACESTART
@@ -30,6 +31,8 @@ private:
 class WLayerTreeModel:public QAbstractItemModel
 {
 	Q_OBJECT
+	QML_ELEMENT
+	QML_SINGLETON
 	enum ItemRoles {
 		NAME = Qt::UserRole + 1,
 		STATE
@@ -49,6 +52,7 @@ private:
 	TreeItem* itemFromIndex(const QModelIndex& index) const;
 	TreeItem* root;
 	QStringList m_headers;
+	void setupModelData(const QStringList& lines, TreeItem* parent);
 };
 WTNAMESPACEEND
 #endif // WLAYERTREEMODEL_H
