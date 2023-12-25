@@ -30,21 +30,30 @@ Item {
                 onTapped: treeView.toggleExpanded(row)
             }
 
-            Text {
-                id: indicator
-                visible: treeDelegate.isTreeNode && treeDelegate.hasChildren
-                x: padding + (treeDelegate.depth * treeDelegate.indent)
-                anchors.verticalCenter: label.verticalCenter
-                text: "▶"
-                rotation: treeDelegate.expanded ? 90 : 0
+            Image {
+                id: image
+                anchors.verticalCenter: parent.verticalCenter
+                source: "qrc:/qt/qml/Waisting/icon/dakaiwenjian1.png"
+                width: 20
+                height: 20
+                fillMode: Image.PreserveAspectFit
+                smooth: true
+                antialiasing: true
+                asynchronous: true
             }
 
-            Text {
+            // CheckBox{
+            //     id:checkbox
+            // }
+
+            CheckBox {
                 id: label
+                tristate:true
                 x: padding + (treeDelegate.isTreeNode ? (treeDelegate.depth + 1) * treeDelegate.indent : 0)
                 width: treeDelegate.width - treeDelegate.padding - x
                 clip: true
                 text: model.name
+                anchors.verticalCenter: parent.verticalCenter
             }
         }
     }
