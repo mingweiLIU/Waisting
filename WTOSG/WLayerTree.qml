@@ -25,6 +25,7 @@ Item {
             required property bool expanded
             required property int hasChildren
             required property int depth
+            required property int checkState
 
             TapHandler {
                 onTapped: treeView.toggleExpanded(row)
@@ -32,8 +33,11 @@ Item {
 
             Image {
                 id: image
+                x: (treeDelegate.isTreeNode ? (treeDelegate.depth + 1) * treeDelegate.indent : 0)-25
                 anchors.verticalCenter: parent.verticalCenter
-                source: "qrc:/qt/qml/Waisting/icon/dakaiwenjian1.png"
+                source: treeDelegate.hasChildren ? (treeDelegate.expanded
+                                                    ? "qrc:/qt/qml/Waisting/icon/cangku.png" : "qrc:/qt/qml/Waisting/icon/caiwu.png")
+                                                : "qrc:/qt/qml/Waisting/icon/dakaiwenjian1.png"
                 width: 20
                 height: 20
                 fillMode: Image.PreserveAspectFit
@@ -54,6 +58,11 @@ Item {
                 clip: true
                 text: model.name
                 anchors.verticalCenter: parent.verticalCenter
+//                checkState: {
+////                    var mi = treeDelegate.treeView.index(row, column)
+//                    treeView.model.itemChecked(row,column)
+//                }
+                checkState: treeDelegate.checkState//model.checked
             }
         }
     }

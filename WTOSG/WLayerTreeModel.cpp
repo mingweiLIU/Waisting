@@ -2,73 +2,73 @@
 #include <QFile>
 WTNAMESPACESTART
 
-TreeItem::TreeItem(const QList<QVariant>& data, TreeItem* parent/*=NULL*/)
-{
-	this->m_parent = parent;
-	this->m_itemData = data;
-}
-
-TreeItem::~TreeItem()
-{
-	this->m_itemData.clear();
-	this->m_parent = NULL;
-}
-
-void TreeItem::appendChild(TreeItem* child)
-{
-	child->setParent(this);
-	this->m_children.append(child);
-}
-
-void TreeItem::deleteAllChild()
-{
-	for (int index=0;index<m_children.size();++index)
-	{
-		m_children[index]->deleteAllChild();
-	}
-	qDeleteAll(m_children);
-	m_children.clear();
-}
-
-TreeItem* TreeItem::child(int row)
-{
-	return this->m_children[row];
-}
-
-int TreeItem::childCount() const
-{
-	return m_children.size();
-}
-
-int TreeItem::columnCount() const
-{
-	return m_itemData.size();
-}
-
-QVariant TreeItem::data(int column) const
-{
-	return m_itemData[column];
-}
-
-void TreeItem::setParent(TreeItem* parent)
-{
-	m_parent = parent;
-}
-
-TreeItem* TreeItem::panret()
-{
-	return m_parent;
-}
-
-int TreeItem::row() const
-{
-	if (!m_parent) return 0;
-	return m_parent->m_children.indexOf(const_cast<TreeItem*>(this));
-}
+//TreeItem::TreeItem(const QList<QVariant>& data, TreeItem* parent/*=NULL*/)
+//{
+//	this->m_parent = parent;
+//	this->m_itemData = data;
+//}
+//
+//TreeItem::~TreeItem()
+//{
+//	this->m_itemData.clear();
+//	this->m_parent = NULL;
+//}
+//
+//void TreeItem::appendChild(TreeItem* child)
+//{
+//	child->setParent(this);
+//	this->m_children.append(child);
+//}
+//
+//void TreeItem::deleteAllChild()
+//{
+//	for (int index=0;index<m_children.size();++index)
+//	{
+//		m_children[index]->deleteAllChild();
+//	}
+//	qDeleteAll(m_children);
+//	m_children.clear();
+//}
+//
+//TreeItem* TreeItem::child(int row)
+//{
+//	return this->m_children[row];
+//}
+//
+//int TreeItem::childCount() const
+//{
+//	return m_children.size();
+//}
+//
+//int TreeItem::columnCount() const
+//{
+//	return m_itemData.size();
+//}
+//
+//QVariant TreeItem::data(int column) const
+//{
+//	return m_itemData[column];
+//}
+//
+//void TreeItem::setParent(TreeItem* parent)
+//{
+//	m_parent = parent;
+//}
+//
+//TreeItem* TreeItem::panret()
+//{
+//	return m_parent;
+//}
+//
+//int TreeItem::row() const
+//{
+//	if (!m_parent) return 0;
+//	return m_parent->m_children.indexOf(const_cast<TreeItem*>(this));
+//}
 
 WLayerTreeModel::WLayerTreeModel(QObject* parent/*=0*/)
 {
-	this->root = new TreeItem(QVariantList());
+	//this->root = new TreeItem(QVariantList());
 
 	//TreeItem* oneBook = new TreeItem(QVariantList() << "第一本书" << "None");
 	//oneBook->appendChild(new TreeItem(QVariantList()<<"asfjl"<<"akfka"));
@@ -89,18 +89,48 @@ WLayerTreeModel::WLayerTreeModel(QObject* parent/*=0*/)
 
 	//root->appendChild(oneBook);
 	//root->appendChild(twoBook);
-	QFile file("D:\\Code\\QML\\TestTree\\default.txt");
-	file.open(QIODevice::ReadOnly);
-	const QString data = file.readAll();
-	file.close();
-	root = new TreeItem({ tr("Title"), tr("Summary") });
-	setupModelData(data.split('\n'), root);
+	//QFile file("D:\\Code\\QML\\TestTree\\default.txt");
+	//file.open(QIODevice::ReadOnly);
+	//const QString data = file.readAll();
+	//file.close();
+	//root = new TreeItem({ tr("Title"), tr("Summary") });
+	//setupModelData(data.split('\n'), root);
+	root = new TreeItemNode("begin");
+	TreeItemNode* child1 = new TreeItemNode("child1");
+	TreeItemNode* child2 = new TreeItemNode("child2");
+	TreeItemNode* child11 = new TreeItemNode("child11");
+	TreeItemNode* child111 = new TreeItemNode("child111");
+	TreeItemNode* child112 = new TreeItemNode("child112");
+	TreeItemNode* child1121 = new TreeItemNode("child1121");
+	TreeItemNode* child11211 = new TreeItemNode("child11211");
+	TreeItemNode* child112111 = new TreeItemNode("child112111");
+	TreeItemNode* child112112 = new TreeItemNode("child112112");
+	TreeItemNode* child1121121 = new TreeItemNode("child1121121");
+	TreeItemNode* child12 = new TreeItemNode("child12");
+	TreeItemNode* child3 = new TreeItemNode("child3");
+	TreeItemNode* child31 = new TreeItemNode("child31");
+
+	root->addChild(child1);
+	root->addChild(child2);
+	root->addChild(child3);
+
+	child1->addChild(child11);
+	child1->addChild(child12);
+	child11->addChild(child111);
+	child11->addChild(child112);
+	child112->addChild(child1121);
+	child1121->addChild(child11211);
+	child11211->addChild(child112111);
+	child11211->addChild(child112112);
+	child112112->addChild(child1121121);
+	child3->addChild(child31);
+	child112111->setChecked();
 }
 
 WLayerTreeModel::~WLayerTreeModel()
 {
-	root->deleteAllChild();
-	root = NULL;
+	//root->deleteAllChild();
+	//root = NULL;
 }
 
 // 在parent节点下，第row行，第column列位置上创建索引
@@ -111,8 +141,8 @@ QModelIndex WLayerTreeModel::index(int row, int column, const QModelIndex& paren
 		return QModelIndex();
 	}
 
-	TreeItem* treeItem = itemFromIndex(parent);
-	TreeItem* child = treeItem->child(row);
+	TreeItemNode* treeItem = itemFromIndex(parent);
+	TreeItemNode* child = treeItem->getNthChild(row);
 	if (child)
 	{
 		return createIndex(row, column, child);
@@ -123,13 +153,14 @@ QModelIndex WLayerTreeModel::index(int row, int column, const QModelIndex& paren
 	}
 }
 
-TreeItem* WLayerTreeModel::itemFromIndex(const QModelIndex& parent) const
+TreeItemNode* WLayerTreeModel::itemFromIndex(const QModelIndex& parent) const
 {
 	if (parent.isValid())
 	{
-		TreeItem* item = static_cast<TreeItem*> (parent.internalPointer());
+		TreeItemNode* item = static_cast<TreeItemNode*> (parent.internalPointer());
 		return item;
 	}
+
 	return root;
 }
 
@@ -140,102 +171,191 @@ QModelIndex WLayerTreeModel::parent(const QModelIndex& child) const
 		return QModelIndex();
 	}
 
-	TreeItem* childItem = static_cast<TreeItem*>(child.internalPointer());
-	TreeItem* parentItem = childItem->panret();
-	if (parentItem==root)
+	TreeItemNode* childItem = static_cast<TreeItemNode*>(child.internalPointer());
+	TreeItemNode* parentItem = childItem->getParent();
+
+	if (parentItem == root)
 	{
 		return QModelIndex();
 	}
-	return createIndex(parentItem->row(), 0, parentItem);
+	return createIndex(parentItem->nthOf(childItem), 0, parentItem);	
 }
 
 QVariant WLayerTreeModel::data(const QModelIndex& index, int role /*= Qt::DisplayRole*/) const
 {
 	if (!index.isValid()) return QVariant();
 
-	TreeItem* item = static_cast<TreeItem*>(index.internalPointer());
+	TreeItemNode* item = static_cast<TreeItemNode*>(index.internalPointer());
 	switch (role)
 	{
 	case NAME: 
-		return item->data(0);
-	case STATE:
-		return item->data(1);
+		return QString::fromLocal8Bit(item->name); 
+	case CHECKSTATE:
+		return item->getCheckState();
+	case FOLDSTATE:
+		return item->getFoldState();
 	default:
-		return item->data(index.column());
+		return QString::fromLocal8Bit(item->name);
 	}
 }
 
 int WLayerTreeModel::rowCount(const QModelIndex& parent /*= QModelIndex()*/) const
 {
 	if (parent.column() > 0) return 0;
-	TreeItem* item = itemFromIndex(parent);
+	TreeItemNode* item = itemFromIndex(parent);
 	return item->childCount();
 }
 
 int WLayerTreeModel::columnCount(const QModelIndex& parent /*= QModelIndex()*/) const
 {
 	return 1;
-	//if (parent.isValid()) 
-	//	return static_cast<TreeItem*>(parent.internalPointer())->columnCount();
-	//else
-	//	return root->columnCount();
+	////if (parent.isValid()) 
+	////	return static_cast<TreeItem*>(parent.internalPointer())->columnCount();
+	////else
+	////	return root->columnCount();
 }
 
 QHash<int, QByteArray> WLayerTreeModel::roleNames() const
 {
 	 QHash<int, QByteArray> names(QAbstractItemModel::roleNames());
 	 names[NAME] = "name";
-	 names[STATE] = "state";
+	 names[CHECKSTATE] = "checkState";
+	 names[FOLDSTATE] = "foldState";
 	 return names;
 }
-void WLayerTreeModel::setupModelData(const QStringList& lines, TreeItem* parent)
+
+Qt::CheckState WLayerTreeModel::itemChecked(int row, int column, const QModelIndex& parent) const
 {
-	QList<TreeItem*> parents;
-	QList<int> indentations;
-	parents << parent;
-	indentations << 0;
-
-	int number = 0;
-
-	while (number < lines.count()) {
-		int position = 0;
-		while (position < lines[number].length()) {
-			if (lines[number].at(position) != ' ')
-				break;
-			position++;
-		}
-
-		const QString lineData = lines[number].mid(position).trimmed();
-
-		if (!lineData.isEmpty()) {
-			// Read the column data from the rest of the line.
-			const QStringList columnStrings =
-				lineData.split(QLatin1Char('\t'), Qt::SkipEmptyParts);
-			QList<QVariant> columnData;
-			columnData.reserve(columnStrings.count());
-			for (const QString& columnString : columnStrings)
-				columnData << columnString;
-
-			if (position > indentations.last()) {
-				// The last child of the current parent is now the new parent
-				// unless the current parent has no children.
-
-				if (parents.last()->childCount() > 0) {
-					parents << parents.last()->child(parents.last()->childCount() - 1);
-					indentations << position;
-				}
-			}
-			else {
-				while (position < indentations.last() && parents.count() > 0) {
-					parents.pop_back();
-					indentations.pop_back();
-				}
-			}
-
-			// Append a new item to the current parent's list of children.
-			parents.last()->appendChild(new TreeItem(columnData, parents.last()));
-		}
-		++number;
+	if (!hasIndex(row, column, parent))
+	{
+		return Qt::Unchecked;
 	}
+
+	TreeItemNode* treeItem = itemFromIndex(parent);
+	return treeItem->getCheckState();
 }
+
+
+void TreeItemNode::setCheckState(bool state)
+{
+	//先检查这个状态和当前的状态的情况
+	if ((state && checkState == Qt::Checked) || (!state&&checkState ==Qt::Unchecked)) return;
+	//首先所有的子节点需要修改
+	for (auto& item : this->children)
+	{
+		item->setCheckState(state);
+	}
+
+	//在修改父节点状态前 先修改自己 以方便父节点遍历子节点
+	checkState = state ? Qt::Checked : Qt::Unchecked;
+}
+
+void TreeItemNode::setCheckState(Qt::CheckState state)
+{
+	checkState = state;
+}
+
+Qt::CheckState TreeItemNode::checkAndUpdateCheckState()
+{
+	if (children.size()>0)
+	{
+		Qt::CheckState result= children[0]->getCheckState();
+		//遍历当前情况
+		for (size_t i = 1, i_up = children.size(); i < i_up; ++i)
+		{
+			TreeItemNode* tempItem = children[i];
+			if (result != tempItem->getCheckState())
+			{
+				checkState = Qt::PartiallyChecked;
+				return checkState;
+			}
+		}
+		checkState = result;
+		return checkState;		
+	}	
+}
+
+Qt::CheckState TreeItemNode::getCheckState()
+{
+	return checkState;
+}
+
+void TreeItemNode::setParent(TreeItemNode* parent)
+{
+	this->parent=parent;
+}
+
+//因为是弱智能指针的原因 需要再调用setParent
+void TreeItemNode::addChild(TreeItemNode* oneChild)
+{
+	children.push_back(oneChild);
+	oneChild->setParent(this);
+}
+
+TreeItemNode* TreeItemNode::getNthChild(size_t N)
+{
+	if (N > children.size()) return NULL;
+	return children[N];	
+}
+
+int TreeItemNode::nthOf(TreeItemNode* oneChild)
+{
+	auto it=std::find(children.begin(), children.end(), oneChild);
+	if (it != children.end()) {
+		return std::distance(children.begin(), it);
+	}
+	return -1;
+}
+
+TreeItemNode::TreeItemNode(std::string name, TreeItemNode* parent /*= NULL*/)
+{
+	this->name = name;
+	this->parent = parent;
+}
+
+void TreeItemNode::updateParenCheckState()
+{
+	if (!parent) return;
+
+	//如果当前节点是partial的 那么它的父节点一定是partrial的
+	if (Qt::PartiallyChecked == checkState
+		||(parent->getCheckState()==Qt::Checked&& checkState ==Qt::Unchecked)
+		||(parent->getCheckState()==Qt::Unchecked && checkState ==Qt::Checked)) {
+		parent->setCheckState(Qt::PartiallyChecked);
+		parent->updateParenCheckState();
+		return;
+	}
+
+	//这个不可能出现父节点和子节点同时不是非partial的情况
+	//更新 //因为它是从子上出来的 肯定有至少一个子节点
+	Qt::CheckState result = parent->children[0]->getCheckState();
+	//遍历当前情况
+	for (size_t i = 1, i_up = parent->children.size(); i < i_up; ++i)
+	{
+		TreeItemNode* tempItem = parent->children[i];
+		if (result != tempItem->getCheckState())
+		{
+			parent->setCheckState(Qt::PartiallyChecked);
+			//这个时候就该进行父的父节点了 迭代处理
+			parent->updateParenCheckState();
+			return;
+		}
+	}
+	parent->setCheckState(result);
+	//这个时候就该进行父的父节点了 迭代处理
+	parent->updateParenCheckState();
+}
+
+void TreeItemNode::setChecked()
+{
+	setCheckState(true);
+	updateParenCheckState();
+}
+
+void TreeItemNode::setUnChecked()
+{
+	setCheckState(false);
+	updateParenCheckState();
+}
+
 WTNAMESPACEEND

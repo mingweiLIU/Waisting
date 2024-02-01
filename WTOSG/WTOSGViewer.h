@@ -34,7 +34,12 @@ signals:
 	void hoverEnabledChanged();
 	void defaultFboChanged(QOpenGLFramebufferObject* defaultFbo);
 
+	//模型文件加载对外消息
+	//void loadFileEvent(QString filePath);
+
+
 public slots:
+	//加载模型文件响应消息
 	void loadFile(QString filePath);
 protected:
 	virtual QQuickFramebufferObject::Renderer* createRenderer() const override; 
