@@ -70,22 +70,22 @@ WLayerTreeModel::WLayerTreeModel(QObject* parent/*=0*/)
 {
 	//this->root = new TreeItem(QVariantList());
 
-	//TreeItem* oneBook = new TreeItem(QVariantList() << "µÚÒ»±¾Êé" << "None");
+	//TreeItem* oneBook = new TreeItem(QVariantList() << "ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½" << "None");
 	//oneBook->appendChild(new TreeItem(QVariantList()<<"asfjl"<<"akfka"));
 	//oneBook->appendChild(new TreeItem(QVariantList() << "afka" << "None"));
-	//oneBook->child(0)->appendChild(new TreeItem(QVariantList() << "µÚÒ»ÕÂ" << "saved"));
-	//oneBook->child(0)->appendChild(new TreeItem(QVariantList() << "µÚ¶þÕÂ" << "saved"));
-	//oneBook->child(0)->appendChild(new TreeItem(QVariantList() << "µÚÈýÕÂ" << "saving"));
+	//oneBook->child(0)->appendChild(new TreeItem(QVariantList() << "ï¿½ï¿½Ò»ï¿½ï¿½" << "saved"));
+	//oneBook->child(0)->appendChild(new TreeItem(QVariantList() << "ï¿½Ú¶ï¿½ï¿½ï¿½" << "saved"));
+	//oneBook->child(0)->appendChild(new TreeItem(QVariantList() << "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½" << "saving"));
 	//oneBook->appendChild(new TreeItem(QVariantList() << "kkk" << "None"));
-	//oneBook->child(1)->appendChild(new TreeItem(QVariantList() << "µÚÒ»ÕÂ" << "saved"));
-	//oneBook->child(1)->appendChild(new TreeItem(QVariantList() << "µÚÈýÕÂ" << "no save"));
+	//oneBook->child(1)->appendChild(new TreeItem(QVariantList() << "ï¿½ï¿½Ò»ï¿½ï¿½" << "saved"));
+	//oneBook->child(1)->appendChild(new TreeItem(QVariantList() << "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½" << "no save"));
 
-	//TreeItem* twoBook = new TreeItem(QVariantList() << "µÚ¶þ±¾Êé" << "None");
+	//TreeItem* twoBook = new TreeItem(QVariantList() << "ï¿½Ú¶ï¿½ï¿½ï¿½ï¿½ï¿½" << "None");
 	//twoBook->appendChild(new TreeItem(QVariantList() << "kajfka" << "None"));
-	//twoBook->child(0)->appendChild(new TreeItem(QVariantList() << "µÚÒ»ÕÂ" << "saved"));
-	//twoBook->child(0)->appendChild(new TreeItem(QVariantList() << "µÚ¶þÕÂ" << "saving"));
+	//twoBook->child(0)->appendChild(new TreeItem(QVariantList() << "ï¿½ï¿½Ò»ï¿½ï¿½" << "saved"));
+	//twoBook->child(0)->appendChild(new TreeItem(QVariantList() << "ï¿½Ú¶ï¿½ï¿½ï¿½" << "saving"));
 	//twoBook->appendChild(new TreeItem(QVariantList() << "jakfjd" << "None"));
-	//twoBook->child(1)->appendChild(new TreeItem(QVariantList() << "µÚÒ»ÕÂ" << "saved"));
+	//twoBook->child(1)->appendChild(new TreeItem(QVariantList() << "ï¿½ï¿½Ò»ï¿½ï¿½" << "saved"));
 
 	//root->appendChild(oneBook);
 	//root->appendChild(twoBook);
@@ -124,7 +124,7 @@ WLayerTreeModel::WLayerTreeModel(QObject* parent/*=0*/)
 	child11211->addChild(child112112);
 	child112112->addChild(child1121121);
 	child3->addChild(child31);
-	child12->setChecked();
+	child112111->setChecked();
 }
 
 WLayerTreeModel::~WLayerTreeModel()
@@ -133,7 +133,7 @@ WLayerTreeModel::~WLayerTreeModel()
 	//root = NULL;
 }
 
-// ÔÚparent½ÚµãÏÂ£¬µÚrowÐÐ£¬µÚcolumnÁÐÎ»ÖÃÉÏ´´½¨Ë÷Òý
+// ï¿½ï¿½parentï¿½Úµï¿½ï¿½Â£ï¿½ï¿½ï¿½rowï¿½Ð£ï¿½ï¿½ï¿½columnï¿½ï¿½Î»ï¿½ï¿½ï¿½Ï´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 QModelIndex WLayerTreeModel::index(int row, int column, const QModelIndex& parent /*= QModelIndex()*/) const
 {
 	if (!hasIndex(row,column,parent))
@@ -189,9 +189,11 @@ QVariant WLayerTreeModel::data(const QModelIndex& index, int role /*= Qt::Displa
 	switch (role)
 	{
 	case NAME: 
-		return QString::fromLocal8Bit(item->name);
-	case STATE:
+		return QString::fromLocal8Bit(item->name); 
+	case CHECKSTATE:
 		return item->getCheckState();
+	case FOLDSTATE:
+		return item->getFoldState();
 	default:
 		return QString::fromLocal8Bit(item->name);
 	}
@@ -207,18 +209,18 @@ int WLayerTreeModel::rowCount(const QModelIndex& parent /*= QModelIndex()*/) con
 int WLayerTreeModel::columnCount(const QModelIndex& parent /*= QModelIndex()*/) const
 {
 	return 1;
-	//if (parent.isValid()) 
-	//	return static_cast<TreeItem*>(parent.internalPointer())->columnCount();
-	//else
-	//	return root->columnCount();
+	////if (parent.isValid()) 
+	////	return static_cast<TreeItem*>(parent.internalPointer())->columnCount();
+	////else
+	////	return root->columnCount();
 }
 
 QHash<int, QByteArray> WLayerTreeModel::roleNames() const
 {
 	 QHash<int, QByteArray> names(QAbstractItemModel::roleNames());
 	 names[NAME] = "name";
-	 names[STATE] = "checked";
-	 //names[STATE] = "state";
+	 names[CHECKSTATE] = "checkState";
+	 names[FOLDSTATE] = "foldState";
 	 return names;
 }
 
@@ -236,15 +238,15 @@ Qt::CheckState WLayerTreeModel::itemChecked(int row, int column, const QModelInd
 
 void TreeItemNode::setCheckState(bool state)
 {
-	//ÏÈ¼ì²éÕâ¸ö×´Ì¬ºÍµ±Ç°µÄ×´Ì¬µÄÇé¿ö
+	//ï¿½È¼ï¿½ï¿½ï¿½ï¿½ï¿½×´Ì¬ï¿½Íµï¿½Ç°ï¿½ï¿½×´Ì¬ï¿½ï¿½ï¿½ï¿½ï¿½
 	if ((state && checkState == Qt::Checked) || (!state&&checkState ==Qt::Unchecked)) return;
-	//Ê×ÏÈËùÓÐµÄ×Ó½ÚµãÐèÒªÐÞ¸Ä
+	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ðµï¿½ï¿½Ó½Úµï¿½ï¿½ï¿½Òªï¿½Þ¸ï¿½
 	for (auto& item : this->children)
 	{
 		item->setCheckState(state);
 	}
 
-	//ÔÚÐÞ¸Ä¸¸½Úµã×´Ì¬Ç° ÏÈÐÞ¸Ä×Ô¼º ÒÔ·½±ã¸¸½Úµã±éÀú×Ó½Úµã
+	//ï¿½ï¿½ï¿½Þ¸Ä¸ï¿½ï¿½Úµï¿½×´Ì¬Ç° ï¿½ï¿½ï¿½Þ¸ï¿½ï¿½Ô¼ï¿½ ï¿½Ô·ï¿½ï¿½ã¸¸ï¿½Úµï¿½ï¿½ï¿½ï¿½ï¿½Ó½Úµï¿½
 	checkState = state ? Qt::Checked : Qt::Unchecked;
 }
 
@@ -258,7 +260,7 @@ Qt::CheckState TreeItemNode::checkAndUpdateCheckState()
 	if (children.size()>0)
 	{
 		Qt::CheckState result= children[0]->getCheckState();
-		//±éÀúµ±Ç°Çé¿ö
+		//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç°ï¿½ï¿½ï¿½
 		for (size_t i = 1, i_up = children.size(); i < i_up; ++i)
 		{
 			TreeItemNode* tempItem = children[i];
@@ -283,7 +285,7 @@ void TreeItemNode::setParent(TreeItemNode* parent)
 	this->parent=parent;
 }
 
-//ÒòÎªÊÇÈõÖÇÄÜÖ¸ÕëµÄÔ­Òò ÐèÒªÔÙµ÷ÓÃsetParent
+//ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¸ï¿½ï¿½ï¿½Ô­ï¿½ï¿½ ï¿½ï¿½Òªï¿½Ùµï¿½ï¿½ï¿½setParent
 void TreeItemNode::addChild(TreeItemNode* oneChild)
 {
 	children.push_back(oneChild);
@@ -315,7 +317,7 @@ void TreeItemNode::updateParenCheckState()
 {
 	if (!parent) return;
 
-	//Èç¹ûµ±Ç°½ÚµãÊÇpartialµÄ ÄÇÃ´ËüµÄ¸¸½ÚµãÒ»¶¨ÊÇpartrialµÄ
+	//ï¿½ï¿½ï¿½ï¿½ï¿½Ç°ï¿½Úµï¿½ï¿½ï¿½partialï¿½ï¿½ ï¿½ï¿½Ã´ï¿½ï¿½ï¿½Ä¸ï¿½ï¿½Úµï¿½Ò»ï¿½ï¿½ï¿½ï¿½partrialï¿½ï¿½
 	if (Qt::PartiallyChecked == checkState
 		||(parent->getCheckState()==Qt::Checked&& checkState ==Qt::Unchecked)
 		||(parent->getCheckState()==Qt::Unchecked && checkState ==Qt::Checked)) {
@@ -324,23 +326,23 @@ void TreeItemNode::updateParenCheckState()
 		return;
 	}
 
-	//Õâ¸ö²»¿ÉÄÜ³öÏÖ¸¸½ÚµãºÍ×Ó½ÚµãÍ¬Ê±²»ÊÇ·ÇpartialµÄÇé¿ö
-	//¸üÐÂ //ÒòÎªËüÊÇ´Ó×ÓÉÏ³öÀ´µÄ ¿Ï¶¨ÓÐÖÁÉÙÒ»¸ö×Ó½Úµã
+	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü³ï¿½ï¿½Ö¸ï¿½ï¿½Úµï¿½ï¿½ï¿½Ó½Úµï¿½Í¬Ê±ï¿½ï¿½ï¿½Ç·ï¿½partialï¿½ï¿½ï¿½ï¿½ï¿½
+	//ï¿½ï¿½ï¿½ï¿½ //ï¿½ï¿½Îªï¿½ï¿½ï¿½Ç´ï¿½ï¿½ï¿½ï¿½Ï³ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ï¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½Ó½Úµï¿½
 	Qt::CheckState result = parent->children[0]->getCheckState();
-	//±éÀúµ±Ç°Çé¿ö
+	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç°ï¿½ï¿½ï¿½
 	for (size_t i = 1, i_up = parent->children.size(); i < i_up; ++i)
 	{
 		TreeItemNode* tempItem = parent->children[i];
 		if (result != tempItem->getCheckState())
 		{
 			parent->setCheckState(Qt::PartiallyChecked);
-			//Õâ¸öÊ±ºò¾Í¸Ã½øÐÐ¸¸µÄ¸¸½ÚµãÁË µü´ú´¦Àí
+			//ï¿½ï¿½ï¿½Ê±ï¿½ï¿½Í¸Ã½ï¿½ï¿½Ð¸ï¿½ï¿½Ä¸ï¿½ï¿½Úµï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 			parent->updateParenCheckState();
 			return;
 		}
 	}
 	parent->setCheckState(result);
-	//Õâ¸öÊ±ºò¾Í¸Ã½øÐÐ¸¸µÄ¸¸½ÚµãÁË µü´ú´¦Àí
+	//ï¿½ï¿½ï¿½Ê±ï¿½ï¿½Í¸Ã½ï¿½ï¿½Ð¸ï¿½ï¿½Ä¸ï¿½ï¿½Úµï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	parent->updateParenCheckState();
 }
 

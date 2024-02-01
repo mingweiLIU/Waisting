@@ -41,57 +41,58 @@ class TreeItemNode
 {
 public:
 	explicit TreeItemNode(std::string name, TreeItemNode* parent = NULL);
-	//»ñÈ¡¸¸½Úµã
+	//ï¿½ï¿½È¡ï¿½ï¿½ï¿½Úµï¿½
 	TreeItemNode* getParent() { return parent; }
-	//»ñÈ¡×ÓÊý
+	//ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½
 	size_t childCount() { return children.size(); }
-	//»ñÈ¡µÚN¸ö×Ö½Úµã
+	//ï¿½ï¿½È¡ï¿½ï¿½Nï¿½ï¿½ï¿½Ö½Úµï¿½
 	TreeItemNode* getNthChild(size_t N);
-	//Ìí¼Ó×Ó½Úµã
-	//ÒòÎªÊÇÈõÖÇÄÜÖ¸ÕëµÄÔ­Òò ÐèÒªÔÙµ÷ÓÃsetParent
+	//ï¿½ï¿½ï¿½ï¿½ï¿½Ó½Úµï¿½
+	//ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¸ï¿½ï¿½ï¿½Ô­ï¿½ï¿½ ï¿½ï¿½Òªï¿½Ùµï¿½ï¿½ï¿½setParent
 	void addChild(TreeItemNode* oneChild); 
-	//ÉèÖÃ¸¸½Úµã
+	//ï¿½ï¿½ï¿½Ã¸ï¿½ï¿½Úµï¿½
 	void setParent(TreeItemNode* parent);
 
-	//¹´Ñ¡±¾½Úµã
+	//ï¿½ï¿½Ñ¡ï¿½ï¿½ï¿½Úµï¿½
 	void setChecked();
-	//È¡Ïû¹´Ñ¡±¾½Úµã
+	//È¡ï¿½ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½ï¿½Úµï¿½
 	void setUnChecked();
 
-	//ÉèÖÃÕÛµþ
+	//ï¿½ï¿½ï¿½ï¿½ï¿½Ûµï¿½
 	void setFolded() { isFold = true; }
-	//ÉèÖÃÕ¹¿ª
+	//ï¿½ï¿½ï¿½ï¿½Õ¹ï¿½ï¿½
 	void setUnFolded() { isFold = false; }
+	bool getFoldState() { return isFold; }
 
-	//»ñÈ¡µ±Ç°½ÚµãµÄ×´Ì¬
+	//ï¿½ï¿½È¡ï¿½ï¿½Ç°ï¿½Úµï¿½ï¿½×´Ì¬
 	Qt::CheckState getCheckState();
 
 	int nthOf(TreeItemNode* oneChild);
 
-	//¼ÆËãµ±Ç°½ÚµãµÄ×Ó½ÚµãÊÇÈ«¹´Ñ¡¡¢È«·Ç¹´Ñ¡»òÕß°ë¹´Ñ¡×´Ì¬
+	//ï¿½ï¿½ï¿½ãµ±Ç°ï¿½Úµï¿½ï¿½ï¿½Ó½Úµï¿½ï¿½ï¿½È«ï¿½ï¿½Ñ¡ï¿½ï¿½È«ï¿½Ç¹ï¿½Ñ¡ï¿½ï¿½ï¿½ß°ë¹´Ñ¡×´Ì¬
 	Qt::CheckState checkAndUpdateCheckState();
 public:
-	//½ÚµãÃû×Ö
+	//ï¿½Úµï¿½ï¿½ï¿½ï¿½ï¿½
 	std::string name;
 private:
-	//ÉèÖÃÑ¡ÖÐ ÎªÁË±£Ö¤Ð§ÂÊ ÕâÀïÖ»ÐÞ¸Ä×Ô¼ººÍ×Ó½ÚµãµÄ×´Ì¬ ÐèÒªÔÙ×¨ÃÅµ÷ÓÃ¸¸½Úµã¸üÐÂµÄº¯Êý
+	//ï¿½ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½ Îªï¿½Ë±ï¿½Ö¤Ð§ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ö»ï¿½Þ¸ï¿½ï¿½Ô¼ï¿½ï¿½ï¿½ï¿½Ó½Úµï¿½ï¿½×´Ì¬ ï¿½ï¿½Òªï¿½ï¿½×¨ï¿½Åµï¿½ï¿½Ã¸ï¿½ï¿½Úµï¿½ï¿½ï¿½ÂµÄºï¿½ï¿½ï¿½
 	void setCheckState(bool state);
 	void setCheckState(Qt::CheckState state);
 
-	//µ±ÉèÖÃÍêµ±Ç°½ÚµãµÄ±ä»¯ºó µü´ú¸üÐÂ¸¸½ÚµãµÄ×´Ì¬
+	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½êµ±Ç°ï¿½Úµï¿½Ä±ä»¯ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â¸ï¿½ï¿½Úµï¿½ï¿½×´Ì¬
 	void updateParenCheckState();
 
 
 
 private:
-	//¸Ã½ÚµãÊÇ·ñ±»¹´Ñ¡ ×¢Òâ ¹´Ñ¡ºóÓ¦¸Ã°ÑËùÓÐ×Ó½Úµã¹´Ñ¡Íê³É Èç¹û²»¹´Ñ¡ÔòËùÓÐ×Ó½Úµã²»¹´Ñ¡ Èç¹ûÎª²¿·Ö¹´Ñ¡Ôò¹´Ñ¡²¿·Ö×Ó½Úµã
+	//ï¿½Ã½Úµï¿½ï¿½Ç·ñ±»¹ï¿½Ñ¡ ×¢ï¿½ï¿½ ï¿½ï¿½Ñ¡ï¿½ï¿½Ó¦ï¿½Ã°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó½Úµã¹´Ñ¡ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó½Úµã²»ï¿½ï¿½Ñ¡ ï¿½ï¿½ï¿½Îªï¿½ï¿½ï¿½Ö¹ï¿½Ñ¡ï¿½ï¿½Ñ¡ï¿½ï¿½ï¿½ï¿½ï¿½Ó½Úµï¿½
 	Qt::CheckState checkState = Qt::Unchecked;
-	//¸Ä½ÚµãÊÇ·ñÕÛµþ false±êÊ¶Õ¹¿ª true±êÊ¶ÕÛµþ
+	//ï¿½Ä½Úµï¿½ï¿½Ç·ï¿½ï¿½Ûµï¿½ falseï¿½ï¿½Ê¶Õ¹ï¿½ï¿½ trueï¿½ï¿½Ê¶ï¿½Ûµï¿½
 	bool isFold = false;//
 
-	//¸Ã½ÚµãµÄ×Ó½Úµã
+	//ï¿½Ã½Úµï¿½ï¿½ï¿½Ó½Úµï¿½
 	std::vector<TreeItemNode*>children;
-	//¸Ã½ÚµãµÄ¸¸½Úµã
+	//ï¿½Ã½Úµï¿½Ä¸ï¿½ï¿½Úµï¿½
 	TreeItemNode* parent;
 };
 
@@ -102,8 +103,9 @@ class WLayerTreeModel:public QAbstractItemModel
 	QML_ELEMENT
 	QML_SINGLETON
 	enum ItemRoles {
-		NAME = Qt::UserRole + 1,
-		STATE
+		NAME = Qt::UserRole + 1,//ï¿½Úµï¿½ï¿½ï¿½ï¿½ï¿½
+		CHECKSTATE = Qt::UserRole + 2,//ï¿½Úµã¹´Ñ¡×´Ì¬
+		FOLDSTATE= Qt::UserRole + 3//ï¿½Úµï¿½ï¿½Ûµï¿½×´Ì¬
 	};
 public:
     explicit WLayerTreeModel(QObject* parent=0);

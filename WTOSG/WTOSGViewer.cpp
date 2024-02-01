@@ -58,6 +58,7 @@ void WTOSGViewer::setHoverEnabled(bool newHoverEnabled)
 void WTOSGViewer::loadFile(QString filePath)
 {
 	SceneManager::getInstance().addNode(filePath.toLocal8Bit().constData());
+	//emit(loadFileEvent(filePath));
 }
 
 QQuickFramebufferObject::Renderer* WTOSGViewer::createRenderer() const

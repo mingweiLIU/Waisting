@@ -39,9 +39,7 @@ set(includeDirs
     ${OPENSCENEGRAPH_INCLUDE_DIRS}
 )
 
-qt_add_library(${modelName} STATIC
-    WTDefines.h
-    WLayerTree.qml)
+qt_add_library(${modelName} STATIC)
 set_target_properties(${modelName} PROPERTIES AUTOMOC ON)
 target_include_directories(${modelName} PUBLIC ${includeDirs})
 target_link_libraries(${modelName} PRIVATE 
