@@ -54,6 +54,7 @@ Item {
                 clip: true
                 text: model.name
                 anchors.verticalCenter: parent.verticalCenter
+                checkState:model.checked
             }
         }
     }
