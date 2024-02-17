@@ -6,6 +6,12 @@ WTGetTypeFilesRelative(
     Recurse OFF
 )
 
+#设置单例的qml文件
+set_source_files_properties(CommonDefines.qml
+    PROPERTIES
+        QT_QML_SINGLETON_TYPE TRUE
+)
+
 WTGetTypeFilesRelative(
     FileType "*.h"
     OutRelative HeaderFileNames
@@ -39,7 +45,11 @@ set(includeDirs
     ${OPENSCENEGRAPH_INCLUDE_DIRS}
 )
 
-qt_add_library(${modelName} STATIC)
+qt_add_library(${modelName} STATIC
+    WLayerTree.qml
+    CommonDefines.qml
+    WLayerTreeMenu.qml
+)
 set_target_properties(${modelName} PROPERTIES AUTOMOC ON)
 target_include_directories(${modelName} PUBLIC ${includeDirs})
 target_link_libraries(${modelName} PRIVATE 
@@ -48,6 +58,7 @@ target_link_libraries(${modelName} PRIVATE
     Qt6::Qml
     Qt6::Quick
     ${OPENSCENEGRAPH_LIBRARIES}
+    WTTools.lib
 )
 
 qt_add_qml_module(${modelName}

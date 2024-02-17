@@ -20,20 +20,10 @@
     },
     {
       "hidden": true,
-      "name": "Qt-Default",
-      "inherits": "6.6.0_msvc2019_64",
-      "vendor": {
-        "qt-project.org/Default": {
-          "checksum": "N6s8Q0f1VbXl9jMS63c3h4aIGv0="
-        }
-      }
-    },
-    {
-      "hidden": true,
       "name": "5.15.2_msvc2019_64",
       "inherits": "Qt",
       "environment": {
-        "QTDIR": "C:/QT/5.15.2/MSVC2019_64"
+        "QTDIR": "C:/LANGUAGES/QT/5.15.2/MSVC2019_64"
       },
       "architecture": {
         "strategy": "external",
@@ -42,7 +32,7 @@
       "generator": "Ninja",
       "vendor": {
         "qt-project.org/Version": {
-          "checksum": "ptcEk6DrMo+x2qNR/kb8KvrnFFM="
+          "checksum": "svY7N1DMw6Wio4BlN+JT59RBv2s="
         }
       }
     },
@@ -51,7 +41,7 @@
       "name": "6.6.0_msvc2019_64",
       "inherits": "Qt",
       "environment": {
-        "QTDIR": "C:/QT/QT6.6/6.6.0/MSVC2019_64"
+        "QTDIR": "C:/LANGUAGES/QT/6.5.2/MSVC2019_64"
       },
       "architecture": {
         "strategy": "external",
@@ -60,14 +50,42 @@
       "generator": "Ninja",
       "vendor": {
         "qt-project.org/Version": {
-          "checksum": "wv5IoZtzgQxkqBQlwiHW2CH8Hps="
+          "checksum": "ipqkMRgQlJ3v0s3pg5LO2Qi7b+g="
+        }
+      }
+    },
+    {
+      "hidden": true,
+      "name": "Qt-Default",
+      "inherits": "6.5.2_msvc2019_64",
+      "vendor": {
+        "qt-project.org/Default": {
+          "checksum": "6gVsp0NkL62j2aevfaEjiHalPU4="
+        }
+      }
+    },
+    {
+      "hidden": true,
+      "name": "6.6.0_msvc2019_64",
+      "inherits": "Qt",
+      "environment": {
+        "QTDIR": "C:/LANGUAGES/QT/6.5.2/MSVC2019_64"
+      },
+      "architecture": {
+        "strategy": "external",
+        "value": "x64"
+      },
+      "generator": "Ninja",
+      "vendor": {
+        "qt-project.org/Version": {
+          "checksum": "ipqkMRgQlJ3v0s3pg5LO2Qi7b+g="
         }
       }
     }
   ],
   "vendor": {
     "qt-project.org/Presets": {
-      "checksum": "1PvO8Qloy58S/6QD/4NvARcURBU="
+      "checksum": "s0m/2Ioe6g8UA9wlj0bbpljxuuk="
     }
   }
 }

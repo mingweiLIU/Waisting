@@ -5,7 +5,6 @@ import QtQuick.Layouts
 
 import WTComponents
 import WTOSG
-import Test 1.0
 import Waisting 1.0
 
 Window{
@@ -188,6 +187,7 @@ Window{
                     }
                     WLayerTree{
                         anchors.fill: parent
+                        anchors.leftMargin:5
                     }
                 }
 

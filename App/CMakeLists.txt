@@ -60,10 +60,16 @@ set_target_properties(appWaisting PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 
+#如果是Qt的组件 修改这儿
 set(SubDirs
     WTComponents
     WTOSG
 )
+#如果是纯C++组件 修改这儿
+set(PureCXXLib
+    WTTools
+)
+
 set(SelfPlugins)
 set(PluginInclude)
 foreach(oneDir ${SubDirs} )
@@ -71,14 +77,20 @@ foreach(oneDir ${SubDirs} )
     LIST(APPEND PluginInclude ../${oneDir})
 endforeach()
 
+foreach(oneDir ${PureCXXLib} )
+    LIST(APPEND SelfPlugins ${oneDir})
+    LIST(APPEND PluginInclude ../${oneDir})
+endforeach()
+
 target_link_libraries(appWaisting
-    PRIVATE 
+    PRIVATE
     Qt6::Core
     Qt6::Gui
     Qt6::Qml
     Qt6::Quick
     ${SelfPlugins}
 )
+message("${SelfPlugins}")
 find_package(OpenSceneGraph REQUIRED osg osgDB osgViewer osgUtil osgGA )
 
 set(includeDirs

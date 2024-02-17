@@ -10,7 +10,7 @@
 
 class WTOSGViewer : public QQuickFramebufferObject
 {
-    Q_OBJECT
+	Q_OBJECT
 
 	Q_PROPERTY(bool hoverEnabled READ hoverEnabled WRITE setHoverEnabled NOTIFY hoverEnabledChanged)
 	Q_PROPERTY(QOpenGLFramebufferObject* defaultFbo READ defaultFbo NOTIFY defaultFboChanged)
@@ -36,6 +36,7 @@ signals:
 
 	//模型文件加载对外消息
 	//void loadFileEvent(QString filePath);
+	void loadedFile(std::string name, std::string ui, std::string parentUID);
 
 
 public slots:

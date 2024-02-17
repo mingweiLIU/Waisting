@@ -7,92 +7,86 @@
 #include "WTDefines.h"
 #pragma execution_character_set("utf-8")
 WTNAMESPACESTART
-//class TreeItem
-//{
-//public:
-//	explicit TreeItem(const QList<QVariant>&data,TreeItem* parent=NULL);
-//	~TreeItem();
-//	void appendChild(TreeItem* child);
-//	void deleteAllChild();
-//
-//	TreeItem* child(int row);
-//	int childCount() const;
-//	int columnCount()const;
-//	QVariant data(int column)const;
-//	void setParent(TreeItem* parent);
-//	TreeItem* panret();
-//	int row()const;
-//
-//public:
-//	Qt::CheckState getCheckState() {
-//		return checkState;
-//	}
-//
-//private:
-//	TreeItem* m_parent;
-//	QList<TreeItem*> m_children;
-//	QList<QVariant> m_itemData;
-//	Qt::CheckState checkState = Qt::Unchecked;
-//};
-
-
 
 class TreeItemNode
 {
 public:
-	explicit TreeItemNode(std::string name, TreeItemNode* parent = NULL);
-	//ï¿½ï¿½È¡ï¿½ï¿½ï¿½Úµï¿½
+	explicit TreeItemNode(std::string name, std::string uid="", TreeItemNode* parent = NULL);
+	//Çå³ý µ«²»ÐÞ¸Ä¸¸½Úµã
+	~TreeItemNode();
+
+	//»ñÈ¡¸¸½Úµã
 	TreeItemNode* getParent() { return parent; }
-	//ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½
+
+	//»ñÈ¡×Ó½Úµã
+	std::vector<TreeItemNode*> getChildren() { return children; }
+
+	//»ñÈ¡×Ó½ÚµãµÄÐòÊý
+	int getIndex(TreeItemNode* checkChild);
+
+	//»ñÈ¡×ÓÊý
 	size_t childCount() { return children.size(); }
-	//ï¿½ï¿½È¡ï¿½ï¿½Nï¿½ï¿½ï¿½Ö½Úµï¿½
+
+	//»ñÈ¡µÚN¸ö×Ö½Úµã
 	TreeItemNode* getNthChild(size_t N);
-	//ï¿½ï¿½ï¿½ï¿½ï¿½Ó½Úµï¿½
-	//ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¸ï¿½ï¿½ï¿½Ô­ï¿½ï¿½ ï¿½ï¿½Òªï¿½Ùµï¿½ï¿½ï¿½setParent
+
+	//Í¨¹ýUIDÀ´»ñÈ¡×Ó½Úµã
+	TreeItemNode* getChildByUID(std::string childUID);
+
+	//Ìí¼Ó×Ó½Úµã
 	void addChild(TreeItemNode* oneChild); 
-	//ï¿½ï¿½ï¿½Ã¸ï¿½ï¿½Úµï¿½
+
+	//Çå³ý×Ó½Úµã
+	void clearChildren();
+
+	//ÉèÖÃ¸¸½Úµã
 	void setParent(TreeItemNode* parent);
 
-	//ï¿½ï¿½Ñ¡ï¿½ï¿½ï¿½Úµï¿½
+	//¹´Ñ¡±¾½Úµã
 	void setChecked();
-	//È¡ï¿½ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½ï¿½Úµï¿½
+	//È¡Ïû¹´Ñ¡±¾½Úµã
 	void setUnChecked();
 
-	//ï¿½ï¿½ï¿½ï¿½ï¿½Ûµï¿½
+	//ÉèÖÃÕÛµþ
 	void setFolded() { isFold = true; }
-	//ï¿½ï¿½ï¿½ï¿½Õ¹ï¿½ï¿½
+	//ÉèÖÃÕ¹¿ª
 	void setUnFolded() { isFold = false; }
 	bool getFoldState() { return isFold; }
 
-	//ï¿½ï¿½È¡ï¿½ï¿½Ç°ï¿½Úµï¿½ï¿½×´Ì¬
+	//»ñÈ¡µ±Ç°½ÚµãÓëÆäÐÖµÜ½ÚµãµÄ¹ØÏµ 0±íÊ¾µÚÒ»¸ö 1±íÊ¾ÖÐ¼ä 2±íÊ¾×îºóÒ»¸ö Èç¹ûÖ»ÓÐÒ»¸ö ÔòÊÇ×îºóÒ»¸ö2
+	int getIndexState();
+
+	//»ñÈ¡µ±Ç°½ÚµãµÄ×´Ì¬
 	Qt::CheckState getCheckState();
 
 	int nthOf(TreeItemNode* oneChild);
 
-	//ï¿½ï¿½ï¿½ãµ±Ç°ï¿½Úµï¿½ï¿½ï¿½Ó½Úµï¿½ï¿½ï¿½È«ï¿½ï¿½Ñ¡ï¿½ï¿½È«ï¿½Ç¹ï¿½Ñ¡ï¿½ï¿½ï¿½ß°ë¹´Ñ¡×´Ì¬
+	//¼ÆËãµ±Ç°½ÚµãµÄ×Ó½ÚµãÊÇÈ«¹´Ñ¡¡¢È«·Ç¹´Ñ¡»òÕß°ë¹´Ñ¡×´Ì¬
 	Qt::CheckState checkAndUpdateCheckState();
+
 public:
-	//ï¿½Úµï¿½ï¿½ï¿½ï¿½ï¿½
+	//½ÚµãÃû×Ö
 	std::string name;
+	std::string UID;
 private:
-	//ï¿½ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½ Îªï¿½Ë±ï¿½Ö¤Ð§ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ö»ï¿½Þ¸ï¿½ï¿½Ô¼ï¿½ï¿½ï¿½ï¿½Ó½Úµï¿½ï¿½×´Ì¬ ï¿½ï¿½Òªï¿½ï¿½×¨ï¿½Åµï¿½ï¿½Ã¸ï¿½ï¿½Úµï¿½ï¿½ï¿½ÂµÄºï¿½ï¿½ï¿½
+	//ÉèÖÃÑ¡ÖÐ ÎªÁË±£Ö¤Ð§ÂÊ ÕâÀïÖ»ÐÞ¸Ä×Ô¼ººÍ×Ó½ÚµãµÄ×´Ì¬ ÐèÒªÔÙ×¨ÃÅµ÷ÓÃ¸¸½Úµã¸üÐÂµÄº¯Êý
 	void setCheckState(bool state);
 	void setCheckState(Qt::CheckState state);
 
-	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½êµ±Ç°ï¿½Úµï¿½Ä±ä»¯ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â¸ï¿½ï¿½Úµï¿½ï¿½×´Ì¬
+	//µ±ÉèÖÃÍêµ±Ç°½ÚµãµÄ±ä»¯ºó µü´ú¸üÐÂ¸¸½ÚµãµÄ×´Ì¬
 	void updateParenCheckState();
 
 
 
 private:
-	//ï¿½Ã½Úµï¿½ï¿½Ç·ñ±»¹ï¿½Ñ¡ ×¢ï¿½ï¿½ ï¿½ï¿½Ñ¡ï¿½ï¿½Ó¦ï¿½Ã°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó½Úµã¹´Ñ¡ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó½Úµã²»ï¿½ï¿½Ñ¡ ï¿½ï¿½ï¿½Îªï¿½ï¿½ï¿½Ö¹ï¿½Ñ¡ï¿½ï¿½Ñ¡ï¿½ï¿½ï¿½ï¿½ï¿½Ó½Úµï¿½
+	//¸Ã½ÚµãÊÇ·ñ±»¹´Ñ¡ ×¢Òâ ¹´Ñ¡ºóÓ¦¸Ã°ÑËùÓÐ×Ó½Úµã¹´Ñ¡Íê³É Èç¹û²»¹´Ñ¡ÔòËùÓÐ×Ó½Úµã²»¹´Ñ¡ Èç¹ûÎª²¿·Ö¹´Ñ¡Ôò¹´Ñ¡²¿·Ö×Ó½Úµã
 	Qt::CheckState checkState = Qt::Unchecked;
-	//ï¿½Ä½Úµï¿½ï¿½Ç·ï¿½ï¿½Ûµï¿½ falseï¿½ï¿½Ê¶Õ¹ï¿½ï¿½ trueï¿½ï¿½Ê¶ï¿½Ûµï¿½
+	//¸Ä½ÚµãÊÇ·ñÕÛµþ false±êÊ¶Õ¹¿ª true±êÊ¶ÕÛµþ
 	bool isFold = false;//
 
-	//ï¿½Ã½Úµï¿½ï¿½ï¿½Ó½Úµï¿½
+	//¸Ã½ÚµãµÄ×Ó½Úµã
 	std::vector<TreeItemNode*>children;
-	//ï¿½Ã½Úµï¿½Ä¸ï¿½ï¿½Úµï¿½
+	//¸Ã½ÚµãµÄ¸¸½Úµã
 	TreeItemNode* parent;
 };
 
@@ -103,9 +97,10 @@ class WLayerTreeModel:public QAbstractItemModel
 	QML_ELEMENT
 	QML_SINGLETON
 	enum ItemRoles {
-		NAME = Qt::UserRole + 1,//ï¿½Úµï¿½ï¿½ï¿½ï¿½ï¿½
-		CHECKSTATE = Qt::UserRole + 2,//ï¿½Úµã¹´Ñ¡×´Ì¬
-		FOLDSTATE= Qt::UserRole + 3//ï¿½Úµï¿½ï¿½Ûµï¿½×´Ì¬
+		NAME = Qt::UserRole + 1,//½ÚµãÃû×Ö
+		CHECKSTATE = Qt::UserRole + 2,//½Úµã¹´Ñ¡×´Ì¬
+		FOLDSTATE= Qt::UserRole + 3,//½ÚµãÕÛµþ×´Ì¬
+		INDEXSTATE = Qt::UserRole + 4//µÚÒ»¸öÔòÊÇ0 ÖÐ¼äÔòÊÇ1 ×îºóÒ»¸ö½ÚµãÔòÊÇ2
 	};
 public:
     explicit WLayerTreeModel(QObject* parent=0);
@@ -118,9 +113,30 @@ public:
 	Q_INVOKABLE virtual int columnCount(const QModelIndex& parent = QModelIndex()) const override;
 	Q_INVOKABLE QHash<int, QByteArray> roleNames()const override;
 
-public slots:
 	Q_INVOKABLE Qt::CheckState itemChecked(int row, int column, const QModelIndex& parent = QModelIndex())const;
+	Q_INVOKABLE void checkItem(const QModelIndex& parent = QModelIndex());
+	Q_INVOKABLE void test() {
+		emit testMessage();
+	}
+	Q_INVOKABLE void zoomToItem(const QModelIndex& parent = QModelIndex());
+	Q_INVOKABLE void testAdd();
 
+public slots:
+	bool addNode(std::string name, std::string uid, std::string parentUID);
+
+signals:
+	//Õ¹¿ªÏûÏ¢
+	void expandTreeNode(QModelIndex index);
+	//ÕÛµþÏûÏ¢
+	void foldTreeNode(QModelIndex index);
+	//¹´Ñ¡×´Ì¬±ä»¯
+	void checkStateChangedTreeNode(std::string uid,bool checkState);
+	//Ñ¡ÖÐ¶ÔÏó
+	void selectTreeNode(std::string uid);
+	//·Éµ½¶ÔÏó
+	void zoomToTreeNode(std::string uid);
+
+	void testMessage();
 private:
 	TreeItemNode* itemFromIndex(const QModelIndex& index) const;
 	TreeItemNode* root=nullptr;

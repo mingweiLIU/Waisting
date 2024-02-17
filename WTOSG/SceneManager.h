@@ -19,9 +19,10 @@ public:
 	osg::ref_ptr<osgViewer::Viewer> getViewer();
 	void addOperation(osg::Operation* operation);
 	void addNode(osg::Node* childNode, osg::Group* parentNode=nullptr);
-	void addNode(std::string filePath, osg::Group* parentNode = nullptr);
+	osg::ref_ptr<osg::Node> addNode(std::string filePath, osg::Group* parentNode = nullptr);
 	osg::ref_ptr<osgGA::EventQueue> getEventQueue();
 	osg::Node* getNode(std::string name);
+	osg::ref_ptr<osg::Group> getRoot();
 private:
 	void initOSG();
 private:

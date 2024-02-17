@@ -1,6 +1,9 @@
 #include "SceneManager.h"
 #include <osgDB/ReadFile>
 #include <osgGA/TrackballManipulator>
+#include <osgDB/FileNameUtils>
+
+#include "NanoID/nanoid.h"
 
 #include "OperationTools.h"
 
@@ -58,13 +61,16 @@ void SceneManager::addNode(osg::Node* childNode, osg::Group* parent /*= nullptr*
 	addOperation(op);
 }
 
-void SceneManager::addNode(std::string filePath, osg::Group* parentNode /*= nullptr*/)
+osg::ref_ptr<osg::Node> SceneManager::addNode(std::string filePath, osg::Group* parentNode /*= nullptr*/)
 {
 	osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(filePath);
+	node->setUserValue("uid", nanoid::NanoID::generate());
+	node->setName(osgDB::getSimpleFileName(filePath));
 	if (node)
 	{
 		this->addNode(node.get(), parentNode);
 	}
+	return node;
 }
 
 osg::ref_ptr<osgGA::EventQueue> SceneManager::getEventQueue()
@@ -85,6 +91,11 @@ osg::Node* SceneManager::getNode(std::string name)
 	return nodeFound;
 }
 
+osg::ref_ptr<osg::Group> SceneManager::getRoot()
+{
+	return root;
+}
+
 void SceneManager::initOSG()
 {
 	if (viewer) return;
@@ -103,6 +114,7 @@ void SceneManager::initOSG()
 	viewer->setUpdateOperations(operationQueue);
 
 	root = new osg::Group;
+	root->setUserValue("uid", nanoid::NanoID::generate());
 	osg::ref_ptr<osg::Node> node = osgDB::readNodeFile("D:\\Code\\OSG\\OSGHandler\\TestData\\Data\\Tile_+011_+014\\Tile_+011_+014.osgb");
 	if (node)
 	{
