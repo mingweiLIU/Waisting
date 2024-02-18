@@ -57,11 +57,7 @@ void WTOSGViewer::setHoverEnabled(bool newHoverEnabled)
 
 void WTOSGViewer::loadFile(QString filePath)
 {
-	osg::ref_ptr<osg::Node> node=SceneManager::getInstance().addNode(filePath.toLocal8Bit().constData());
-	std::string nodeUID, parentUID;
-	node->getUserValue("uid", nodeUID);
-	SceneManager::getInstance().getRoot()->getUserValue("uid", parentUID);
-	emit(loadedFile(node->getName(), nodeUID, parentUID));
+	osg::ref_ptr<osg::Node> node=SceneManager::getInstance().addNode(filePath.toLocal8Bit().constData());	
 }
 
 QQuickFramebufferObject::Renderer* WTOSGViewer::createRenderer() const

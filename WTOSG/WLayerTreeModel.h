@@ -122,7 +122,7 @@ public:
 	Q_INVOKABLE void testAdd();
 
 public slots:
-	bool addNode(std::string name, std::string uid, std::string parentUID);
+	bool addNode(std::string name, std::string uid, std::string parentUID="");
 
 signals:
 	//展开消息

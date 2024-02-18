@@ -1,4 +1,5 @@
 #pragma once
+#include <QObject>
 #include <osgViewer/Viewer>
 #include <osg/Group>
 #include <osg/Node>
@@ -6,8 +7,9 @@
 #include <osgGA/EventQueue>
 
 
-class SceneManager
+class SceneManager:public QObject
 {
+	Q_OBJECT
 protected:
 	SceneManager();
 public:
@@ -30,4 +32,14 @@ private:
 	osg::ref_ptr<osg::Group> root;
 	osg::ref_ptr<osg::OperationQueue> operationQueue;
 	osg::ref_ptr<osgGA::EventQueue> eventQueue;
+
+public slots:
+
+signals:
+	//节点加载消息 node和group都使用它
+	void nodeLoaded(std::string name, std::string uid, std::string parentUID);
+	//节点删除消息
+	void nodeDeleted(std::string name, std::string uid);
+	//节点显隐切换消息
+	void nodeSwitchVisible(std::string name, std::string uid);
 };

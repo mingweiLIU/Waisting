@@ -64,12 +64,20 @@ void SceneManager::addNode(osg::Node* childNode, osg::Group* parent /*= nullptr*
 osg::ref_ptr<osg::Node> SceneManager::addNode(std::string filePath, osg::Group* parentNode /*= nullptr*/)
 {
 	osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(filePath);
-	node->setUserValue("uid", nanoid::NanoID::generate());
+	std::string nodeUID = nanoid::NanoID::generate();
+	node->setUserValue("uid", nodeUID);
 	node->setName(osgDB::getSimpleFileName(filePath));
 	if (node)
 	{
 		this->addNode(node.get(), parentNode);
 	}
+
+	std::string  parentUID="";
+	if (parentNode)
+	{
+		parentNode->getUserValue("uid", parentUID);
+	}
+	emit(nodeLoaded(node->getName(), nodeUID, parentUID));
 	return node;
 }
 
@@ -121,4 +129,8 @@ void SceneManager::initOSG()
 		root->addChild(node);
 	}
 	viewer->setSceneData(root.get());
+
+	std::string  parentUID;
+	root->getUserValue("uid", parentUID);
+	emit(nodeLoaded(root->getName(), parentUID, ""));
 }

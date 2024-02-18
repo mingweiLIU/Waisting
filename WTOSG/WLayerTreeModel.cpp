@@ -188,19 +188,34 @@ void WLayerTreeModel::testAdd()
 {
 
 	TreeItemNode* child33 = new TreeItemNode("child33");
-	root->getNthChild(2)->getNthChild(1)->addChild(child33);
+	beginResetModel();;
+	//root->getNthChild(2)->getNthChild(1)->addChild(child33);
+	root->addChild(child33);
+	endResetModel();
 }
 
-bool WLayerTreeModel::addNode(std::string name, std::string uid, std::string parentUID)
+bool WLayerTreeModel::addNode(std::string name, std::string uid, std::string parentUID /*= ""*/)
 {
-	//首先判断uid的存在性 但是不处理重复性问题
-	TreeItemNode* parentItem=root->getChildByUID(parentUID);
-	if (parentItem)
+	//判断如果父uid为空 则直接添加到根节点下
+	if (""==parentUID)
 	{
-		parentItem->addChild(new TreeItemNode(name, uid));
+
+		beginResetModel();;
+		root->addChild(new TreeItemNode(name, uid));
+		endResetModel();
 		return true;
-	}
-	return false;
+	}else {
+		//首先判断uid的存在性 但是不处理重复性问题
+		TreeItemNode* parentItem = root->getChildByUID(parentUID);
+		if (parentItem)
+		{
+			beginResetModel();;
+			parentItem->addChild(new TreeItemNode(name, uid));
+			endResetModel();
+			return true;
+		}
+		return false;
+	}	
 }
 
 void TreeItemNode::setCheckState(bool state)
