@@ -6,6 +6,14 @@
 #include <osg/OperationThread>
 #include <osgGA/EventQueue>
 
+#include"WTLayer.h"
+
+//查找类型
+enum class FINDLAYERTYPE
+{
+	UID = 0,
+	NAME
+};
 
 class SceneManager:public QObject
 {
@@ -20,10 +28,18 @@ public:
 	static SceneManager& getInstance();
 	osg::ref_ptr<osgViewer::Viewer> getViewer();
 	void addOperation(osg::Operation* operation);
-	void addNode(osg::Node* childNode, osg::Group* parentNode=nullptr);
-	osg::ref_ptr<osg::Node> addNode(std::string filePath, osg::Group* parentNode = nullptr);
+
+	//添加图层
+	void addLayer(WT::WTLayer* layer, WT::WTLayer* parentLayer = nullptr);
+	//读取文件并加载
+	osg::ref_ptr<osg::Node> addNode(std::string filePath, WT::WTLayer* parentNode = nullptr);
+
 	osg::ref_ptr<osgGA::EventQueue> getEventQueue();
-	osg::Node* getNode(std::string name);
+	//根据名字获取图层
+	WT::WTLayer* getLayer(std::string findInfo, FINDLAYERTYPE findType= FINDLAYERTYPE::NAME);
+	//切换图层显隐
+	void switchLayerVisibility(std::string layerInfo,std::optional<bool> visibility, FINDLAYERTYPE findType = FINDLAYERTYPE::NAME);
+
 	osg::ref_ptr<osg::Group> getRoot();
 private:
 	void initOSG();
@@ -34,7 +50,7 @@ private:
 	osg::ref_ptr<osgGA::EventQueue> eventQueue;
 
 public slots:
-
+	void switchLayerVisibilitySlot(std::string UID);
 signals:
 	//节点加载消息 node和group都使用它
 	void nodeLoaded(std::string name, std::string uid, std::string parentUID);

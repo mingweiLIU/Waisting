@@ -81,6 +81,16 @@ TreeItemNode* WLayerTreeModel::itemFromIndex(const QModelIndex& parent) const
 	return root;
 }
 
+QModelIndex WLayerTreeModel::indexFromItem(TreeItemNode* item) const {
+	if (item == root)
+		return QModelIndex();
+
+	TreeItemNode* parentOfItem = item->getParent();
+
+	int row = parentOfItem->getIndex(item);
+	return createIndex(row, 0, item);
+}
+
 QModelIndex WLayerTreeModel::parent(const QModelIndex& child) const
 {
 	if (!child.isValid())
@@ -188,34 +198,31 @@ void WLayerTreeModel::testAdd()
 {
 
 	TreeItemNode* child33 = new TreeItemNode("child33");
-	beginResetModel();;
+
+	beginInsertRows(indexFromItem(root), root->childCount(), root->childCount());
 	//root->getNthChild(2)->getNthChild(1)->addChild(child33);
 	root->addChild(child33);
-	endResetModel();
+	//emit dataChanged(childModelIndex, childModelIndex);
+	endInsertRows();
 }
 
 bool WLayerTreeModel::addNode(std::string name, std::string uid, std::string parentUID /*= ""*/)
 {
 	//判断如果父uid为空 则直接添加到根节点下
-	if (""==parentUID)
+	TreeItemNode* parentItem = root;
+	if (""!=parentUID)
 	{
-
-		beginResetModel();;
-		root->addChild(new TreeItemNode(name, uid));
-		endResetModel();
+		parentItem = root->getChildByUID(parentUID);
+		
+	}
+	if (parentItem)
+	{
+		beginInsertRows(indexFromItem(parentItem), parentItem->childCount(), parentItem->childCount());
+		parentItem->addChild(new TreeItemNode(name, uid));
+		endInsertRows();
 		return true;
-	}else {
-		//首先判断uid的存在性 但是不处理重复性问题
-		TreeItemNode* parentItem = root->getChildByUID(parentUID);
-		if (parentItem)
-		{
-			beginResetModel();;
-			parentItem->addChild(new TreeItemNode(name, uid));
-			endResetModel();
-			return true;
-		}
-		return false;
-	}	
+	}
+	return false;
 }
 
 void TreeItemNode::setCheckState(bool state)

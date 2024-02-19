@@ -139,6 +139,7 @@ signals:
 	void testMessage();
 private:
 	TreeItemNode* itemFromIndex(const QModelIndex& index) const;
+	QModelIndex indexFromItem(TreeItemNode* item)const;
 	TreeItemNode* root=nullptr;
 };
 WTNAMESPACEEND

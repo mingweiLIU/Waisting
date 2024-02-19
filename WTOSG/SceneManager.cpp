@@ -2,32 +2,49 @@
 #include <osgDB/ReadFile>
 #include <osgGA/TrackballManipulator>
 #include <osgDB/FileNameUtils>
+#include <osg/Switch>
 
 #include "NanoID/nanoid.h"
-
 #include "OperationTools.h"
 
-class FindNameNode : public osg::NodeVisitor
+class FindLayer : public osg::NodeVisitor
 {
 public:
-	explicit FindNameNode(const std::string& name)
+	explicit FindLayer(const std::string& findInfo, FINDLAYERTYPE findType=FINDLAYERTYPE::UID)
 		:osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
-		, m_name(name) {}
+		, findInfo(findInfo)
+		, findType(findType){}
 
-	virtual void apply(osg::Node& node)override {
-		if (node.getName() == m_name)
-		{
-			m_node = &node;
-		}
-		else
-		{
+	virtual void apply(osg::Group& node)override {
+		WT::WTLayer* oneLayer = dynamic_cast<WT::WTLayer*>(&node);
+		if (!oneLayer) {
 			traverse(node);
+			return;
+		}
+
+		switch (findType)
+		{
+		case FINDLAYERTYPE::UID:
+			if (oneLayer->getUID() == findInfo)
+				mLayer = oneLayer;
+			else
+				traverse(node);
+			break;
+		case FINDLAYERTYPE::NAME:
+			if(oneLayer->getName() == findInfo)
+				mLayer = oneLayer;
+			else
+				traverse(node);
+			break;
+		default:
+			break;
 		}
 	}
-	osg::Node* getNode() const { return m_node; }
+	WT::WTLayer* getLayer() const { return mLayer; }
 private:
-	std::string m_name;
-	osg::Node* m_node = nullptr;
+	std::string findInfo;
+	WT::WTLayer* mLayer = nullptr;
+	FINDLAYERTYPE findType;
 };
 
 SceneManager::SceneManager()
@@ -51,33 +68,26 @@ void SceneManager::addOperation(osg::Operation* operation)
 	operationQueue->add(operation);
 }
 
-void SceneManager::addNode(osg::Node* childNode, osg::Group* parent /*= nullptr*/)
+void SceneManager::addLayer(WT::WTLayer* layer, WT::WTLayer* parentLayer /*= nullptr*/)
 {
-	auto parentGroupNode = (parent == nullptr) ? root.get()->asGroup() : parent->asGroup();
-	if (parentGroupNode == nullptr) {
-		return;
-	}
-	auto op = new AddChildOperation(childNode, parentGroupNode);
+	auto parentGroupNode = (parentLayer == nullptr) ? root : parentLayer;
+	
+	auto op = new AddChildOperation(layer, parentGroupNode);
 	addOperation(op);
+
+	std::string parentUID= (parentLayer == nullptr) ? "" : parentLayer->getUID();
+	emit(nodeLoaded(layer->getName(), layer->getUID(), parentUID));
 }
 
-osg::ref_ptr<osg::Node> SceneManager::addNode(std::string filePath, osg::Group* parentNode /*= nullptr*/)
+osg::ref_ptr<osg::Node> SceneManager::addNode(std::string filePath, WT::WTLayer* parentNode /*= nullptr*/)
 {
 	osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(filePath);
-	std::string nodeUID = nanoid::NanoID::generate();
-	node->setUserValue("uid", nodeUID);
-	node->setName(osgDB::getSimpleFileName(filePath));
 	if (node)
 	{
-		this->addNode(node.get(), parentNode);
+		std::string name = osgDB::getSimpleFileName(filePath);
+		osg::ref_ptr<WT::WTLayer> oneLayer = new WT::WTLayer(node, name);
+		this->addLayer(oneLayer.get(), parentNode);
 	}
-
-	std::string  parentUID="";
-	if (parentNode)
-	{
-		parentNode->getUserValue("uid", parentUID);
-	}
-	emit(nodeLoaded(node->getName(), nodeUID, parentUID));
 	return node;
 }
 
@@ -86,22 +96,28 @@ osg::ref_ptr<osgGA::EventQueue> SceneManager::getEventQueue()
 	return std::move(eventQueue);
 }
 
-osg::Node* SceneManager::getNode(std::string name)
+WT::WTLayer* SceneManager::getLayer(std::string findInfo, FINDLAYERTYPE findType /*= FINDLAYERTYPE::NAME*/)
 {
 	if (root == nullptr) return nullptr;
 
-	FindNameNode findNodeVisitor(name);
+	FindLayer findNodeVisitor(findInfo,findType);
 	root->accept(findNodeVisitor);
-	auto nodeFound = findNodeVisitor.getNode();
-	if (nodeFound == nullptr) {
-		return nullptr;
-	}
-	return nodeFound;
+	return findNodeVisitor.getLayer();
+}
+
+void SceneManager::switchLayerVisibility(std::string layerInfo, std::optional<bool> visibility, FINDLAYERTYPE findType /*= FINDLAYERTYPE::NAME*/) {
+	WT::WTLayer* oneLayer = getLayer(layerInfo, findType);
+	if (!oneLayer) return;
+	oneLayer->switchVisibility(visibility);
 }
 
 osg::ref_ptr<osg::Group> SceneManager::getRoot()
 {
 	return root;
+}
+
+void SceneManager::switchLayerVisibilitySlot(std::string UID) {
+	switchLayerVisibility(UID, std::nullopt, FINDLAYERTYPE::UID);
 }
 
 void SceneManager::initOSG()

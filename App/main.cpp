@@ -18,6 +18,7 @@ int main(int argc, char *argv[])
 	auto* wLayerTree=engine.singletonInstance<WT::WLayerTreeModel*>("WTOSG", "WLayerTreeModel");
 	auto& te = SceneManager::getInstance();
 	QObject::connect(&te, &SceneManager::nodeLoaded, wLayerTree, &WT::WLayerTreeModel::addNode);
+	QObject::connect(wLayerTree, &WT::WLayerTreeModel::checkStateChangedTreeNode, &te, &SceneManager::switchLayerVisibilitySlot);
 
 	QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed,
 		&app, []() { QCoreApplication::exit(-1); },
