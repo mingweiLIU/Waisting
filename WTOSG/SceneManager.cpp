@@ -111,14 +111,26 @@ void SceneManager::switchLayerVisibility(std::string layerInfo, std::optional<bo
 	oneLayer->switchVisibility(visibility);
 }
 
+void SceneManager::zoomToLayer(std::string layerInfo, FINDLAYERTYPE findType /*= FINDLAYERTYPE::NAME*/)
+{
+	WT::WTLayer* oneLayer = getLayer(layerInfo, findType);
+	if (!oneLayer) return;
+	oneLayer->zoomToLayer(viewer->getCameraManipulator());
+}
+
 osg::ref_ptr<osg::Group> SceneManager::getRoot()
 {
 	return root;
 }
 
-void SceneManager::switchLayerVisibilitySlot(std::string UID) {
+void SceneManager::switchLayerVisibilityByUIDSlot(std::string UID) {
 	switchLayerVisibility(UID, std::nullopt, FINDLAYERTYPE::UID);
 }
+void SceneManager::zoomToLayerByUIDSlot(std::string UID)
+{
+	zoomToLayer(UID, FINDLAYERTYPE::UID);
+}
+
 
 void SceneManager::initOSG()
 {
@@ -139,6 +151,7 @@ void SceneManager::initOSG()
 
 	root = new osg::Group;
 	root->setUserValue("uid", nanoid::NanoID::generate());
+
 	osg::ref_ptr<osg::Node> node = osgDB::readNodeFile("D:\\Code\\OSG\\OSGHandler\\TestData\\Data\\Tile_+011_+014\\Tile_+011_+014.osgb");
 	if (node)
 	{
@@ -150,3 +163,4 @@ void SceneManager::initOSG()
 	root->getUserValue("uid", parentUID);
 	emit(nodeLoaded(root->getName(), parentUID, ""));
 }
+

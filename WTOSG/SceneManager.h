@@ -39,6 +39,8 @@ public:
 	WT::WTLayer* getLayer(std::string findInfo, FINDLAYERTYPE findType= FINDLAYERTYPE::NAME);
 	//切换图层显隐
 	void switchLayerVisibility(std::string layerInfo,std::optional<bool> visibility, FINDLAYERTYPE findType = FINDLAYERTYPE::NAME);
+	//飞到某个图层
+	void zoomToLayer(std::string layerInfo, FINDLAYERTYPE findType = FINDLAYERTYPE::NAME);
 
 	osg::ref_ptr<osg::Group> getRoot();
 private:
@@ -50,7 +52,10 @@ private:
 	osg::ref_ptr<osgGA::EventQueue> eventQueue;
 
 public slots:
-	void switchLayerVisibilitySlot(std::string UID);
+	//图层显隐切换事件
+	void switchLayerVisibilityByUIDSlot(std::string UID);
+	//飞到某个图层事件
+	void zoomToLayerByUIDSlot(std::string UID);
 signals:
 	//节点加载消息 node和group都使用它
 	void nodeLoaded(std::string name, std::string uid, std::string parentUID);

@@ -120,7 +120,6 @@ Item {
 							if(!treeDelegate.hasChildren){
 								var modelIndex=treeDelegate.treeView.index(row,column)
 								WLayerTreeModel.zoomToItem(modelIndex);
-								WLayerTreeModel.testAdd();
 							}
 						break;
 					}
