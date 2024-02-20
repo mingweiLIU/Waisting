@@ -11,7 +11,7 @@ WTNAMESPACESTART
 class TreeItemNode
 {
 public:
-	explicit TreeItemNode(std::string name, std::string uid="", TreeItemNode* parent = NULL);
+	explicit TreeItemNode(std::string name, std::string uid="", TreeItemNode* parent = nullptr, bool visible = true);
 	//清除 但不修改父节点
 	~TreeItemNode();
 
@@ -122,7 +122,7 @@ public:
 	Q_INVOKABLE void testAdd();
 
 public slots:
-	bool addNode(std::string name, std::string uid, std::string parentUID="");
+	bool addNode(std::string name, std::string uid, std::string parentUID="",bool visible=true);
 
 signals:
 	//展开消息

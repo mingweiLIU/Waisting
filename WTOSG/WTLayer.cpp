@@ -3,8 +3,7 @@
 WTNAMESPACESTART
 
 WTLayer::WTLayer(osg::ref_ptr<osg::Node> node, std::string name /*= ""*/, bool visible /*= false*/, WTLAYERTYPE layerType /*= WTLAYERTYPE::NODE*/)
-	:visible(visible)
-	,layerType(layerType)
+	:layerType(layerType)
 {
 	uid=nanoid::NanoID::generate();
 	if ("" == name) {
@@ -20,14 +19,7 @@ std::string  WTLayer::getUID() {
 }
 
 void WTLayer::switchVisibility(std::optional<bool> visibility) {
-	if (visibility) {
-		this->setValue(0, *visibility);
-		this->visible = *visibility;
-	}
-	else {
-		this->visible = !this->visible;
-		this->setValue(0, this->visible);
-	}
+	visibility ? this->setValue(0, *visibility) : this->setValue(0, !this->getVisibility());
 }
 
 void WTLayer::zoomToLayer(osgGA::CameraManipulator* cameraManipulator)
@@ -39,6 +31,10 @@ void WTLayer::zoomToLayer(osgGA::CameraManipulator* cameraManipulator)
 	osg::Vec3d eye = center + viewDirection * viewDistance;
 	osg::Matrixd m = osg::Matrixd::lookAt(eye, center, osg::Vec3d(0,0,1));
 	cameraManipulator->setByMatrix(osg::Matrixd::inverse(m));
+}
+
+bool WTLayer::getVisibility() {
+	return this->getValue(0);
 }
 
 WTNAMESPACEEND

@@ -76,7 +76,7 @@ void SceneManager::addLayer(WT::WTLayer* layer, WT::WTLayer* parentLayer /*= nul
 	addOperation(op);
 
 	std::string parentUID= (parentLayer == nullptr) ? "" : parentLayer->getUID();
-	emit(nodeLoaded(layer->getName(), layer->getUID(), parentUID));
+	emit(nodeLoaded(layer->getName(), layer->getUID(), parentUID, layer->getValue(0)));
 }
 
 osg::ref_ptr<osg::Node> SceneManager::addNode(std::string filePath, WT::WTLayer* parentNode /*= nullptr*/)
@@ -86,6 +86,7 @@ osg::ref_ptr<osg::Node> SceneManager::addNode(std::string filePath, WT::WTLayer*
 	{
 		std::string name = osgDB::getSimpleFileName(filePath);
 		osg::ref_ptr<WT::WTLayer> oneLayer = new WT::WTLayer(node, name);
+		oneLayer->setValue(0, false);
 		this->addLayer(oneLayer.get(), parentNode);
 	}
 	return node;
@@ -152,11 +153,11 @@ void SceneManager::initOSG()
 	root = new osg::Group;
 	root->setUserValue("uid", nanoid::NanoID::generate());
 
-	osg::ref_ptr<osg::Node> node = osgDB::readNodeFile("D:\\Code\\OSG\\OSGHandler\\TestData\\Data\\Tile_+011_+014\\Tile_+011_+014.osgb");
-	if (node)
-	{
-		root->addChild(node);
-	}
+	//osg::ref_ptr<osg::Node> node = osgDB::readNodeFile("D:\\Code\\OSG\\OSGHandler\\TestData\\Data\\Tile_+011_+014\\Tile_+011_+014.osgb");
+	//if (node)
+	//{
+	//	root->addChild(node);
+	//}
 	viewer->setSceneData(root.get());
 
 	std::string  parentUID;

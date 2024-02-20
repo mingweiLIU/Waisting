@@ -206,7 +206,7 @@ void WLayerTreeModel::testAdd()
 	endInsertRows();
 }
 
-bool WLayerTreeModel::addNode(std::string name, std::string uid, std::string parentUID /*= ""*/)
+bool WLayerTreeModel::addNode(std::string name, std::string uid, std::string parentUID /*= ""*/, bool visible/*=true*/)
 {
 	//判断如果父uid为空 则直接添加到根节点下
 	TreeItemNode* parentItem = root;
@@ -218,7 +218,7 @@ bool WLayerTreeModel::addNode(std::string name, std::string uid, std::string par
 	if (parentItem)
 	{
 		beginInsertRows(indexFromItem(parentItem), parentItem->childCount(), parentItem->childCount());
-		parentItem->addChild(new TreeItemNode(name, uid));
+		parentItem->addChild(new TreeItemNode(name, uid, parentItem,visible));
 		endInsertRows();
 		return true;
 	}
@@ -301,7 +301,7 @@ int TreeItemNode::nthOf(TreeItemNode* oneChild)
 	return -1;
 }
 
-TreeItemNode::TreeItemNode(std::string name, std::string uid/*=""*/, TreeItemNode* parent /*= NULL*/)
+TreeItemNode::TreeItemNode(std::string name, std::string uid/*=""*/, TreeItemNode* parent /*= nullptr*/,bool visible/*=true*/)
 {
 	this->name = name;
 	this->parent = parent;
@@ -310,6 +310,7 @@ TreeItemNode::TreeItemNode(std::string name, std::string uid/*=""*/, TreeItemNod
 		uid = nanoid::NanoID::generate();
 	}
 	this->UID = uid;
+	this->checkState = visible ?  Qt::Checked : Qt::Unchecked;
 }
 
 void TreeItemNode::updateParenCheckState()

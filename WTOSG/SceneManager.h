@@ -58,7 +58,7 @@ public slots:
 	void zoomToLayerByUIDSlot(std::string UID);
 signals:
 	//节点加载消息 node和group都使用它
-	void nodeLoaded(std::string name, std::string uid, std::string parentUID);
+	void nodeLoaded(std::string name, std::string uid, std::string parentUID,bool visible=true);
 	//节点删除消息
 	void nodeDeleted(std::string name, std::string uid);
 	//节点显隐切换消息

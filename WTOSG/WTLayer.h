@@ -24,9 +24,10 @@ public:
     void switchVisibility(std::optional<bool> visibility);
     //缩放到图层
     void zoomToLayer(osgGA::CameraManipulator* cameraManipulator);
+    //获取可见性
+    bool getVisibility();
 private:
     std::string uid;
-    bool visible = true;
     WTLAYERTYPE layerType = WTLAYERTYPE::NODE; 
 };
 WTNAMESPACEEND

@@ -11,7 +11,7 @@ Window{
     id:mainwindow
     visible: true
 //    visibility: "Maximized"
-    title:qsTr("三维空间场景可视化编辑系统")
+    title:qsTr("地理场景可视化编辑系统")
     color:"#2b2d30"
     minimumHeight: 900
     minimumWidth: 1300
@@ -182,12 +182,12 @@ Window{
                 StackLayout{
                     anchors.fill: parent
                     currentIndex:mainWindowObj.selectedMenuIndex
-                    DataHandlerTool{
-                        anchors.fill: parent
-                    }
                     WLayerTree{
                         anchors.fill: parent
                         anchors.leftMargin:5
+                    }
+                    DataHandlerTool{
+                        anchors.fill: parent
                     }
                 }
 
@@ -262,6 +262,8 @@ Window{
             mainWindowObj.selectedBtn.color="#3574f0"
             mainWindowObj.selectedMenuIndex=selectedIndex
         }
-
+    }
+    Component.onCompleted: {
+        mainWindowObj.buttonClicked(packageBtn,0);
     }
 }
