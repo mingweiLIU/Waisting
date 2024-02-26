@@ -40,9 +40,11 @@ find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Qml Quick)
 qt_standard_project_setup(REQUIRES 6.5)
 
 find_package(OpenSceneGraph REQUIRED osg osgDB osgViewer osgUtil osgGA )
+find_package(OSGEarth REQUIRED osgearth)
 
 set(includeDirs 
     ${OPENSCENEGRAPH_INCLUDE_DIRS}
+    ${OSGEARTH_INCLUDE_DIRS}
 )
 
 qt_add_library(${modelName} STATIC
@@ -58,6 +60,7 @@ target_link_libraries(${modelName} PRIVATE
     Qt6::Qml
     Qt6::Quick
     ${OPENSCENEGRAPH_LIBRARIES}
+    ${OSGEARTH_LIBRARY}
     WTTools.lib
 )
 
