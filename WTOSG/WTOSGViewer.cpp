@@ -3,6 +3,7 @@
 #include <QQuickFramebufferObject>
 #include <osgGA/EventQueue>
 #include <osg/OperationThread>
+#include <osgEarth/Common>
 #include "SceneManager.h"
 #include "WTOSGRenderer.h"
 

@@ -3,14 +3,17 @@
 #include <QQmlContext>
 #include <QtQuick/QQuickView>
 #include <QIcon>
+#include <osgEarth/Common>
 #include<qsurfaceformat.h>
 #include "WTOSGViewer.h"
 #include "WLayerTreeModel.h"
 #include "SceneManager.h"
 
+
 int main(int argc, char *argv[])
 {
 	QGuiApplication app(argc, argv);
+
 	QSurfaceFormat format = QSurfaceFormat::defaultFormat();
 	format.setVersion(3, 2);
 	format.setProfile(QSurfaceFormat::CoreProfile);
@@ -21,6 +24,8 @@ int main(int argc, char *argv[])
 	format.setStencilBufferSize(8);
 	format.setSwapBehavior(QSurfaceFormat::DoubleBuffer);
 	QSurfaceFormat::setDefaultFormat(format);
+
+	osgEarth::initialize();
 
 	app.setWindowIcon(QIcon(":/qt/qml/Waisting/icon/app.png"));//qrc��qml�ļ���д ��c++�в�Ҫqrc
 	QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);

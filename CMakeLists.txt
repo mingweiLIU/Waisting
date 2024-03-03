@@ -20,7 +20,8 @@ qt_standard_project_setup(REQUIRES 6.5)
 
 set(ThirdPartyPath ${CMAKE_CURRENT_SOURCE_DIR}/3rd)
 set(OSG_DIR ${ThirdPartyPath}/osg)
-set(OSGEARTH_DIR ${${ThirdPartyPath}/osg})
+set(OSGEARTH_DIR ${ThirdPartyPath}/osg)
+set(GDAL_ROOT ${ThirdPartyPath}/gdal)
 
 set(SubDirs
     App

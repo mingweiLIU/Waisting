@@ -62,6 +62,7 @@ private:
 
 	int getOsgKey(QKeyEvent* event);
 
+
 private:
     QTimer m_updateTimer;
 	QOpenGLFramebufferObject* m_defaultFbo = nullptr;

@@ -2,6 +2,7 @@
 #include <osgDB/ReadFile>
 #include <osgGA/TrackballManipulator>
 #include <osgDB/FileNameUtils>
+#include <osgDB/FileUtils>
 #include <osg/Switch>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgGA/KeySwitchMatrixManipulator>
@@ -21,6 +22,8 @@
 #include <osgEarth/XYZ>
 #include <osgEarth/GLUtils>
 #include <osgEarth/LogarithmicDepthBuffer>
+#include <gdal_priv.h>
+#include <cpl_conv.h>
 
 #include "NanoID/nanoid.h"
 #include "OperationTools.h"
@@ -67,6 +70,7 @@ private:
 
 SceneManager::SceneManager()
 {
+	commonSettings();
 	setupEarth();
 	//initOSG();
 }
@@ -186,43 +190,57 @@ void SceneManager::initOSG()
 
 void SceneManager::setupEarth()
 {
-	osg::ref_ptr<osgEarth::SkyNode> earthSky = osgEarth::SkyNode::create();
-	earthSky->attach(viewer);
-	//earthSky->getSunLight()->setAmbient(osg::Vec4(0.5, 0.5, 0.5, 1.0));
-	earthSky->setDateTime(osgEarth::DateTime(2020, 8, 15, 4));//��������ʱ��8Сʱ
-	earthSky->setLighting(0);
-
-	//����������MapNode �����ùȸ�Ӱ��
-	map = new osgEarth::Map;
-	//osg::ref_ptr<XYZImageLayer> googleImageLayer = new XYZImageLayer;
-	//googleImageLayer->setURL("http://mt1.google.cn/vt/lyrs=s&hl=zh-CN&x={x}&y={y}&z={z}");
-	//googleImageLayer->setProfile(Profile::create("spherical-mercator"));
-	//googleImageLayer->setMaxLevel(23);
+	viewer = new osgViewer::Viewer();
+	osg::ref_ptr<osgEarth::Map> map = new osgEarth::Map();
 	osg::ref_ptr<osgEarth::XYZImageLayer> googleImageLayer = new osgEarth::XYZImageLayer;
 	googleImageLayer->setURL("http://webst0[1234].is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}");
 	googleImageLayer->setProfile(osgEarth::Profile::create("spherical-mercator"));
 	googleImageLayer->setMaxLevel(20);
-	map->addLayer(googleImageLayer);
-	mapNode = new osgEarth::MapNode(map);
+	map->addLayer(googleImageLayer.get());
+	osgEarth::MapNode* mapNode = new osgEarth::MapNode(map.get());
 
-	earthSky->addChild(mapNode);
+	viewer->setSceneData(mapNode);
+	viewer->setCameraManipulator(new osgEarth::EarthManipulator());
+	//viewer->run();
 
-	root->addChild(earthSky);
 
-	osgEarth::LogarithmicDepthBuffer buf;
-	buf.install(viewer->getCamera());
-	earthManipulator = new osgEarth::EarthManipulator();
-	viewer->setCameraManipulator(earthManipulator);
-	osg::ref_ptr<osgEarth::EarthManipulator::Settings> earthManipulatorSettings = earthManipulator->getSettings();
-	//earthManipulator->getSettings()->setMinMaxPitch(-89, 89);
+	//osg::ref_ptr<osgEarth::SkyNode> earthSky = osgEarth::SkyNode::create();
+	//earthSky->attach(viewer);
+	////earthSky->getSunLight()->setAmbient(osg::Vec4(0.5, 0.5, 0.5, 1.0));
+	//earthSky->setDateTime(osgEarth::DateTime(2020, 8, 15, 4));//��������ʱ��8Сʱ
+	//earthSky->setLighting(0);
 
-	viewer->getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
-	// default uniform values:
-	osgEarth::GLUtils::setGlobalDefaults(viewer->getCamera()->getOrCreateStateSet());
-	viewer->getDatabasePager()->setUnrefImageDataAfterApplyPolicy(true, false);
+	////����������MapNode �����ùȸ�Ӱ��
+	//map = new osgEarth::Map;
+	////osg::ref_ptr<XYZImageLayer> googleImageLayer = new XYZImageLayer;
+	////googleImageLayer->setURL("http://mt1.google.cn/vt/lyrs=s&hl=zh-CN&x={x}&y={y}&z={z}");
+	////googleImageLayer->setProfile(Profile::create("spherical-mercator"));
+	////googleImageLayer->setMaxLevel(23);
+	//osg::ref_ptr<osgEarth::XYZImageLayer> googleImageLayer = new osgEarth::XYZImageLayer;
+	//googleImageLayer->setURL("http://webst0[1234].is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}");
+	//googleImageLayer->setProfile(osgEarth::Profile::create("spherical-mercator"));
+	//googleImageLayer->setMaxLevel(20);
+	//map->addLayer(googleImageLayer);
+	//mapNode = new osgEarth::MapNode(map);
 
-	double equatorRadius = map->getSRS()->getEllipsoid().getRadiusEquator();//6378137.0
-	earthManipulator->setHomeViewpoint(osgEarth::Viewpoint("", 114, 26, 0, 0, -90, equatorRadius * 3.5)); 
+	//earthSky->addChild(mapNode);
+
+	//root->addChild(earthSky);
+
+	//osgEarth::LogarithmicDepthBuffer buf;
+	//buf.install(viewer->getCamera());
+	//earthManipulator = new osgEarth::EarthManipulator();
+	//viewer->setCameraManipulator(earthManipulator);
+	//osg::ref_ptr<osgEarth::EarthManipulator::Settings> earthManipulatorSettings = earthManipulator->getSettings();
+	////earthManipulator->getSettings()->setMinMaxPitch(-89, 89);
+
+	//viewer->getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
+	//// default uniform values:
+	//osgEarth::GLUtils::setGlobalDefaults(viewer->getCamera()->getOrCreateStateSet());
+	//viewer->getDatabasePager()->setUnrefImageDataAfterApplyPolicy(true, false);
+
+	//double equatorRadius = map->getSRS()->getEllipsoid().getRadiusEquator();//6378137.0
+	//earthManipulator->setHomeViewpoint(osgEarth::Viewpoint("", 114, 26, 0, 0, -90, equatorRadius * 3.5)); 
 }
 
 void SceneManager::setupEventHandler()
@@ -260,3 +278,13 @@ void SceneManager::setupEventHandler()
 	}
 }
 
+void SceneManager::commonSettings()
+{
+	osgEarth::initialize();
+	std::string exeFolder=osgDB::getCurrentWorkingDirectory();
+	CPLSetConfigOption("GDAL_DATA", osgDB::concatPaths(exeFolder, "gdal-data").c_str());
+	CPLSetConfigOption("PROJ_LIB", osgDB::concatPaths(exeFolder, "proj9/share").c_str());
+	std::string test = osgDB::concatPaths(exeFolder, "proj9\\share");
+	const char* newprojs[] = { osgDB::concatPaths(exeFolder, "proj9\\share").c_str(),NULL };
+	OSRSetPROJSearchPaths(newprojs);
+}

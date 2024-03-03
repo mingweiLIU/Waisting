@@ -41,10 +41,12 @@ qt_standard_project_setup(REQUIRES 6.5)
 
 find_package(OpenSceneGraph REQUIRED osg osgDB osgViewer osgUtil osgGA )
 find_package(OSGEarth REQUIRED osgearth)
+find_package(GDAL REQUIRED gdal)
 
 set(includeDirs 
     ${OPENSCENEGRAPH_INCLUDE_DIRS}
     ${OSGEARTH_INCLUDE_DIRS}
+    ${GDAL_INCLUDE_DIRS}
 )
 
 qt_add_library(${modelName} STATIC
@@ -62,6 +64,7 @@ target_link_libraries(${modelName} PRIVATE
     ${OPENSCENEGRAPH_LIBRARIES}
     ${OSGEARTH_LIBRARY}
     WTTools.lib
+    ${GDAL_LIBRARY}
 )
 
 qt_add_qml_module(${modelName}
