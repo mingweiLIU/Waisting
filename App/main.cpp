@@ -9,7 +9,6 @@
 #include "WLayerTreeModel.h"
 #include "SceneManager.h"
 
-
 int main(int argc, char *argv[])
 {
 	QGuiApplication app(argc, argv);
@@ -52,7 +51,7 @@ int main(int argc, char *argv[])
 	//	Qt::QueuedConnection); 
     engine.loadFromModule("Waisting", "Main");
 
-	QObject* root = nullptr;
+	//QObject* root = nullptr;
 
 	
 

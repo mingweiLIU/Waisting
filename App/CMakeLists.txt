@@ -90,7 +90,6 @@ target_link_libraries(appWaisting
     Qt6::Quick
     ${SelfPlugins}
 )
-message("${SelfPlugins}")
 find_package(OpenSceneGraph REQUIRED osg osgDB osgViewer osgUtil osgGA )
 
 set(includeDirs

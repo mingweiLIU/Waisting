@@ -5,6 +5,7 @@
 #include <osg/Node>
 #include <osg/OperationThread>
 #include <osgGA/EventQueue>
+#include <osgEarth/Map>
 #include <osgEarth/MapNode>
 #include <osgEarth/EarthManipulator>
 
@@ -52,9 +53,12 @@ private:
 	void commonSettings();
 private:
 	osgViewer::Viewer* viewer;
+	osgEarth::Map* map;
 	osg::ref_ptr<osg::Group> root;
 	osg::ref_ptr<osg::OperationQueue> operationQueue;
 	osg::ref_ptr<osgGA::EventQueue> eventQueue;
+	osg::ref_ptr<osgEarth::MapNode> mapNode;
+	osg::ref_ptr<osgEarth::EarthManipulator>earthManipulator;
 
 public slots:
 	//Í¼²ãÏÔÒþÇÐ»»ÊÂ¼þ

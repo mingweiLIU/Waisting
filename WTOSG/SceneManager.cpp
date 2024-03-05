@@ -1,4 +1,5 @@
 ﻿#include "SceneManager.h"
+#include<stdlib.h>
 #include <osgDB/ReadFile>
 #include <osgGA/TrackballManipulator>
 #include <osgDB/FileNameUtils>
@@ -71,8 +72,9 @@ private:
 SceneManager::SceneManager()
 {
 	commonSettings();
+	initOSG();
 	setupEarth();
-	//initOSG();
+	//
 }
 
 SceneManager& SceneManager::getInstance()
@@ -163,12 +165,8 @@ void SceneManager::initOSG()
 	eventQueue = new osgGA::EventQueue;
 	operationQueue = new osg::OperationQueue;
 	viewer = new osgViewer::Viewer;
-
-	auto manipulator = new osgGA::TrackballManipulator;
-	manipulator->setAllowThrow(false);
-	viewer->setCameraManipulator(manipulator);
 	viewer->setUpViewerAsEmbeddedInWindow(0, 0, 300, 300);
-	viewer->getCamera()->setClearColor(osg::Vec4(56 / 255.0, 56 / 255.0, 56 / 255.0,1.0));//现在用的偏亮点，后面这个偏黑些(30 / 255.0, 31 / 255.0, 34 / 255.0, 1.0));
+	//viewer->getCamera()->setClearColor(osg::Vec4(56 / 255.0, 56 / 255.0, 56 / 255.0,1.0));//现在用的偏亮点，后面这个偏黑些(30 / 255.0, 31 / 255.0, 34 / 255.0, 1.0));
 	auto graphicsWindow = dynamic_cast<osgViewer::GraphicsWindow*>(viewer->getCamera()->getGraphicsContext());
 	graphicsWindow->setEventQueue(eventQueue);
 	viewer->setUpdateOperations(operationQueue);
@@ -176,11 +174,6 @@ void SceneManager::initOSG()
 	root = new osg::Group;
 	root->setUserValue("uid", nanoid::NanoID::generate());
 
-	//osg::ref_ptr<osg::Node> node = osgDB::readNodeFile("D:\\Code\\OSG\\OSGHandler\\TestData\\Data\\Tile_+011_+014\\Tile_+011_+014.osgb");
-	//if (node)
-	//{
-	//	root->addChild(node);
-	//}
 	viewer->setSceneData(root.get());
 
 	std::string  parentUID;
@@ -190,57 +183,46 @@ void SceneManager::initOSG()
 
 void SceneManager::setupEarth()
 {
-	viewer = new osgViewer::Viewer();
-	osg::ref_ptr<osgEarth::Map> map = new osgEarth::Map();
+
+	osg::ref_ptr<osgEarth::SkyNode> earthSky = osgEarth::SkyNode::create();
+	earthSky->attach(viewer);
+	earthSky->setAtmosphereVisible(true);
+	//earthSky->getSunLight()->setAmbient(osg::Vec4(0.5, 0.5, 0.5, 1.0));
+	earthSky->setDateTime(osgEarth::DateTime(2020, 8, 15, 4));//��������ʱ��8Сʱ
+	earthSky->setLighting(1);
+
+	//����������MapNode �����ùȸ�Ӱ��
+	map = new osgEarth::Map;
 	osg::ref_ptr<osgEarth::XYZImageLayer> googleImageLayer = new osgEarth::XYZImageLayer;
-	googleImageLayer->setURL("http://webst0[1234].is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}");
+	googleImageLayer->setURL("https://gac-geo.googlecnapps.cn/maps/vt?lyrs=s&x={x}&y={y}&z={z}");
 	googleImageLayer->setProfile(osgEarth::Profile::create("spherical-mercator"));
-	googleImageLayer->setMaxLevel(20);
-	map->addLayer(googleImageLayer.get());
-	osgEarth::MapNode* mapNode = new osgEarth::MapNode(map.get());
-
-	viewer->setSceneData(mapNode);
-	viewer->setCameraManipulator(new osgEarth::EarthManipulator());
-	//viewer->run();
-
-
-	//osg::ref_ptr<osgEarth::SkyNode> earthSky = osgEarth::SkyNode::create();
-	//earthSky->attach(viewer);
-	////earthSky->getSunLight()->setAmbient(osg::Vec4(0.5, 0.5, 0.5, 1.0));
-	//earthSky->setDateTime(osgEarth::DateTime(2020, 8, 15, 4));//��������ʱ��8Сʱ
-	//earthSky->setLighting(0);
-
-	////����������MapNode �����ùȸ�Ӱ��
-	//map = new osgEarth::Map;
-	////osg::ref_ptr<XYZImageLayer> googleImageLayer = new XYZImageLayer;
-	////googleImageLayer->setURL("http://mt1.google.cn/vt/lyrs=s&hl=zh-CN&x={x}&y={y}&z={z}");
-	////googleImageLayer->setProfile(Profile::create("spherical-mercator"));
-	////googleImageLayer->setMaxLevel(23);
+	googleImageLayer->setMaxLevel(23);
 	//osg::ref_ptr<osgEarth::XYZImageLayer> googleImageLayer = new osgEarth::XYZImageLayer;
 	//googleImageLayer->setURL("http://webst0[1234].is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}");
 	//googleImageLayer->setProfile(osgEarth::Profile::create("spherical-mercator"));
 	//googleImageLayer->setMaxLevel(20);
-	//map->addLayer(googleImageLayer);
-	//mapNode = new osgEarth::MapNode(map);
+	map->addLayer(googleImageLayer);
+	mapNode = new osgEarth::MapNode(map);
 
-	//earthSky->addChild(mapNode);
+	earthSky->addChild(mapNode);
 
-	//root->addChild(earthSky);
+	root->addChild(earthSky);
+	viewer->setSceneData(root);
 
-	//osgEarth::LogarithmicDepthBuffer buf;
-	//buf.install(viewer->getCamera());
-	//earthManipulator = new osgEarth::EarthManipulator();
-	//viewer->setCameraManipulator(earthManipulator);
-	//osg::ref_ptr<osgEarth::EarthManipulator::Settings> earthManipulatorSettings = earthManipulator->getSettings();
-	////earthManipulator->getSettings()->setMinMaxPitch(-89, 89);
+	osgEarth::LogarithmicDepthBuffer buf;
+	buf.install(viewer->getCamera());
+	earthManipulator = new osgEarth::EarthManipulator();
+	viewer->setCameraManipulator(earthManipulator);
+	osg::ref_ptr<osgEarth::EarthManipulator::Settings> earthManipulatorSettings = earthManipulator->getSettings();
+	//earthManipulator->getSettings()->setMinMaxPitch(-89, 89);
 
-	//viewer->getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
-	//// default uniform values:
-	//osgEarth::GLUtils::setGlobalDefaults(viewer->getCamera()->getOrCreateStateSet());
-	//viewer->getDatabasePager()->setUnrefImageDataAfterApplyPolicy(true, false);
+	viewer->getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
+	// default uniform values:
+	osgEarth::GLUtils::setGlobalDefaults(viewer->getCamera()->getOrCreateStateSet());
+	viewer->getDatabasePager()->setUnrefImageDataAfterApplyPolicy(true, false);
 
-	//double equatorRadius = map->getSRS()->getEllipsoid().getRadiusEquator();//6378137.0
-	//earthManipulator->setHomeViewpoint(osgEarth::Viewpoint("", 114, 26, 0, 0, -90, equatorRadius * 3.5)); 
+	double equatorRadius = map->getSRS()->getEllipsoid().getRadiusEquator();//6378137.0
+	earthManipulator->setHomeViewpoint(osgEarth::Viewpoint("", 114, 26, 0, 0, -90, equatorRadius * 3.5)); 
 }
 
 void SceneManager::setupEventHandler()
@@ -283,8 +265,12 @@ void SceneManager::commonSettings()
 	osgEarth::initialize();
 	std::string exeFolder=osgDB::getCurrentWorkingDirectory();
 	CPLSetConfigOption("GDAL_DATA", osgDB::concatPaths(exeFolder, "gdal-data").c_str());
-	CPLSetConfigOption("PROJ_LIB", osgDB::concatPaths(exeFolder, "proj9/share").c_str());
-	std::string test = osgDB::concatPaths(exeFolder, "proj9\\share");
-	const char* newprojs[] = { osgDB::concatPaths(exeFolder, "proj9\\share").c_str(),NULL };
+	std::string test = osgDB::concatPaths(exeFolder, "proj\\share");
+	const char* newprojs[] = { osgDB::concatPaths(exeFolder, "proj7\\share").c_str(),NULL };
 	OSRSetPROJSearchPaths(newprojs);
+	//std::string PROJ_LIBStr = "PROJ_LIB=" + osgDB::concatPaths(exeFolder, "proj7\\share");
+	//putenv(PROJ_LIBStr.c_str());
+
+	//p = getenv("PROJ_LIB");
+	//printf("PROJ_LIB = % s\n", p);
 }

@@ -72,7 +72,46 @@ FIND_LIBRARY(${MYLIBRARY}
         /build/lib64/
         /Build/lib/
         /Build/lib64/
-     )
+    )
+
+FIND_LIBRARY(${MYLIBRARY}_DEBUG
+    NAMES
+        ${MYLIBRARYNAME}d
+    PATHS
+        ${OSGEARTH_DIR}
+        $ENV{OSGEARTH_BUILD_DIR}
+        $ENV{OSGEARTH_DIR}
+        $ENV{OSGEARTHDIR}
+        $ENV{OSG_ROOT}
+        ~/Library/Frameworks
+        /Library/Frameworks
+        /usr/local
+        /usr
+        /sw
+        /opt/local
+        /opt/csw
+        /opt
+        [HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Session\ Manager\\Environment;OSGEARTH_ROOT]/lib
+        /usr/freeware
+    PATH_SUFFIXES
+        /lib/
+        /lib64/
+        /build/lib/
+        /build/lib64/
+        /Build/lib/
+        /Build/lib64/
+    )
+
+IF( NOT ${MYLIBRARY}_DEBUG)
+    IF(MYLIBRARY)
+        SET(${MYLIBRARY}_DEBUG ${MYLIBRARY})
+    ENDIF(MYLIBRARY)
+ELSE()
+    IF( NOT MYLIBRARY )
+        SET(${MYLIBRARY} ${${MYLIBRARY}_DEBUG} )
+    ENDIF(NOT MYLIBRARY)
+
+ENDIF( NOT ${MYLIBRARY}_DEBUG )
 
 ENDMACRO(FIND_OSGEARTH_LIBRARY LIBRARY LIBRARYNAME)
 
