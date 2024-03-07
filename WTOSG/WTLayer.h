@@ -16,6 +16,7 @@ class WTLayer:public osg::Switch
         GROUP
     };
 public:
+    explicit WTLayer() {};
     explicit WTLayer(osg::ref_ptr<osg::Node> node,std::string name="",bool visible =true,WTLAYERTYPE layerType=WTLAYERTYPE::NODE);
 
     std::string getUID();

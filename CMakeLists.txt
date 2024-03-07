@@ -26,6 +26,7 @@ set(GDAL_ROOT ${ThirdPartyPath}/gdal)
 
 
 set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${OSGEARTH_DIR}/cmake")
+set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${ThirdPartyPath}/GeographicLib2.3/cmake/GeographicLib")
 # set()
 
 set(SubDirs

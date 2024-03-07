@@ -42,7 +42,6 @@ qt_standard_project_setup(REQUIRES 6.5)
 find_package(OpenSceneGraph REQUIRED osg osgDB osgViewer osgUtil osgGA )
 find_package(OSGEarth REQUIRED osgearth)
 find_package(GDAL REQUIRED gdal)
-find_package(GEOGRAPHIC REQUIRED Geographic)
 
 set(includeDirs 
     ${OPENSCENEGRAPH_INCLUDE_DIRS}
@@ -54,7 +53,6 @@ qt_add_library(${modelName} STATIC
     WLayerTree.qml
     CommonDefines.qml
     WLayerTreeMenu.qml
-    NodeHandleVisitor.h NodeHandleVisitor.cpp
 )
 set_target_properties(${modelName} PROPERTIES AUTOMOC ON)
 target_include_directories(${modelName} PUBLIC ${includeDirs})
