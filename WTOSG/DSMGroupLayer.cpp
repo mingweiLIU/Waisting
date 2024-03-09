@@ -1,12 +1,21 @@
 ﻿#include "DSMGroupLayer.h"
+#include <osgDB/FileNameUtils>
+#include <osgDB/FileUtils>
+#include <osgDB/WriteFile>
+#include <osgDB/ReadFile>
+#include <osgEarth/XmlUtils>
+#include <osgEarth/Registry>
+#include "NodeHandleVisitor.h"
+#include "GeodeticRelativeCoordinates.h"
 
 WTNAMESPACESTART
-DSMGroupLayer::DSMGroupLayer(std::string folderPath, std::string outFolderPath, std::string xmlFileName /*= "metadata.xml"*/, std::string dataFolder /*= "Data"*/)
+DSMGroupLayer::DSMGroupLayer(std::string folderPath, std::string outFolderPath, std::shared_ptr<ProgressInfo> progreeInfo, std::string xmlFileName /*= "metadata.xml"*/, std::string dataFolder /*= "Data"*/)
 	:folderPath(folderPath)
 	, outFolderPath(outFolderPath)
 	, xmlFileName(xmlFileName)
 	, dataFolder(dataFolder)
 	, dsmLayer(new WTLayer())
+	,progreeInfo(progreeInfo)
 {
 	if (readDSMMetaDataXML()) {
 		getAllTilesInFolder();
@@ -22,7 +31,7 @@ DSMGroupLayer::DSMGroupLayer(std::string folderPath, std::string outFolderPath, 
 		wgs84Center.createLocalToWorld(posMatrix);
 		this->setMatrix(posMatrix);
 	}
-	progressInfoShow->showProgress(1, 1, "", "数据加载完成...");
+	progreeInfo->showProgress(1, 1, "", "数据加载完成...");
 }
 
 bool DSMGroupLayer::readDSMMetaDataXML()
@@ -79,7 +88,7 @@ bool DSMGroupLayer::readDSMMetaDataXML()
 
 osg::Vec3d DSMGroupLayer::getCenterWGS84()
 {
-	return this->wgs84Center.vec3d()
+	return this->wgs84Center.vec3d();
 }
 
 osg::Vec3d DSMGroupLayer::getCenterOriginSRS()
@@ -127,7 +136,7 @@ void DSMGroupLayer::transAllOSGBInFolder(std::string osgbFilesFolder, std::strin
 		osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(filePath, options);
 		if (node)
 		{
-			NodeVertexHandleVisitor nvh(transVec, roateVec, scaleVec);
+			NodeVertexHandler nvh(transVec, roateVec, scaleVec);
 			nvh.setVertexComputeFunction(beforeCall, afterCall);
 			node->accept(nvh);
 
@@ -145,7 +154,7 @@ bool DSMGroupLayer::getAllTilesInFolder()
 	osgDB::DirectoryContents allFileNameInFolder = osgDB::getDirectoryContents(dataFolderPath);
 
 	osg::ref_ptr<osgDB::Options> vertexCorrectWhileReadOption = osgEarth::Registry::instance()->cloneOrCreateOptions();
-	vertexCorrectWhileReadOption->setReadFileCallback(new ReadFileProgressCallback(progressInfoShow, allFileNameInFolder.size() - 2));
+	vertexCorrectWhileReadOption->setReadFileCallback(new ReadFileProgressCallback(progreeInfo, allFileNameInFolder.size() - 2));
 
 	for (osgDB::DirectoryContents::iterator fileName = allFileNameInFolder.begin(); fileName != allFileNameInFolder.end(); ++fileName)
 	{

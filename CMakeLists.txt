@@ -21,13 +21,9 @@ qt_standard_project_setup(REQUIRES 6.5)
 
 set(ThirdPartyPath ${CMAKE_CURRENT_SOURCE_DIR}/3rd)
 set(OSG_DIR ${ThirdPartyPath}/osg)
-set(OSGEARTH_DIR ${ThirdPartyPath}/osg)
+set(osgEarth_DIR ${ThirdPartyPath}/osg/cmake)
+set(GeographicLib_DIR ${ThirdPartyPath}/GeographicLib2.3/cmake/GeographicLib)
 set(GDAL_ROOT ${ThirdPartyPath}/gdal)
-
-
-set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${OSGEARTH_DIR}/cmake")
-set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${ThirdPartyPath}/GeographicLib2.3/cmake/GeographicLib")
-# set()
 
 set(SubDirs
     App

@@ -1,18 +1,22 @@
 #ifndef DSMGROUP_H
 #define DSMGROUP_H
 #include "WTDefines.h"
-#include "ProgressInfo.h"
-#include "WTLayer.h"
 #include <optional>
 #include <osg/MatrixTransform>
 #include <osg/Matrix>
+#include <osgDB/Registry>
+#include <osgEarth/SpatialReference>
+#include <osgEarth/GeoData>
+
+#include "ProgressInfo.h"
+#include "WTLayer.h"
 
 WTNAMESPACESTART
 //DSM∂‘œÛ
 class DSMGroupLayer : public osg::MatrixTransform
 {
 public:
-	DSMGroupLayer(std::string folderPath, std::string outFolderPath, std::string xmlFileName = "metadata.xml", std::string dataFolder = "Data");
+	DSMGroupLayer(std::string folderPath, std::string outFolderPath, std::shared_ptr<ProgressInfo> progreeInfo, std::string xmlFileName = "metadata.xml", std::string dataFolder = "Data");
 	osg::Vec3d getCenterWGS84();
 	osg::Vec3d getCenterOriginSRS();
 	osg::Vec3d getWGS84OfVertex(osg::Vec3d oneVertex);
@@ -39,6 +43,7 @@ private:
 	const osgEarth::SpatialReference* wgs84SRS = osgEarth::SpatialReference::get("epsg:4326");
 	const osgEarth::SpatialReference* originSRS;
 	VertexCalcFunction beforeCall, afterCall;
+	std::shared_ptr<ProgressInfo> progreeInfo;
 
 public:
 

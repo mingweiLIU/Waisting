@@ -1,4 +1,5 @@
 #include "NodeHandleVisitor.h"
+#include <osg/Geometry>
 
 WT::NodeVertexHandler::NodeVertexHandler(osg::Vec3d transVec /*= osg::Vec3d(0, 0, 0)*/, osg::Vec3d roateVec /*= osg::Vec3d(0, 0, 0)*/, osg::Vec3d scaleVec /*= osg::Vec3d(1, 1, 1)*/)
 {

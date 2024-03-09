@@ -40,14 +40,17 @@ find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Qml Quick)
 qt_standard_project_setup(REQUIRES 6.5)
 
 find_package(OpenSceneGraph REQUIRED osg osgDB osgViewer osgUtil osgGA )
-find_package(OSGEarth REQUIRED osgearth)
+find_package(osgEarth REQUIRED osgearth)
 find_package(GDAL REQUIRED gdal)
-find_package(GEOGRAPHIC REQUIRED Geographic)
+find_package(GeographicLib REQUIRED)
+
+message("000000000000000${osgEarth_LIBRARY}")
 
 set(includeDirs 
     ${OPENSCENEGRAPH_INCLUDE_DIRS}
-    ${OSGEARTH_INCLUDE_DIRS}
+    ${osgEarth_INCLUDE_DIRS}
     ${GDAL_INCLUDE_DIRS}
+    ${GeographicLib_INCLUDE_DIRS}
 )
 
 qt_add_library(${modelName} STATIC
@@ -64,9 +67,10 @@ target_link_libraries(${modelName} PRIVATE
     Qt6::Qml
     Qt6::Quick
     ${OPENSCENEGRAPH_LIBRARIES}
-    ${OSGEARTH_LIBRARY}
+    ${osgEarth_LIBRARIES}
     WTTools.lib
     ${GDAL_LIBRARY}
+    ${GeographicLib_LIBRARY_DIRS}
 )
 
 qt_add_qml_module(${modelName}
