@@ -44,7 +44,6 @@ find_package(osgEarth REQUIRED osgearth)
 find_package(GDAL REQUIRED gdal)
 find_package(GeographicLib REQUIRED)
 
-message("000000000000000${osgEarth_LIBRARY}")
 
 set(includeDirs 
     ${OPENSCENEGRAPH_INCLUDE_DIRS}

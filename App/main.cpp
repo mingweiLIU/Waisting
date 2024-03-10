@@ -32,10 +32,11 @@ int main(int argc, char *argv[])
 	qmlRegisterType<WTOSGViewer>("WTOSG", 1, 0, "WTOSGViewer");
 	QQmlApplicationEngine engine;
 	auto* wLayerTree=engine.singletonInstance<WT::WLayerTreeModel*>("WTOSG", "WLayerTreeModel");
-	auto& te = SceneManager::getInstance();
-	QObject::connect(&te, &SceneManager::nodeLoaded, wLayerTree, &WT::WLayerTreeModel::addNode);
-	QObject::connect(wLayerTree, &WT::WLayerTreeModel::checkStateChangedTreeNode, &te, &SceneManager::switchLayerVisibilityByUIDSlot); 
-	QObject::connect(wLayerTree, &WT::WLayerTreeModel::zoomToTreeNode, &te, &SceneManager::zoomToLayerByUIDSlot);
+	auto& sceneManager = SceneManager::getInstance();
+	QObject::connect(&sceneManager, &SceneManager::nodeLoaded, wLayerTree, &WT::WLayerTreeModel::slot_addNode);
+	QObject::connect(wLayerTree, &WT::WLayerTreeModel::signal_checkStateChangedTreeNode, &sceneManager, &SceneManager::slot_switchLayerVisibilityByUID);
+	QObject::connect(wLayerTree, &WT::WLayerTreeModel::zoomToTreeNode, &sceneManager, &SceneManager::slot_zoomToLayerByUID);
+	sceneManager.setupEarth();
 
 	QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed,
 		&app, []() { QCoreApplication::exit(-1); },

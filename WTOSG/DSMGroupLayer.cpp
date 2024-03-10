@@ -9,12 +9,10 @@
 #include "GeodeticRelativeCoordinates.h"
 
 WTNAMESPACESTART
-DSMGroupLayer::DSMGroupLayer(std::string folderPath, std::string outFolderPath, std::shared_ptr<ProgressInfo> progreeInfo, std::string xmlFileName /*= "metadata.xml"*/, std::string dataFolder /*= "Data"*/)
+DSMGroup::DSMGroup(std::string folderPath, std::shared_ptr<ProgressInfo> progreeInfo, std::string xmlFileName /*= "metadata.xml"*/, std::string dataFolder /*= "Data"*/)
 	:folderPath(folderPath)
-	, outFolderPath(outFolderPath)
 	, xmlFileName(xmlFileName)
 	, dataFolder(dataFolder)
-	, dsmLayer(new WTLayer())
 	,progreeInfo(progreeInfo)
 {
 	if (readDSMMetaDataXML()) {
@@ -26,15 +24,11 @@ DSMGroupLayer::DSMGroupLayer(std::string folderPath, std::string outFolderPath, 
 		//float zMin = boundingBox.zMin();
 
 		////originCenter.z() = -zMin;
-
-		osg::Matrix posMatrix;
-		wgs84Center.createLocalToWorld(posMatrix);
-		this->setMatrix(posMatrix);
 	}
 	progreeInfo->showProgress(1, 1, "", "数据加载完成...");
 }
 
-bool DSMGroupLayer::readDSMMetaDataXML()
+bool DSMGroup::readDSMMetaDataXML()
 {
 	std::string xmlfilePath = osgDB::concatPaths(folderPath, xmlFileName);
 	osg::ref_ptr<osgEarth::XmlDocument> metaDataXML = osgEarth::XmlDocument::load(xmlfilePath);
@@ -86,17 +80,17 @@ bool DSMGroupLayer::readDSMMetaDataXML()
 	return true;
 }
 
-osg::Vec3d DSMGroupLayer::getCenterWGS84()
+osg::Vec3d DSMGroup::getCenterWGS84()
 {
 	return this->wgs84Center.vec3d();
 }
 
-osg::Vec3d DSMGroupLayer::getCenterOriginSRS()
+osg::Vec3d DSMGroup::getCenterOriginSRS()
 {
 	return this->originCenter.vec3d();
 }
 
-osg::Vec3d DSMGroupLayer::getWGS84OfVertex(osg::Vec3d oneVertex)
+osg::Vec3d DSMGroup::getWGS84OfVertex(osg::Vec3d oneVertex)
 {
 	if (this->originSRS->isGeocentric())
 	{
@@ -121,7 +115,7 @@ osg::Vec3d DSMGroupLayer::getWGS84OfVertex(osg::Vec3d oneVertex)
 	}
 }
 
-void DSMGroupLayer::transAllOSGBInFolder(std::string osgbFilesFolder, std::string osgbOutFilesFolder, osg::Vec3d transVec /*= osg::Vec3d(0, 0, 0)*/, osg::Vec3d roateVec /*= osg::Vec3d(0, 0, 0)*/, osg::Vec3d scaleVec /*= osg::Vec3d(1, 1, 1) */, VertexCalcFunction beforeCall /*= NULL*/, VertexCalcFunction afterCall /*= NULL */)
+void DSMGroup::transAllOSGBInFolder(std::string osgbFilesFolder, std::string osgbOutFilesFolder, osg::Vec3d transVec /*= osg::Vec3d(0, 0, 0)*/, osg::Vec3d roateVec /*= osg::Vec3d(0, 0, 0)*/, osg::Vec3d scaleVec /*= osg::Vec3d(1, 1, 1) */, VertexCalcFunction beforeCall /*= NULL*/, VertexCalcFunction afterCall /*= NULL */)
 {
 	std::vector<std::string> osgbContents = osgDB::getDirectoryContents(osgbFilesFolder);
 	for (std::string& oneFileName : osgbContents)
@@ -148,7 +142,7 @@ void DSMGroupLayer::transAllOSGBInFolder(std::string osgbFilesFolder, std::strin
 	}
 }
 
-bool DSMGroupLayer::getAllTilesInFolder()
+bool DSMGroup::getAllTilesInFolder()
 {
 	std::string dataFolderPath = osgDB::concatPaths(folderPath, dataFolder);
 	osgDB::DirectoryContents allFileNameInFolder = osgDB::getDirectoryContents(dataFolderPath);
@@ -167,15 +161,15 @@ bool DSMGroupLayer::getAllTilesInFolder()
 			if (oneTile)
 			{
 				oneTile->setName(osgDB::concatPaths(filePath, *fileName + ".osgb"));
-				dsmLayer->addChild(oneTile);
+				this->addChild(oneTile);
 			}
 		}
 	}
-	osgEarth::Registry::shaderGenerator().run(dsmLayer);
+	osgEarth::Registry::shaderGenerator().run(this);
 	return true;
 }
 
-osg::Matrix DSMGroupLayer::getMatrix()
+osg::Matrix DSMGroup::getMatrix()
 {
 	//变换位置
 	//这里要把原始的参考点转为wgs84的
@@ -184,22 +178,7 @@ osg::Matrix DSMGroupLayer::getMatrix()
 	return posMatrix;
 }
 
-void DSMGroupLayer::switchVisibility(std::optional<bool> visibility)
-{
-	dsmLayer->switchVisibility(visibility);
-}
-
-void DSMGroupLayer::zoomToLayer(osgGA::CameraManipulator* cameraManipulator)
-{
-	dsmLayer->zoomToLayer(cameraManipulator);
-}
-
-bool DSMGroupLayer::getVisibility()
-{
-	return dsmLayer->getVisibility();
-}
-
-osgDB::ReaderWriter::ReadResult DSMGroupLayer::ReadFileProgressCallback::readNode(const std::string& filename, const osgDB::Options* options)
+osgDB::ReaderWriter::ReadResult DSMGroup::ReadFileProgressCallback::readNode(const std::string& filename, const osgDB::Options* options)
 {
 	handledNubmer++;
 	osgDB::ReaderWriter::ReadResult result = osgDB::Registry::instance()->readNodeImplementation(filename, options);

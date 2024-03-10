@@ -36,5 +36,5 @@ void WTOSGRenderer::synchronize(QQuickFramebufferObject* item)
 
 void WTOSGRenderer::onLoadFile(QString filepath)
 {
-	SceneManager::getInstance().addNode(filepath.toLocal8Bit().constData());
+	SceneManager::getInstance().addNode(filepath.toLocal8Bit().constData(),osgEarth::VisibleLayer::Options());
 }

@@ -175,6 +175,7 @@ void WLayerTreeModel::checkItem(const QModelIndex& parent /*= QModelIndex()*/)
 {
 	TreeItemNode* item = static_cast<TreeItemNode*> (parent.internalPointer());
 	item->getCheckState() == Qt::Checked ? item->setUnChecked() : item->setChecked();
+	TreeItemNode* parentItem = item->getParent();
 
 	// 更新事件
 	emit dataChanged(parent, parent);
@@ -185,13 +186,14 @@ void WLayerTreeModel::checkItem(const QModelIndex& parent /*= QModelIndex()*/)
 	//end如果修改的比较多 可以用批量修改来即
 	
 	//可见性变化
-	emit  checkStateChangedTreeNode(item->UID, item->getCheckState() == Qt::Checked);
+	emit  signal_checkStateChangedTreeNode(item->UID,parentItem->UID, item->getCheckState() == Qt::Checked);
 }
 
 Q_INVOKABLE void WLayerTreeModel::zoomToItem(const QModelIndex& parent /*= QModelIndex()*/)
 {
 	TreeItemNode* item = static_cast<TreeItemNode*> (parent.internalPointer());
-	emit zoomToTreeNode(item->UID);
+	TreeItemNode* parentItem = item->getParent();
+	emit zoomToTreeNode(item->UID,parentItem->UID);
 }
 
 void WLayerTreeModel::testAdd()
@@ -206,23 +208,24 @@ void WLayerTreeModel::testAdd()
 	endInsertRows();
 }
 
-bool WLayerTreeModel::addNode(std::string name, std::string uid, std::string parentUID /*= ""*/, bool visible/*=true*/)
+bool WLayerTreeModel::slot_addNode(std::string name, int uid, std::optional<int> parentUID, bool visible /*= true*/)
 {
 	//判断如果父uid为空 则直接添加到根节点下
-	TreeItemNode* parentItem = root;
-	if (""!=parentUID)
+	TreeItemNode* parentItem;
+	if (parentUID==std::nullopt)
 	{
-		parentItem = root->getChildByUID(parentUID);
-		
+		parentItem = root;
 	}
-	if (parentItem)
+	else
 	{
-		beginInsertRows(indexFromItem(parentItem), parentItem->childCount(), parentItem->childCount());
-		parentItem->addChild(new TreeItemNode(name, uid, parentItem,visible));
-		endInsertRows();
-		return true;
+		parentItem = root->getChildByUID(parentUID.value());
 	}
-	return false;
+	if (!parentItem) return false;
+
+	beginInsertRows(indexFromItem(parentItem), parentItem->childCount(), parentItem->childCount());
+	parentItem->addChild(new TreeItemNode(name, uid, parentItem, visible));
+	endInsertRows();
+	return true;
 }
 
 void TreeItemNode::setCheckState(bool state)
@@ -301,14 +304,14 @@ int TreeItemNode::nthOf(TreeItemNode* oneChild)
 	return -1;
 }
 
-TreeItemNode::TreeItemNode(std::string name, std::string uid/*=""*/, TreeItemNode* parent /*= nullptr*/,bool visible/*=true*/)
+TreeItemNode::TreeItemNode(std::string name, int uid /*= osgEarth::createUID()*/, TreeItemNode* parent /*= nullptr*/,bool visible/*=true*/)
 {
 	this->name = name;
 	this->parent = parent;
-	if ("" == uid)
-	{
-		uid = nanoid::NanoID::generate();
-	}
+	//if (-9999 == uid)
+	//{
+	//	uid = osgEarth::createUID();
+	//}
 	this->UID = uid;
 	this->checkState = visible ?  Qt::Checked : Qt::Unchecked;
 }
@@ -393,14 +396,14 @@ TreeItemNode::~TreeItemNode()
 	clearChildren();
 }
 
-TreeItemNode* TreeItemNode::getChildByUID(std::string childUID)
+TreeItemNode* TreeItemNode::getChildByUID(int childUID)
 {
 	for (TreeItemNode* oneChild:children)
 	{
 		if (oneChild->UID == childUID) return oneChild;
 		else if (oneChild->childCount()>0)
 		{
-			return oneChild->getChildByUID(childUID);
+			oneChild->getChildByUID(childUID);
 		}
 	}
 	return nullptr;

@@ -4,6 +4,7 @@
 #include <QVariantList>
 #include <QQmlEngine>
 #include <osg/Node>
+#include <osgEarth/Common>
 #include "WTDefines.h"
 #pragma execution_character_set("utf-8")
 WTNAMESPACESTART
@@ -11,7 +12,7 @@ WTNAMESPACESTART
 class TreeItemNode
 {
 public:
-	explicit TreeItemNode(std::string name, std::string uid="", TreeItemNode* parent = nullptr, bool visible = true);
+	explicit TreeItemNode(std::string name, int uid=osgEarth::createUID(), TreeItemNode* parent = nullptr, bool visible = true);
 	//清除 但不修改父节点
 	~TreeItemNode();
 
@@ -31,7 +32,7 @@ public:
 	TreeItemNode* getNthChild(size_t N);
 
 	//通过UID来获取子节点
-	TreeItemNode* getChildByUID(std::string childUID);
+	TreeItemNode* getChildByUID(int childUID);
 
 	//添加子节点
 	void addChild(TreeItemNode* oneChild); 
@@ -67,7 +68,7 @@ public:
 public:
 	//节点名字
 	std::string name;
-	std::string UID;
+	int UID;//原本计划是使用nannoid 但是为了保持和osgearth的一致 使用全局的int来统一 注意任何挂到树上的对象都应该调用osgearth::createUID来创建自己的唯一id
 private:
 	//设置选中 为了保证效率 这里只修改自己和子节点的状态 需要再专门调用父节点更新的函数
 	void setCheckState(bool state);
@@ -122,7 +123,7 @@ public:
 	Q_INVOKABLE void testAdd();
 
 public slots:
-	bool addNode(std::string name, std::string uid, std::string parentUID="",bool visible=true);
+	bool slot_addNode(std::string name, int uid, std::optional<int> parentUID,bool visible=true);
 
 signals:
 	//展开消息
@@ -130,11 +131,11 @@ signals:
 	//折叠消息
 	void foldTreeNode(QModelIndex index);
 	//勾选状态变化
-	void checkStateChangedTreeNode(std::string uid,bool checkState);
+	void signal_checkStateChangedTreeNode(int layerUID, int mapUID,bool checkState);
 	//选中对象
-	void selectTreeNode(std::string uid);
+	void selectTreeNode(int layerUID, int mapUID);
 	//飞到对象
-	void zoomToTreeNode(std::string uid);
+	void zoomToTreeNode(int layerUID,int mapUID);
 
 	void testMessage();
 private:

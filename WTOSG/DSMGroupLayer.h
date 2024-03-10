@@ -2,7 +2,6 @@
 #define DSMGROUP_H
 #include "WTDefines.h"
 #include <optional>
-#include <osg/MatrixTransform>
 #include <osg/Matrix>
 #include <osgDB/Registry>
 #include <osgEarth/SpatialReference>
@@ -13,20 +12,16 @@
 
 WTNAMESPACESTART
 //DSM对象
-class DSMGroupLayer : public osg::MatrixTransform
+class DSMGroup : public osg::Group
 {
 public:
-	DSMGroupLayer(std::string folderPath, std::string outFolderPath, std::shared_ptr<ProgressInfo> progreeInfo, std::string xmlFileName = "metadata.xml", std::string dataFolder = "Data");
+	DSMGroup(std::string folderPath, std::shared_ptr<ProgressInfo> progreeInfo=std::make_shared<ProgressInfo>(), std::string xmlFileName = "metadata.xml", std::string dataFolder = "Data");
 	osg::Vec3d getCenterWGS84();
 	osg::Vec3d getCenterOriginSRS();
 	osg::Vec3d getWGS84OfVertex(osg::Vec3d oneVertex);
 	osg::Matrix getMatrix();
-	//修改可见性
-	void switchVisibility(std::optional<bool> visibility);
 	//缩放到图层
 	void zoomToLayer(osgGA::CameraManipulator* cameraManipulator);
-	//获取可见性
-	bool getVisibility();
 private:
 	bool readDSMMetaDataXML();
 	bool getAllTilesInFolder();
@@ -36,8 +31,7 @@ private:
 		, VertexCalcFunction beforeCall = NULL, VertexCalcFunction afterCall = NULL
 	);
 private:
-	osg::ref_ptr<WTLayer> dsmLayer;
-	std::string folderPath, outFolderPath, xmlFileName, dataFolder;
+	std::string folderPath, xmlFileName, dataFolder;
 	osgEarth::GeoPoint wgs84Center;
 	osgEarth::GeoPoint originCenter;
 	const osgEarth::SpatialReference* wgs84SRS = osgEarth::SpatialReference::get("epsg:4326");

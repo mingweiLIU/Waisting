@@ -23,57 +23,69 @@
 #include <osgEarth/XYZ>
 #include <osgEarth/GLUtils>
 #include <osgEarth/LogarithmicDepthBuffer>
+#include <osgEarth/ModelLayer>
+#include <osgEarth/ViewFitter>
 #include <gdal_priv.h>
 #include <cpl_conv.h>
+#include <optional>
 
 #include "NanoID/nanoid.h"
 #include "OperationTools.h"
+#include "DSMGroupLayer.h"
 
 class FindLayer : public osg::NodeVisitor
 {
 public:
-	explicit FindLayer(const std::string& findInfo, FINDLAYERTYPE findType=FINDLAYERTYPE::UID)
+	explicit FindLayer(std::optional<int> layerUID=std::nullopt, std::optional<int> mapUID=std::nullopt)
 		:osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
-		, findInfo(findInfo)
-		, findType(findType){}
+		, mapUID(mapUID)
+		, layerUID(layerUID){}
 
 	virtual void apply(osg::Group& node)override {
-		WT::WTLayer* oneLayer = dynamic_cast<WT::WTLayer*>(&node);
-		if (!oneLayer) {
-			traverse(node);
-			return;
+		if (layerUID == std::nullopt && mapUID == std::nullopt) return;
+		osgEarth::Map* oneMap = dynamic_cast<osgEarth::Map*>(&node);
+		if (mapUID==std::nullopt){
+			//那么layerUID一定存在
+			if (!oneMap){
+				traverse(node);
+			}
+			else{
+				map = oneMap;
+				layer = oneMap->getLayerByUID(layerUID.value());
+				if (!layer){
+					traverse(node);
+				}
+			}
+		}
+		else {
+			if (!oneMap) {
+				traverse(node); return;
+			}
+			if (oneMap->getUID() != mapUID) {
+				traverse(node); return;
+			}
+			map = oneMap;
+
+			if (layerUID==std::nullopt) return; 
+			else {
+				layer = oneMap->getLayerByUID(layerUID.value());
+			}
 		}
 
-		switch (findType)
-		{
-		case FINDLAYERTYPE::UID:
-			if (oneLayer->getUID() == findInfo)
-				mLayer = oneLayer;
-			else
-				traverse(node);
-			break;
-		case FINDLAYERTYPE::NAME:
-			if(oneLayer->getName() == findInfo)
-				mLayer = oneLayer;
-			else
-				traverse(node);
-			break;
-		default:
-			break;
-		}
 	}
-	WT::WTLayer* getLayer() const { return mLayer; }
+	osgEarth::Layer* getLayer() const { return layer; }
+	osgEarth::Map* getMap() const { return map; }
 private:
-	std::string findInfo;
-	WT::WTLayer* mLayer = nullptr;
-	FINDLAYERTYPE findType;
+	std::optional<int> mapUID, layerUID;
+	osgEarth::Layer* layer=nullptr;
+	osgEarth::Map* map = nullptr;
 };
 
 SceneManager::SceneManager()
 {
 	commonSettings();
 	initOSG();
-	setupEarth();
+	//setupEarth();
 	//
 }
 
@@ -93,28 +105,68 @@ void SceneManager::addOperation(osg::Operation* operation)
 	operationQueue->add(operation);
 }
 
-void SceneManager::addLayer(WT::WTLayer* layer, WT::WTLayer* parentLayer /*= nullptr*/)
+//void SceneManager::addLayer(WT::WTLayer* layer, WT::WTLayer* parentLayer /*= nullptr*/)
+//{
+//	auto parentGroupNode = (parentLayer == nullptr) ? root : parentLayer;
+//	
+//	auto op = new AddChildOperation(layer, parentGroupNode);
+//	addOperation(op);
+//
+//	std::string parentUID= (parentLayer == nullptr) ? "" : parentLayer->getUID();
+//	emit(nodeLoaded(layer->getName(), layer->getUID(), parentUID, layer->getValue(0)));
+//}
+
+void SceneManager::addLayer(osg::ref_ptr<osgEarth::VisibleLayer> layer, osg::ref_ptr<osgEarth::Map> map /*= nullptr*/)
 {
-	auto parentGroupNode = (parentLayer == nullptr) ? root : parentLayer;
-	
-	auto op = new AddChildOperation(layer, parentGroupNode);
+	osg::ref_ptr<osgEarth::Map> parentMap = (map == nullptr) ? rootMap : map;
+	auto op = new AddChildOperation<osgEarth::VisibleLayer, osgEarth::Map>(layer.get(), parentMap.get());
 	addOperation(op);
 
-	std::string parentUID= (parentLayer == nullptr) ? "" : parentLayer->getUID();
-	emit(nodeLoaded(layer->getName(), layer->getUID(), parentUID, layer->getValue(0)));
+	std::string parentName = parentMap->getName();
+	emit(nodeLoaded(layer->getName(), layer->getUID(), parentMap->getUID(), layer->getVisible()));
 }
 
-osg::ref_ptr<osg::Node> SceneManager::addNode(std::string filePath, WT::WTLayer* parentNode /*= nullptr*/)
+//osg::ref_ptr<osg::Node> SceneManager::addNode(std::string filePath, WT::WTLayer* parentNode /*= nullptr*/)
+//{
+//	osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(filePath);
+//	if (node)
+//	{
+//		std::string name = osgDB::getSimpleFileName(filePath);
+//		osg::ref_ptr<WT::WTLayer> oneLayer = new WT::WTLayer(node, name);
+//		oneLayer->setValue(0, false);
+//		this->addLayer(oneLayer.get(), parentNode);
+//	}
+//	return node;
+//}
+
+osg::ref_ptr<osg::Node> SceneManager::addNode(std::string filePath, osgEarth::VisibleLayer::Options modelOptions, osg::ref_ptr<osgEarth::Map> map /*= nullptr*/)
 {
 	osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(filePath);
 	if (node)
 	{
 		std::string name = osgDB::getSimpleFileName(filePath);
-		osg::ref_ptr<WT::WTLayer> oneLayer = new WT::WTLayer(node, name);
-		oneLayer->setValue(0, false);
-		this->addLayer(oneLayer.get(), parentNode);
+		if (modelOptions.name() == "") modelOptions.set_name(name);
+		osg::ref_ptr<osgEarth::ModelLayer>oneModelLayer = new osgEarth::ModelLayer(modelOptions);
+		oneModelLayer->setNode(node);
+		this->addLayer(oneModelLayer, map);
 	}
 	return node;
+}
+
+osg::ref_ptr<osg::Node> SceneManager::addDSMGroup(std::string filePath, osg::ref_ptr<osgEarth::Map> map /*= nullptr*/)
+{
+	osg::ref_ptr<WT::DSMGroup> dsmGroup = new WT::DSMGroup(filePath);
+	//osg::ref_ptr<WT::DSMGroup> dsmGroup = new WT::DSMGroup("D:\\Data\\昆山数据\\昆山osgb\\kunshan_osgb");
+	if (dsmGroup)
+	{
+		std::string name = osgDB::getSimpleFileName(filePath);
+		osgEarth::ModelLayer::Options options;
+		options.set_location(osgEarth::GeoPoint(osgEarth::SpatialReference::get("epsg:4326"), dsmGroup->getCenterWGS84()));
+		osg::ref_ptr<osgEarth::ModelLayer>oneModelLayer = new osgEarth::ModelLayer(options);
+		oneModelLayer->setNode(dsmGroup);
+		this->addLayer(oneModelLayer, map);
+	}
+	return dsmGroup;
 }
 
 osg::ref_ptr<osgGA::EventQueue> SceneManager::getEventQueue()
@@ -122,45 +174,81 @@ osg::ref_ptr<osgGA::EventQueue> SceneManager::getEventQueue()
 	return std::move(eventQueue);
 }
 
-WT::WTLayer* SceneManager::getLayer(std::string findInfo, FINDLAYERTYPE findType /*= FINDLAYERTYPE::NAME*/)
+//根据map和layer的uid获取图层
+osgEarth::Layer* SceneManager::getLayer(int layerUID,int mapUID)
 {
-	if (root == nullptr) return nullptr;
+	if (mapNode == nullptr) return nullptr;
 
-	FindLayer findNodeVisitor(findInfo,findType);
-	root->accept(findNodeVisitor);
+	//FindLayer findNodeVisitor(layerUID,mapUID);
+	//mapNode->accept(findNodeVisitor);
+	//return findNodeVisitor.getLayer();
+	return rootMap->getLayerByUID(layerUID);
+}
+
+osgEarth::Layer* SceneManager::getLayer(int layerUID)
+{
+	if (mapNode == nullptr) return nullptr;
+
+	FindLayer findNodeVisitor(layerUID);
+	mapNode->accept(findNodeVisitor);
 	return findNodeVisitor.getLayer();
 }
 
-void SceneManager::switchLayerVisibility(std::string layerInfo, std::optional<bool> visibility, FINDLAYERTYPE findType /*= FINDLAYERTYPE::NAME*/) {
-	WT::WTLayer* oneLayer = getLayer(layerInfo, findType);
-	if (!oneLayer) return;
-	oneLayer->switchVisibility(visibility);
+osgEarth::Map* SceneManager::getMap(int mapUID)
+{
+	if (mapNode == nullptr) return nullptr;
+
+	FindLayer findNodeVisitor(mapUID, std::nullopt);
+	mapNode->accept(findNodeVisitor);
+	return findNodeVisitor.getMap();
 }
 
-void SceneManager::zoomToLayer(std::string layerInfo, FINDLAYERTYPE findType /*= FINDLAYERTYPE::NAME*/)
-{
-	WT::WTLayer* oneLayer = getLayer(layerInfo, findType);
-	if (!oneLayer) return;
-	oneLayer->zoomToLayer(viewer->getCameraManipulator());
+void SceneManager::switchLayerVisibility(int mapUID, int layerUID, std::optional<bool> visibility) {
+	osgEarth::Layer* oneLayer = getLayer(layerUID, mapUID);
+	osgEarth::VisibleLayer* oneVisibleLayer = dynamic_cast<osgEarth::VisibleLayer*>(oneLayer);
+	if (!oneVisibleLayer) return;
+
+	if (visibility==std::nullopt){
+		oneVisibleLayer->setVisible(!oneVisibleLayer->getVisible());
+	}
+	else{
+		oneVisibleLayer->setVisible(visibility.value());
+	}
 }
 
-osg::ref_ptr<osg::Group> SceneManager::getRoot()
+void SceneManager::zoomToLayer(int mapUID, int layerUID)
 {
-	return root;
+	osgEarth::Layer* oneLayer = getLayer(layerUID, mapUID);
+	osgEarth::VisibleLayer* oneVisibleLayer = dynamic_cast<osgEarth::VisibleLayer*>(oneLayer);
+	if (!oneVisibleLayer) return;
+
+	oneVisibleLayer->getExtent();
+	osgEarth::Viewpoint vp;
+	osgEarth::ViewFitter fitter(mapNode->getMapSRS(),viewer->getCamera());
+	if (fitter.createViewpoint(oneVisibleLayer->getExtent(),vp))
+	{
+		earthManipulator->setViewpoint(vp, 0.5);
+	}
 }
 
-void SceneManager::switchLayerVisibilityByUIDSlot(std::string UID) {
-	switchLayerVisibility(UID, std::nullopt, FINDLAYERTYPE::UID);
-}
-void SceneManager::zoomToLayerByUIDSlot(std::string UID)
+
+osg::ref_ptr<osgEarth::MapNode> SceneManager::getMapNode()
 {
-	zoomToLayer(UID, FINDLAYERTYPE::UID);
+	return mapNode;
+}
+
+void SceneManager::slot_switchLayerVisibilityByUID(int layerUID, int mapUID) {
+	switchLayerVisibility(mapUID,layerUID, std::nullopt);
+}
+void SceneManager::slot_zoomToLayerByUID(int layerUID, int mapUID)
+{
+	zoomToLayer(mapUID,layerUID);
 }
 
 
 void SceneManager::initOSG()
 {
-	if (viewer) return;
+	if (viewer|| setuped) return;
 
 	eventQueue = new osgGA::EventQueue;
 	operationQueue = new osg::OperationQueue;
@@ -170,20 +258,11 @@ void SceneManager::initOSG()
 	auto graphicsWindow = dynamic_cast<osgViewer::GraphicsWindow*>(viewer->getCamera()->getGraphicsContext());
 	graphicsWindow->setEventQueue(eventQueue);
 	viewer->setUpdateOperations(operationQueue);
-
-	root = new osg::Group;
-	root->setUserValue("uid", nanoid::NanoID::generate());
-
-	viewer->setSceneData(root.get());
-
-	std::string  parentUID;
-	root->getUserValue("uid", parentUID);
-	emit(nodeLoaded(root->getName(), parentUID, ""));
+	setuped = true;
 }
 
 void SceneManager::setupEarth()
 {
-
 	osg::ref_ptr<osgEarth::SkyNode> earthSky = osgEarth::SkyNode::create();
 	earthSky->attach(viewer);
 	earthSky->setAtmosphereVisible(true);
@@ -192,25 +271,25 @@ void SceneManager::setupEarth()
 	earthSky->setLighting(1);
 
 	//����������MapNode �����ùȸ�Ӱ��
-	map = new osgEarth::Map;
+	rootMap = new osgEarth::Map;
 	osg::ref_ptr<osgEarth::XYZImageLayer> googleImageLayer = new osgEarth::XYZImageLayer;
 	googleImageLayer->setURL("https://gac-geo.googlecnapps.cn/maps/vt?lyrs=s&x={x}&y={y}&z={z}");
 	googleImageLayer->setProfile(osgEarth::Profile::create("spherical-mercator"));
 	googleImageLayer->setMaxLevel(23);
+	googleImageLayer->setName("googleMap");
 	//osg::ref_ptr<osgEarth::XYZImageLayer> googleImageLayer = new osgEarth::XYZImageLayer;
 	//googleImageLayer->setURL("http://webst0[1234].is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}");
 	//googleImageLayer->setProfile(osgEarth::Profile::create("spherical-mercator"));
 	//googleImageLayer->setMaxLevel(20);
-	map->addLayer(googleImageLayer);
-	mapNode = new osgEarth::MapNode(map);
+	rootMap->addLayer(googleImageLayer);
+	mapNode = new osgEarth::MapNode(rootMap);
 
 	earthSky->addChild(mapNode);
 
-	root->addChild(earthSky);
-	viewer->setSceneData(root);
+	viewer->setSceneData(earthSky);
 
-	osgEarth::LogarithmicDepthBuffer buf;
-	buf.install(viewer->getCamera());
+	//osgEarth::LogarithmicDepthBuffer buf;
+	//buf.install(viewer->getCamera());
 	earthManipulator = new osgEarth::EarthManipulator();
 	viewer->setCameraManipulator(earthManipulator);
 	osg::ref_ptr<osgEarth::EarthManipulator::Settings> earthManipulatorSettings = earthManipulator->getSettings();
@@ -221,8 +300,12 @@ void SceneManager::setupEarth()
 	osgEarth::GLUtils::setGlobalDefaults(viewer->getCamera()->getOrCreateStateSet());
 	viewer->getDatabasePager()->setUnrefImageDataAfterApplyPolicy(true, false);
 
-	double equatorRadius = map->getSRS()->getEllipsoid().getRadiusEquator();//6378137.0
+	double equatorRadius = rootMap->getSRS()->getEllipsoid().getRadiusEquator();//6378137.0
 	earthManipulator->setHomeViewpoint(osgEarth::Viewpoint("", 114, 26, 0, 0, -90, equatorRadius * 3.5)); 
+
+	//初始化的时候就应该创建一个map的图层树和一个layer的图层树节点
+	emit(nodeLoaded("tuceng", rootMap->getUID(),std::nullopt, true));
+	emit(nodeLoaded(googleImageLayer->getName(), googleImageLayer->getUID(), rootMap->getUID(), googleImageLayer->getVisible()));
 }
 
 void SceneManager::setupEventHandler()

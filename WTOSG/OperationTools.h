@@ -2,6 +2,8 @@
 #include <osg/OperationThread>
 #include <osg/Group>
 #include <osg/Node>
+#include <osgViewer/Viewer>
+#include <osgGA/TrackballManipulator>
 
 class CameraLookAtOperation : public osg::Operation {
 public:
@@ -24,21 +26,32 @@ private:
 	osg::Vec3d m_eye, m_center, m_up;
 };
 
-
+template<typename T_Child,typename T_Parent>
 class AddChildOperation : public osg::Operation
 {
 public:
-	explicit AddChildOperation(osg::Node* childNode, osg::Group* parentNode)
+	explicit AddChildOperation(T_Child* childNode, T_Parent* parentNode)
 		: osg::Operation("add child node operation", false)
 		, m_childNode(childNode), m_parentNode(parentNode)
 	{}
 	virtual void operator()(osg::Object* caller) override
-	{
-		m_parentNode->addChild(m_childNode.get());
+	{		
+		if (typeid(m_parentNode)==typeid(osgEarth::Map))
+		{
+			auto temp = dynamic_cast<osgEarth::Map*>(m_parentNode);
+			auto childTemp = dynamic_cast<osgEarth::Layer*>(m_childNode);
+			temp->addLayer(childTemp);
+		}
+		else
+		{
+			auto temp = dynamic_cast<osg::Group*>(m_parentNode);
+			auto childTemp = dynamic_cast<osg::Node*>(m_childNode);
+			temp->addChild(childTemp);
+		}
 	}
 private:
-	osg::ref_ptr<osg::Node> m_childNode;
-	osg::ref_ptr<osg::Group> m_parentNode;
+	T_Child* m_childNode;
+	T_Parent* m_parentNode;
 };
 
 class GeometryChangeOperation : public osg::Operation
