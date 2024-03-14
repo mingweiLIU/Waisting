@@ -25,11 +25,11 @@ void WTLayer::switchVisibility(std::optional<bool> visibility) {
 void WTLayer::zoomToLayer(osgGA::CameraManipulator* cameraManipulator)
 {
 	double radius = this->getBound().radius();
-	double viewDistance = radius *2.5;
+	double viewDistance = radius * 2.5;
 	osg::Vec3d viewDirection(0.0, -1.0, 1.5);
 	osg::Vec3d center = this->getBound().center();
 	osg::Vec3d eye = center + viewDirection * viewDistance;
-	osg::Matrixd m = osg::Matrixd::lookAt(eye, center, osg::Vec3d(0,0,1));
+	osg::Matrixd m = osg::Matrixd::lookAt(eye, center, osg::Vec3d(0, 0, 1));
 	cameraManipulator->setByMatrix(osg::Matrixd::inverse(m));
 }
 

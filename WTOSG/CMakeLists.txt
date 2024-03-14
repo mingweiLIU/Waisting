@@ -69,7 +69,7 @@ target_link_libraries(${modelName} PRIVATE
     ${osgEarth_LIBRARIES}
     WTTools.lib
     ${GDAL_LIBRARY}
-    ${GeographicLib_LIBRARY_DIRS}
+    ${GeographicLib_LIBRARIES}
 )
 
 qt_add_qml_module(${modelName}

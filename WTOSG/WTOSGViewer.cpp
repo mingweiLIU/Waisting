@@ -56,9 +56,16 @@ void WTOSGViewer::setHoverEnabled(bool newHoverEnabled)
 	emit hoverEnabledChanged();
 }
 
-void WTOSGViewer::loadFile(QString filePath)
+void WTOSGViewer::slot_loadFile(QString filePath,QString loadType)
 {
-	osg::ref_ptr<osg::Node> node=SceneManager::getInstance().addNode(filePath.toLocal8Bit().constData(),osgEarth::VisibleLayer::Options());	
+	if ("osgbGroup"==loadType)
+	{
+		osg::ref_ptr<osg::Node> node = SceneManager::getInstance().addDSMGroup(filePath.toLocal8Bit().constData());
+	}
+	else if ("modelFile"==loadType) {
+		osg::ref_ptr<osg::Node> node = SceneManager::getInstance().addNode(filePath.toLocal8Bit().constData(), osgEarth::VisibleLayer::Options());
+	}
+	
 }
 
 QQuickFramebufferObject::Renderer* WTOSGViewer::createRenderer() const

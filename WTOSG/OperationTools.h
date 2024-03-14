@@ -36,10 +36,10 @@ public:
 	{}
 	virtual void operator()(osg::Object* caller) override
 	{		
-		if (typeid(m_parentNode)==typeid(osgEarth::Map))
+		if (std::is_same<T_Parent,osgEarth::Map>::value)
 		{
 			auto temp = dynamic_cast<osgEarth::Map*>(m_parentNode);
-			auto childTemp = dynamic_cast<osgEarth::Layer*>(m_childNode);
+			auto childTemp = dynamic_cast<osgEarth::ModelLayer*>(m_childNode);
 			temp->addLayer(childTemp);
 		}
 		else

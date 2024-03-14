@@ -41,7 +41,7 @@ signals:
 
 public slots:
 	//加载模型文件响应消息
-	void loadFile(QString filePath);
+	void slot_loadFile(QString filePath,QString loadType);
 protected:
 	virtual QQuickFramebufferObject::Renderer* createRenderer() const override; 
 	virtual void geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry) override;

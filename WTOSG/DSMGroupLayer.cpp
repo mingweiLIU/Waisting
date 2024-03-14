@@ -4,7 +4,9 @@
 #include <osgDB/WriteFile>
 #include <osgDB/ReadFile>
 #include <osgEarth/XmlUtils>
+#include <osgEarth/Viewpoint>
 #include <osgEarth/Registry>
+#include <osgEarth/EarthManipulator>
 #include "NodeHandleVisitor.h"
 #include "GeodeticRelativeCoordinates.h"
 
@@ -15,22 +17,17 @@ DSMGroup::DSMGroup(std::string folderPath, std::shared_ptr<ProgressInfo> progree
 	, dataFolder(dataFolder)
 	,progreeInfo(progreeInfo)
 {
-	if (readDSMMetaDataXML()) {
-		getAllTilesInFolder();
-
-		//osg::ComputeBoundsVisitor boundVisitor;
-		//dsmGroupSwitch->accept(boundVisitor);
-		//osg::BoundingBox boundingBox = boundVisitor.getBoundingBox();
-		//float zMin = boundingBox.zMin();
-
-		////originCenter.z() = -zMin;
+	bool tempOK = false;
+	if (tempOK = readDSMMetaDataXML();tempOK) {
+		isOK=tempOK&&getAllTilesInFolder();
+		progreeInfo->showProgress(1, 1, "", "数据加载完成...");
 	}
-	progreeInfo->showProgress(1, 1, "", "数据加载完成...");
 }
 
 bool DSMGroup::readDSMMetaDataXML()
 {
 	std::string xmlfilePath = osgDB::concatPaths(folderPath, xmlFileName);
+	setlocale(LC_ALL, "");
 	osg::ref_ptr<osgEarth::XmlDocument> metaDataXML = osgEarth::XmlDocument::load(xmlfilePath);
 	if (!metaDataXML.valid()) {
 		return false;
@@ -80,9 +77,9 @@ bool DSMGroup::readDSMMetaDataXML()
 	return true;
 }
 
-osg::Vec3d DSMGroup::getCenterWGS84()
+osgEarth::GeoPoint DSMGroup::getCenterWGS84()
 {
-	return this->wgs84Center.vec3d();
+	return this->wgs84Center;
 }
 
 osg::Vec3d DSMGroup::getCenterOriginSRS()
@@ -165,7 +162,6 @@ bool DSMGroup::getAllTilesInFolder()
 			}
 		}
 	}
-	osgEarth::Registry::shaderGenerator().run(this);
 	return true;
 }
 
@@ -176,6 +172,35 @@ osg::Matrix DSMGroup::getMatrix()
 	osg::Matrix posMatrix;
 	wgs84Center.createLocalToWorld(posMatrix);
 	return posMatrix;
+}
+
+void DSMGroup::zoomToLayer(osgGA::CameraManipulator* cameraManipulator)
+{
+	osgEarth::EarthManipulator* em = dynamic_cast<osgEarth::EarthManipulator*>(cameraManipulator);
+	if (em) {
+		GeodeticRelativeCoordinates geodeticProj(wgs84Center.y(), wgs84Center.x());
+		osg::Vec3 boundingCenter = this->getBound().center();
+		double lat1 = 0.0, lon1 = 0.0, h1 = 0.0;
+		geodeticProj.fromRelativeXYZToWGS84(boundingCenter.x(), boundingCenter.y(), boundingCenter.z(), lat1, lon1, h1);
+
+		osgEarth::Viewpoint vp;
+		vp.focalPoint() = osgEarth::GeoPoint(osgEarth::SpatialReference::get("epsg:4326"), lon1, lat1, 0);
+		vp.heading()->set(0.0, osgEarth::Units::DEGREES);
+		vp.pitch()->set(-89.0, osgEarth::Units::DEGREES);
+		vp.range()->set(this->getBound().radius() * 2.0, osgEarth::Units::METERS);
+		vp.positionOffset()->set(0, 0, 0);
+
+		em->setViewpoint(vp, 2);
+	}
+	else {
+		double radius = this->getBound().radius();
+		double viewDistance = radius * 2.5;
+		osg::Vec3d viewDirection(0.0, -1.0, 1.5);
+		osg::Vec3d center = this->getBound().center();
+		osg::Vec3d eye = center + viewDirection * viewDistance;
+		osg::Matrixd m = osg::Matrixd::lookAt(eye, center, osg::Vec3d(0, 0, 1));
+		cameraManipulator->setByMatrix(osg::Matrixd::inverse(m));
+	}
 }
 
 osgDB::ReaderWriter::ReadResult DSMGroup::ReadFileProgressCallback::readNode(const std::string& filename, const osgDB::Options* options)

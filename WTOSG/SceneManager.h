@@ -33,7 +33,7 @@ public:
 	void addOperation(osg::Operation* operation);
 
 	//添加图层
-	void addLayer(osg::ref_ptr<osgEarth::VisibleLayer> layer, osg::ref_ptr<osgEarth::Map> map = nullptr);
+	void addLayer(osgEarth::VisibleLayer* layer, osgEarth::Map* map = nullptr);
 	//读取文件并加载
 	osg::ref_ptr<osg::Node> addNode(std::string filePath, osgEarth::VisibleLayer::Options modelOptions, osg::ref_ptr<osgEarth::Map> map = nullptr);
 	//读取osgb文件并加载

@@ -3,20 +3,21 @@
 #include "WTDefines.h"
 #include <optional>
 #include <osg/Matrix>
+#include <osgGA/CameraManipulator>
 #include <osgDB/Registry>
 #include <osgEarth/SpatialReference>
 #include <osgEarth/GeoData>
 
 #include "ProgressInfo.h"
-#include "WTLayer.h"
 
 WTNAMESPACESTART
 //DSM∂‘œÛ
 class DSMGroup : public osg::Group
 {
 public:
+	bool isOK = false;
 	DSMGroup(std::string folderPath, std::shared_ptr<ProgressInfo> progreeInfo=std::make_shared<ProgressInfo>(), std::string xmlFileName = "metadata.xml", std::string dataFolder = "Data");
-	osg::Vec3d getCenterWGS84();
+	osgEarth::GeoPoint getCenterWGS84();
 	osg::Vec3d getCenterOriginSRS();
 	osg::Vec3d getWGS84OfVertex(osg::Vec3d oneVertex);
 	osg::Matrix getMatrix();

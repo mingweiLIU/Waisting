@@ -25,6 +25,8 @@
 #include <osgEarth/LogarithmicDepthBuffer>
 #include <osgEarth/ModelLayer>
 #include <osgEarth/ViewFitter>
+#include <osgEarth/GeoTransform>
+#include <osgEarth/Registry>
 #include <gdal_priv.h>
 #include <cpl_conv.h>
 #include <optional>
@@ -116,10 +118,10 @@ void SceneManager::addOperation(osg::Operation* operation)
 //	emit(nodeLoaded(layer->getName(), layer->getUID(), parentUID, layer->getValue(0)));
 //}
 
-void SceneManager::addLayer(osg::ref_ptr<osgEarth::VisibleLayer> layer, osg::ref_ptr<osgEarth::Map> map /*= nullptr*/)
+void SceneManager::addLayer(osgEarth::VisibleLayer* layer, osgEarth::Map* map /*= nullptr*/)
 {
-	osg::ref_ptr<osgEarth::Map> parentMap = (map == nullptr) ? rootMap : map;
-	auto op = new AddChildOperation<osgEarth::VisibleLayer, osgEarth::Map>(layer.get(), parentMap.get());
+	osgEarth::Map* parentMap = (map == nullptr) ? rootMap.get() : map;
+	auto op = new AddChildOperation<osgEarth::VisibleLayer, osgEarth::Map>(layer, parentMap);
 	addOperation(op);
 
 	std::string parentName = parentMap->getName();
@@ -156,15 +158,18 @@ osg::ref_ptr<osg::Node> SceneManager::addNode(std::string filePath, osgEarth::Vi
 osg::ref_ptr<osg::Node> SceneManager::addDSMGroup(std::string filePath, osg::ref_ptr<osgEarth::Map> map /*= nullptr*/)
 {
 	osg::ref_ptr<WT::DSMGroup> dsmGroup = new WT::DSMGroup(filePath);
-	//osg::ref_ptr<WT::DSMGroup> dsmGroup = new WT::DSMGroup("D:\\Data\\昆山数据\\昆山osgb\\kunshan_osgb");
-	if (dsmGroup)
+	if (dsmGroup->isOK)
 	{
+		osgEarth::Registry::shaderGenerator().run(dsmGroup);
+		osg::ref_ptr<osgEarth::GeoTransform> xform = new osgEarth::GeoTransform;
+		xform->addChild(dsmGroup);
+		xform->setPosition(dsmGroup->getCenterWGS84());
 		std::string name = osgDB::getSimpleFileName(filePath);
-		osgEarth::ModelLayer::Options options;
-		options.set_location(osgEarth::GeoPoint(osgEarth::SpatialReference::get("epsg:4326"), dsmGroup->getCenterWGS84()));
-		osg::ref_ptr<osgEarth::ModelLayer>oneModelLayer = new osgEarth::ModelLayer(options);
-		oneModelLayer->setNode(dsmGroup);
-		this->addLayer(oneModelLayer, map);
+		osgEarth::ModelLayer* oneModelLayer = new osgEarth::ModelLayer();
+		oneModelLayer->setLocation(dsmGroup->getCenterWGS84());
+		oneModelLayer->setName(name);
+		oneModelLayer->setNode(xform.get());
+		this->addLayer(oneModelLayer,rootMap.get());
 	}
 	return dsmGroup;
 }
@@ -219,16 +224,42 @@ void SceneManager::switchLayerVisibility(int mapUID, int layerUID, std::optional
 void SceneManager::zoomToLayer(int mapUID, int layerUID)
 {
 	osgEarth::Layer* oneLayer = getLayer(layerUID, mapUID);
-	osgEarth::VisibleLayer* oneVisibleLayer = dynamic_cast<osgEarth::VisibleLayer*>(oneLayer);
-	if (!oneVisibleLayer) return;
 
-	oneVisibleLayer->getExtent();
-	osgEarth::Viewpoint vp;
-	osgEarth::ViewFitter fitter(mapNode->getMapSRS(),viewer->getCamera());
-	if (fitter.createViewpoint(oneVisibleLayer->getExtent(),vp))
+	//这里根据不同类型得数据进行处理
+	std::string typeName=oneLayer->getTypeName();
+	if (typeid(osgEarth::ModelLayer).name()== typeName)
 	{
-		earthManipulator->setViewpoint(vp, 0.5);
+		osgEarth::ModelLayer* oneModelLayer = dynamic_cast<osgEarth::ModelLayer*>(oneLayer);
+		if (!oneModelLayer) return;
+
+		osg::Group* modelGroup = dynamic_cast<osg::Group*>(oneModelLayer->getNode());
+		osgEarth::GeoTransform* modelGeoTransform = dynamic_cast<osgEarth::GeoTransform*>(modelGroup->getChild(0));
+		WT::DSMGroup* dsm= dynamic_cast<WT::DSMGroup*>(modelGeoTransform->getChild(0));
+		if (!dsm) return;
+		dsm->zoomToLayer(earthManipulator);
 	}
+	//osgEarth::ImageLayer* oneImageLayer = dynamic_cast<osgEarth::ImageLayer*>(oneLayer);
+	//if (oneVisibleLayer)
+	//{
+	//	oneVisibleLayer
+	//}
+
+	//osgEarth::VisibleLayer* oneVisibleLayer = dynamic_cast<osgEarth::VisibleLayer*>(oneLayer);
+	//if (!oneVisibleLayer) return;
+
+	//osgEarth::ModelLayer* oneModelLayer = dynamic_cast<osgEarth::ModelLayer*>(oneLayer);
+	//if (!oneModelLayer) return;
+	//oneModelLayer->get
+
+	//
+
+	//oneVisibleLayer->getExtent();
+	//osgEarth::Viewpoint vp;
+	//osgEarth::ViewFitter fitter(mapNode->getMapSRS(),viewer->getCamera());
+	//if (fitter.createViewpoint(oneVisibleLayer->getExtent(),vp))
+	//{
+	//	earthManipulator->setViewpoint(vp, 0.5);
+	//}
 }
 
 
@@ -349,11 +380,6 @@ void SceneManager::commonSettings()
 	std::string exeFolder=osgDB::getCurrentWorkingDirectory();
 	CPLSetConfigOption("GDAL_DATA", osgDB::concatPaths(exeFolder, "gdal-data").c_str());
 	std::string test = osgDB::concatPaths(exeFolder, "proj\\share");
-	const char* newprojs[] = { osgDB::concatPaths(exeFolder, "proj7\\share").c_str(),NULL };
-	OSRSetPROJSearchPaths(newprojs);
-	//std::string PROJ_LIBStr = "PROJ_LIB=" + osgDB::concatPaths(exeFolder, "proj7\\share");
-	//putenv(PROJ_LIBStr.c_str());
-
-	//p = getenv("PROJ_LIB");
-	//printf("PROJ_LIB = % s\n", p);
+	std::string PROJ_LIBStr = "PROJ_LIB=" + osgDB::concatPaths(exeFolder, "proj\\share");
+	putenv(PROJ_LIBStr.c_str());
 }
