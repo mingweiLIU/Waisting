@@ -162,6 +162,8 @@ bool DSMGroup::getAllTilesInFolder()
 			}
 		}
 	}
+
+	osgDB::writeNodeFile(*this,"D:\\Data\\yangjiaba\\initial\\yangjiaba\\test.osgb");
 	return true;
 }
 

@@ -16,7 +16,7 @@ Window{
     minimumHeight: 900
     minimumWidth: 1300
 
-    property int leftMenuWidth: 40
+    property int leftMenuWidth: 50
     property int rightMenuWidth:40
     property int bottomMenuWidth:25
     property int splitlineWidth: 1
@@ -52,6 +52,7 @@ Window{
         //设置各个功能按钮
         Column{
             anchors.horizontalCenter: parent.horizontalCenter
+            // anchors.verticalCenter: parent.verticalCenter
             spacing: 2*buttonOffset
             topPadding:buttonOffset
             WButton{

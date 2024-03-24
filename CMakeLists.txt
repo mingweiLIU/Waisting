@@ -8,10 +8,16 @@ set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 set(CMAKE_CXX_STANDARD 17)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/gltfSDK/Modules")
 include(atom)
+include(GLTFPlatform)
+
 # include(FindOsgEarth)#如何控制debug引用的dll文件？？
 
 
+
+# set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_CURRENT_SOURCE_DIR}/exe/bin)
+# set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_CURRENT_SOURCE_DIR}/exed/bin)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/exe/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/exe/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/exe/lib)
@@ -23,13 +29,18 @@ set(ThirdPartyPath ${CMAKE_CURRENT_SOURCE_DIR}/3rd)
 set(OSG_DIR ${ThirdPartyPath}/osg)
 set(osgEarth_DIR ${ThirdPartyPath}/osg/cmake)
 set(GeographicLib_DIR ${ThirdPartyPath}/GeographicLib2.3/cmake/GeographicLib)
-set(GDAL_ROOT ${ThirdPartyPath}/gdal)
+set(GDAL_ROOT ${ThirdPartyPath}/gdal)                                               #空间数据处理
+set(RapidJson_Inc ${ThirdPartyPath}/RapidJSON/include)                              #json处理
+set(taskflow_Inc ${ThirdPartyPath}/taskflow)                                        #图流程
+set(ASSIMP_DIR ${ThirdPartyPath}/assimp/lib/cmake/assimp-5.3)                       #模型格式
 
 set(SubDirs
     App
     WTComponents
     WTTools
     WTOSG
+    WTTranscoder
+    GLTFSDK
 )
 
 #全局设置

@@ -81,4 +81,6 @@ Waisting是一个以OSGEarth为核心的三维GIS数据处理和场景编辑工�
 - App 为本项目中可以运行的应用
 - WTComponents 为通用的QML界面组件库
 - WTOSG 为通用的QML与OSG结合的组件，该部分中包含了OSG的封装
-
+- WTTranscoder 为格式输入输出
+- WTTools 为通用工具
+- GLTFSDK 为gltf的编解码库（微软）

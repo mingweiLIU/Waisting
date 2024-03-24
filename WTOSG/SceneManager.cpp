@@ -27,6 +27,7 @@
 #include <osgEarth/ViewFitter>
 #include <osgEarth/GeoTransform>
 #include <osgEarth/Registry>
+#include<osgEarth/ShaderGenerator>
 #include <gdal_priv.h>
 #include <cpl_conv.h>
 #include <optional>
@@ -160,7 +161,6 @@ osg::ref_ptr<osg::Node> SceneManager::addDSMGroup(std::string filePath, osg::ref
 	osg::ref_ptr<WT::DSMGroup> dsmGroup = new WT::DSMGroup(filePath);
 	if (dsmGroup->isOK)
 	{
-		osgEarth::Registry::shaderGenerator().run(dsmGroup);
 		osg::ref_ptr<osgEarth::GeoTransform> xform = new osgEarth::GeoTransform;
 		xform->addChild(dsmGroup);
 		xform->setPosition(dsmGroup->getCenterWGS84());
@@ -169,6 +169,9 @@ osg::ref_ptr<osg::Node> SceneManager::addDSMGroup(std::string filePath, osg::ref
 		oneModelLayer->setLocation(dsmGroup->getCenterWGS84());
 		oneModelLayer->setName(name);
 		oneModelLayer->setNode(xform.get());
+
+		osgEarth::Registry::shaderGenerator().run(dsmGroup.get());
+		//mapNode->addChild(xform.get());
 		this->addLayer(oneModelLayer,rootMap.get());
 	}
 	return dsmGroup;
@@ -297,7 +300,7 @@ void SceneManager::setupEarth()
 	osg::ref_ptr<osgEarth::SkyNode> earthSky = osgEarth::SkyNode::create();
 	earthSky->attach(viewer);
 	earthSky->setAtmosphereVisible(true);
-	//earthSky->getSunLight()->setAmbient(osg::Vec4(0.5, 0.5, 0.5, 1.0));
+	earthSky->getSunLight()->setAmbient(osg::Vec4(0.5, 0.5, 0.5, 1.0));
 	earthSky->setDateTime(osgEarth::DateTime(2020, 8, 15, 4));//��������ʱ��8Сʱ
 	earthSky->setLighting(1);
 
@@ -312,15 +315,15 @@ void SceneManager::setupEarth()
 	//googleImageLayer->setURL("http://webst0[1234].is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}");
 	//googleImageLayer->setProfile(osgEarth::Profile::create("spherical-mercator"));
 	//googleImageLayer->setMaxLevel(20);
-	rootMap->addLayer(googleImageLayer);
-	mapNode = new osgEarth::MapNode(rootMap);
+	rootMap->addLayer(googleImageLayer.get());
+	mapNode = new osgEarth::MapNode(rootMap.get());
 
-	earthSky->addChild(mapNode);
+	earthSky->addChild(mapNode.get());
 
-	viewer->setSceneData(earthSky);
+	viewer->setSceneData(earthSky.get());
 
-	//osgEarth::LogarithmicDepthBuffer buf;
-	//buf.install(viewer->getCamera());
+	osgEarth::LogarithmicDepthBuffer buf;
+	buf.install(viewer->getCamera());
 	earthManipulator = new osgEarth::EarthManipulator();
 	viewer->setCameraManipulator(earthManipulator);
 	osg::ref_ptr<osgEarth::EarthManipulator::Settings> earthManipulatorSettings = earthManipulator->getSettings();
@@ -376,10 +379,9 @@ void SceneManager::setupEventHandler()
 
 void SceneManager::commonSettings()
 {
-	osgEarth::initialize();
 	std::string exeFolder=osgDB::getCurrentWorkingDirectory();
 	CPLSetConfigOption("GDAL_DATA", osgDB::concatPaths(exeFolder, "gdal-data").c_str());
-	std::string test = osgDB::concatPaths(exeFolder, "proj\\share");
-	std::string PROJ_LIBStr = "PROJ_LIB=" + osgDB::concatPaths(exeFolder, "proj\\share");
-	putenv(PROJ_LIBStr.c_str());
+	std::string projPath = osgDB::concatPaths(exeFolder, "proj\\share");
+	const char* proj_path[] = { projPath.c_str(), nullptr };
+	OSRSetPROJSearchPaths(proj_path);
 }

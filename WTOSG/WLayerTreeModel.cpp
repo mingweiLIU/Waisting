@@ -185,6 +185,8 @@ void WLayerTreeModel::checkItem(const QModelIndex& parent /*= QModelIndex()*/)
 	//endResetModel();
 	//end如果修改的比较多 可以用批量修改来即
 	
+
+	//TODO 这里需要扩展下 让子节点也高效的执行事件 可能需要将节点绑定事件
 	//可见性变化
 	emit  signal_checkStateChangedTreeNode(item->UID,parentItem->UID, item->getCheckState() == Qt::Checked);
 }
@@ -198,7 +200,6 @@ Q_INVOKABLE void WLayerTreeModel::zoomToItem(const QModelIndex& parent /*= QMode
 
 void WLayerTreeModel::testAdd()
 {
-
 	TreeItemNode* child33 = new TreeItemNode("child33");
 
 	beginInsertRows(indexFromItem(root), root->childCount(), root->childCount());
@@ -230,11 +231,12 @@ bool WLayerTreeModel::slot_addNode(std::string name, int uid, std::optional<int>
 
 void TreeItemNode::setCheckState(bool state)
 {
+	//TODO 这里需要扩展下 让子节点也高效的执行事件 可能需要将节点绑定事件
 	//先检查这个状态和当前的状态的情况
 	if ((state && checkState == Qt::Checked) || (!state&&checkState ==Qt::Unchecked)) return;
 	//首先所有的子节点需要修改
 	for (auto& item : this->children)
-	{
+	{		
 		item->setCheckState(state);
 	}
 
