@@ -10,7 +10,7 @@
 
 class WTOSGViewer : public QQuickFramebufferObject
 {
-    Q_OBJECT
+	Q_OBJECT
 
 	Q_PROPERTY(bool hoverEnabled READ hoverEnabled WRITE setHoverEnabled NOTIFY hoverEnabledChanged)
 	Q_PROPERTY(QOpenGLFramebufferObject* defaultFbo READ defaultFbo NOTIFY defaultFboChanged)
@@ -34,8 +34,14 @@ signals:
 	void hoverEnabledChanged();
 	void defaultFboChanged(QOpenGLFramebufferObject* defaultFbo);
 
+	//模型文件加载对外消息
+	//void loadFileEvent(QString filePath);
+	void loadedFile(std::string name, std::string ui, std::string parentUID);
+
+
 public slots:
-	void loadFile(QString filePath);
+	//加载模型文件响应消息
+	void slot_loadFile(QString filePath,QString loadType);
 protected:
 	virtual QQuickFramebufferObject::Renderer* createRenderer() const override; 
 	virtual void geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry) override;
@@ -55,6 +61,7 @@ private:
 	void setHoverEventData(QHoverEvent* event);
 
 	int getOsgKey(QKeyEvent* event);
+
 
 private:
     QTimer m_updateTimer;

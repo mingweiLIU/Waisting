@@ -1,17 +1,17 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Window
+import QtQuick.Layouts
 
 import WTComponents
 import WTOSG
-import Test 1.0
 import Waisting 1.0
 
 Window{
     id:mainwindow
     visible: true
 //    visibility: "Maximized"
-    title:qsTr("三维空间场景可视化编辑系统")
+    title:qsTr("地理场景可视化编辑系统")
     color:"#2b2d30"
     minimumHeight: 900
     minimumWidth: 1300
@@ -62,7 +62,7 @@ Window{
                 tooltipdirection:right
                 tooltipText:"刘铭崴"
                 onClicked:{
-                    mainWindowObj.buttonClicked(packageBtn)
+                    mainWindowObj.buttonClicked(packageBtn,0)
                 }
             }
             WButton{
@@ -73,7 +73,7 @@ Window{
                 tooltipdirection:right
                 tooltipText:"wweeeeeeeeee"
                 onClicked:{
-                    mainWindowObj.buttonClicked(boxBtn)
+                    mainWindowObj.buttonClicked(boxBtn,1)
                 }
             }
             WButton{
@@ -84,7 +84,7 @@ Window{
                 tooltipdirection:right
                 tooltipText:"aa"
                 onClicked:{
-                    mainWindowObj.buttonClicked(getBtn)
+                    mainWindowObj.buttonClicked(getBtn,2)
                 }
             }
             WButton{
@@ -95,7 +95,7 @@ Window{
                 tooltipdirection:right
                 tooltipText:"dddd"
                 onClicked:{
-                    mainWindowObj.buttonClicked(compareBtn)
+                    mainWindowObj.buttonClicked(compareBtn,3)
                 }
             }
             WButton{
@@ -106,7 +106,7 @@ Window{
                 tooltipdirection:right
                 tooltipText:"刘铭崴ddd"
                 onClicked:{
-                    mainWindowObj.buttonClicked(exportBtn)
+                    mainWindowObj.buttonClicked(exportBtn,4)
                 }
             }
             WButton{
@@ -117,7 +117,7 @@ Window{
                 tooltipdirection:right
                 tooltipText:"刘铭崴啊发发的"
                 onClicked:{
-                    mainWindowObj.buttonClicked(iosmoreBtn)
+                    mainWindowObj.buttonClicked(iosmoreBtn,5)
                 }
             }
         }
@@ -179,14 +179,19 @@ Window{
             leftItemWidth:295
             leftItemMinWidth:200
             leftItem: [
-                DataHandlerTool{
+                StackLayout{
                     anchors.fill: parent
+                    currentIndex:mainWindowObj.selectedMenuIndex
+                    WLayerTree{
+                        anchors.fill: parent
+                        anchors.leftMargin:5
+                    }
+                    DataHandlerTool{
+                        anchors.fill: parent
+                    }
                 }
-//                Rectangle{
-//                    width:32
-//                    height:30
-//                    color:"red"
-//                }
+
+//
 
             ]
             rightItem:[
@@ -233,6 +238,7 @@ Window{
         property int height:leftMenuWidth-2*buttonOffset
         property int offset: 4*buttonOffset
         property var selectedBtn
+        property int selectedMenuIndex: 0
 
         //计算长度
         function setToolTip(tips,x,y){
@@ -248,13 +254,16 @@ Window{
             toolTip.visible=false
         }
         //切换菜单栏上的按钮颜色
-        function buttonClicked(btnID){
+        function buttonClicked(btnID,selectedIndex){
             if(mainWindowObj.selectedBtn!==undefined){
                 mainWindowObj.selectedBtn.color=mainwindow.leftMenuColor
             }
             mainWindowObj.selectedBtn=btnID
             mainWindowObj.selectedBtn.color="#3574f0"
+            mainWindowObj.selectedMenuIndex=selectedIndex
         }
-
+    }
+    Component.onCompleted: {
+        mainWindowObj.buttonClicked(packageBtn,0);
     }
 }

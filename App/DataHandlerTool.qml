@@ -8,7 +8,9 @@ import WTComponents
 Item {
     id:root
 
-    signal selectedFileEvent(string filePath)
+    //opentype：modelFile=====打开模型文件 如osgb
+    //          osgbGroup=====打开倾斜摄影测量模型
+    signal selectedFileEvent(string filePath,string opentype)
 
     FileDialog {
          id: fileDialog
@@ -17,9 +19,19 @@ Item {
          currentFolder: StandardPaths.standardLocations(StandardPaths.PicturesLocation)[0]
          onAccepted: {
              var filePath=JSON.stringify(selectedFile)
-             selectedFileEvent(JSON.parse(filePath.replace("file:///","")))//去掉"file:///"
+             selectedFileEvent(JSON.parse(filePath.replace("file:///","")),"modelFile")//去掉"file:///"
          }
-     }
+    }
+
+    FolderDialog{
+        id:folderDialog
+        title:"选择需要打开的文件夹"
+        currentFolder: StandardPaths.standardLocations(StandardPaths.PicturesLocation)[0]
+        onAccepted: {
+            var folderPath=JSON.stringify(currentFolder)
+            selectedFileEvent(JSON.parse(folderPath.replace("file:///","")) ,"osgbGroup")
+        }
+    }
 
     Flow{
         anchors.fill: parent
@@ -37,8 +49,11 @@ Item {
         WImageLabelButton{
             width:60
             height:62
-            label:"lmw"
+            label:"加载osgb组"
             source: "qrc:/qt/qml/Waisting/icon/banjia.png"
+            onClicked:{
+                folderDialog.open()
+            }
         }
         WImageLabelButton{
             width:60
@@ -79,6 +94,6 @@ Item {
     }
 
     Component.onCompleted: {
-        selectedFileEvent.connect(wtOSGViewer.loadFile)
+        selectedFileEvent.connect(wtOSGViewer.slot_loadFile)
     }
 }

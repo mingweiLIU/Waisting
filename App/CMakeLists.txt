@@ -46,6 +46,7 @@ qt_add_qml_module(appWaisting
     SOURCES ${HeaderFileNames} ${SourceFileNames}
     QML_FILES Main.qml
     QML_FILES DataHandlerTool.qml
+    SOURCES QImage2QMLProvider.h QImage2QMLProvider.cpp
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
@@ -56,13 +57,19 @@ set_target_properties(appWaisting PROPERTIES
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
-    WIN32_EXECUTABLE TRUE
+    WIN32_EXECUTABLE NO
 )
 
+#如果是Qt的组件 修改这儿
 set(SubDirs
     WTComponents
     WTOSG
 )
+#如果是纯C++组件 修改这儿
+set(PureCXXLib
+    WTTools
+)
+
 set(SelfPlugins)
 set(PluginInclude)
 foreach(oneDir ${SubDirs} )
@@ -70,8 +77,13 @@ foreach(oneDir ${SubDirs} )
     LIST(APPEND PluginInclude ../${oneDir})
 endforeach()
 
+foreach(oneDir ${PureCXXLib} )
+    LIST(APPEND SelfPlugins ${oneDir})
+    LIST(APPEND PluginInclude ../${oneDir})
+endforeach()
+
 target_link_libraries(appWaisting
-    PRIVATE 
+    PRIVATE
     Qt6::Core
     Qt6::Gui
     Qt6::Qml
