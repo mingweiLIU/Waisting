@@ -3,12 +3,13 @@
 #include <QAbstractItemModel>
 #include <QVariantList>
 #include <QQmlEngine>
-#include <osg/Node>
+#include <functional>
 #include <osgEarth/Common>
 #include "WTDefines.h"
 #pragma execution_character_set("utf-8")
 WTNAMESPACESTART
 
+using TreeNodeEventList = std::vector<std::function<void(int parentUID, int currentUID,bool state)>>;
 class TreeItemNode
 {
 public:
@@ -65,6 +66,11 @@ public:
 	//计算当前节点的子节点是全勾选、全非勾选或者半勾选状态
 	Qt::CheckState checkAndUpdateCheckState();
 
+	//添加状态修改事件
+	void addCheckeStateChangedEvents(std::function<void(int parentUID, int currentUID, bool state)> event);
+	//添加点击事件
+	void addClickEvents(std::function<void(int parentUID, int currentUID, bool state)> event);
+
 public:
 	//节点名字
 	std::string name;
@@ -77,8 +83,10 @@ private:
 	//当设置完当前节点的变化后 迭代更新父节点的状态
 	void updateParenCheckState();
 
-
-
+	//执行所有的处理事件
+	void doOnCheckStateChanged(int parentUID, int currentUID,bool state);
+	//执行所有的点击事件
+	void doOnClicked(int parentUID, int currentUID);
 private:
 	//该节点是否被勾选 注意 勾选后应该把所有子节点勾选完成 如果不勾选则所有子节点不勾选 如果为部分勾选则勾选部分子节点
 	Qt::CheckState checkState = Qt::Unchecked;
@@ -89,6 +97,11 @@ private:
 	std::vector<TreeItemNode*>children;
 	//该节点的父节点
 	TreeItemNode* parent;
+
+	//勾选状态修改事件
+	TreeNodeEventList onCheckStateChanged;
+	//点击事件
+	TreeNodeEventList onClicked;
 };
 
 

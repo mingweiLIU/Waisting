@@ -188,7 +188,7 @@ void WLayerTreeModel::checkItem(const QModelIndex& parent /*= QModelIndex()*/)
 
 	//TODO 这里需要扩展下 让子节点也高效的执行事件 可能需要将节点绑定事件
 	//可见性变化
-	emit  signal_checkStateChangedTreeNode(item->UID,parentItem->UID, item->getCheckState() == Qt::Checked);
+	//emit  signal_checkStateChangedTreeNode(item->UID,parentItem->UID, item->getCheckState() == Qt::Checked);
 }
 
 Q_INVOKABLE void WLayerTreeModel::zoomToItem(const QModelIndex& parent /*= QModelIndex()*/)
@@ -224,7 +224,12 @@ bool WLayerTreeModel::slot_addNode(std::string name, int uid, std::optional<int>
 	if (!parentItem) return false;
 
 	beginInsertRows(indexFromItem(parentItem), parentItem->childCount(), parentItem->childCount());
-	parentItem->addChild(new TreeItemNode(name, uid, parentItem, visible));
+	TreeItemNode* oneItem = new TreeItemNode(name, uid, parentItem, visible);
+	//绑定事件
+	oneItem->addCheckeStateChangedEvents([this](int parentUID,int currentUID, bool state)->void{
+		emit  signal_checkStateChangedTreeNode(currentUID, parentUID, state);
+	});
+	parentItem->addChild(oneItem);
 	endInsertRows();
 	return true;
 }
@@ -236,17 +241,21 @@ void TreeItemNode::setCheckState(bool state)
 	if ((state && checkState == Qt::Checked) || (!state&&checkState ==Qt::Unchecked)) return;
 	//首先所有的子节点需要修改
 	for (auto& item : this->children)
-	{		
+	{
 		item->setCheckState(state);
 	}
 
 	//在修改父节点状态前 先修改自己 以方便父节点遍历子节点
 	checkState = state ? Qt::Checked : Qt::Unchecked;
+	this->doOnCheckStateChanged(parent->UID, UID, state);
 }
 
 void TreeItemNode::setCheckState(Qt::CheckState state)
 {
 	checkState = state;
+	if (state == Qt::PartiallyChecked) return;
+
+	doOnCheckStateChanged(parent? parent->UID : -99999, UID, state == Qt::Checked);
 }
 
 Qt::CheckState TreeItemNode::checkAndUpdateCheckState()
@@ -310,10 +319,6 @@ TreeItemNode::TreeItemNode(std::string name, int uid /*= osgEarth::createUID()*/
 {
 	this->name = name;
 	this->parent = parent;
-	//if (-9999 == uid)
-	//{
-	//	uid = osgEarth::createUID();
-	//}
 	this->UID = uid;
 	this->checkState = visible ?  Qt::Checked : Qt::Unchecked;
 }
@@ -409,6 +414,38 @@ TreeItemNode* TreeItemNode::getChildByUID(int childUID)
 		}
 	}
 	return nullptr;
+}
+
+void TreeItemNode::doOnCheckStateChanged(int parentUID, int currentUID, bool state)
+{
+	for (auto event : onCheckStateChanged)
+	{
+		if (std::is_same<decltype(event),std::function<void(int,int,bool)>>::value)
+		{
+			event(parentUID, currentUID,state);
+		}
+	}
+}
+
+void TreeItemNode::doOnClicked(int parentUID, int currentUID)
+{
+	for (auto event : onClicked)
+	{
+		if (std::is_same<decltype(event), std::function<void(int, int,bool)>>::value)
+		{
+			event(parentUID, currentUID,false);//这个false没有意义
+		}
+	}
+}
+
+void TreeItemNode::addCheckeStateChangedEvents(std::function<void(int parentUID, int currentUID, bool state)> event)
+{
+	onCheckStateChanged.push_back(event);
+}
+
+void TreeItemNode::addClickEvents(std::function<void(int parentUID, int currentUID,bool state)> event)
+{
+	onClicked.push_back(event);
 }
 
 WTNAMESPACEEND

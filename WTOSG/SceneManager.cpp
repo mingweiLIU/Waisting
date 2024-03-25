@@ -186,10 +186,6 @@ osg::ref_ptr<osgGA::EventQueue> SceneManager::getEventQueue()
 osgEarth::Layer* SceneManager::getLayer(int layerUID,int mapUID)
 {
 	if (mapNode == nullptr) return nullptr;
-
-	//FindLayer findNodeVisitor(layerUID,mapUID);
-	//mapNode->accept(findNodeVisitor);
-	//return findNodeVisitor.getLayer();
 	return rootMap->getLayerByUID(layerUID);
 }
 
