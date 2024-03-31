@@ -1,14 +1,14 @@
 #pragma once
 
-#include "../settings.h"
-#include "nanoid/crypto_random.h"
+#include "../wtUlitsDefines.h"
+#include "WTUlits/nanoid/crypto_random.h"
 #include <string>
 #include <random>
 #include <future>
 
 namespace NANOID_NAMESPACE
 {
-	class WTTOOLAPI NanoID {
+	class WTAPI NanoID {
 	public:
 		static std::string generate();
 		static std::string generate(const std::string& alphabet);

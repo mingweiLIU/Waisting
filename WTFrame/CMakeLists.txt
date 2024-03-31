@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
-project (WTTools VERSION 1.0 LANGUAGES CXX)
-add_compile_definitions(WTTOOL_Export)
+project (WTFrame VERSION 1.0 LANGUAGES CXX)
+add_compile_definitions(WT_Export)
 
 set(CMAKE_CXX_STANDARD 11)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
@@ -17,8 +17,8 @@ WTGetTypeFilesRelative(
     Recurse ON
 )
 
-add_library(${PROJECT_NAME} SHARED ${SourceFileNames})
-target_include_directories(${PROJECT_NAME} PUBLIC ${HeaderFileNames})
+add_library(${PROJECT_NAME} SHARED ${SourceFileNames} ${HeaderFileNames})
+target_include_directories(${PROJECT_NAME} PUBLIC ${HeaderFileNames} ${SPDLOG_Inc})
 target_link_libraries(${PROJECT_NAME} Threads::Threads)
 
 include(GNUInstallDirs)

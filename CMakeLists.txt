@@ -33,11 +33,13 @@ set(GDAL_ROOT ${ThirdPartyPath}/gdal)                                           
 set(RapidJson_Inc ${ThirdPartyPath}/RapidJSON/include)                              #json处理
 set(taskflow_Inc ${ThirdPartyPath}/taskflow)                                        #图流程
 set(ASSIMP_DIR ${ThirdPartyPath}/assimp/lib/cmake/assimp-5.3)                       #模型格式
+set(SPDLOG_Inc ${ThirdPartyPath}/spdlog/include)
 
 set(SubDirs
     App
     WTComponents
-    WTTools
+    WTFrame
+    WTUlits
     WTOSG
     WTTranscoder
     GLTFSDK
@@ -45,9 +47,11 @@ set(SubDirs
 
 #全局设置
 link_directories(${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
-foreach(oneDir ${SubDirs} )
-    include_directories(${oneDir})
-endforeach( )
+# foreach(oneDir ${SubDirs} )
+#     include_directories(${oneDir})
+# endforeach( )
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/GLTFSDK/Inc)
 
 foreach(oneDir ${SubDirs} )
     add_subdirectory(${oneDir})

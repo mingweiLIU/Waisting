@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../settings.h"
+#include "../wtUlitsDefines.h"
 #include <cstdint>
 #include <limits>
 #include <utility>

@@ -1,5 +1,6 @@
 #ifndef WTDEFINES_H
 #define WTDEFINES_H
+#include "WTFrame/WTDefines.h"
 #include <functional>
 #include <osg/Vec3d>
 

@@ -1,6 +1,6 @@
 #ifndef NODEHANDLEVISITOR_H
 #define NODEHANDLEVISITOR_H
-#include "WTDefines.h"
+#include "WTOSGDefines.h"
 #include <osg/NodeVisitor>
 #include <osg/Geode>
 #include <osg/PagedLOD>

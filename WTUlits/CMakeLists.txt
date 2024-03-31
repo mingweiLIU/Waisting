@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.5)
-project (WTTranscoder VERSION 1.0 LANGUAGES CXX)
-add_compile_definitions(WTTranscoder_Export)
+project (WTUlits VERSION 1.0 LANGUAGES CXX)
+add_compile_definitions(WT_Export)
 
 set(CMAKE_CXX_STANDARD 11)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
 
 WTGetTypeFilesRelative(
     FileType "*.h"
@@ -15,11 +17,10 @@ WTGetTypeFilesRelative(
     Recurse ON
 )
 
-find_package(ASSIMP REQUIRED)
-
-add_library(${PROJECT_NAME} SHARED ${SourceFileNames} ${HeaderFileNames})
-target_include_directories(${PROJECT_NAME} PUBLIC ${HeaderFileNames} ${ASSIMP_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} ${ASSIMP_LIBRARIES} ${GLTFSDK})
+add_library(${PROJECT_NAME} SHARED ${SourceFileNames} ${HeaderFileNames}
+    wtSmartThrow.h wtSmartThrow.cpp)
+target_include_directories(${PROJECT_NAME} PUBLIC ${HeaderFileNames})
+target_link_libraries(${PROJECT_NAME} Threads::Threads)
 
 include(GNUInstallDirs)
 install(TARGETS ${modelName}

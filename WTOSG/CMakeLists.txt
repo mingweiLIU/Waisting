@@ -57,6 +57,7 @@ qt_add_library(${modelName} STATIC
     CommonDefines.qml
     WLayerTreeMenu.qml
     NodeHandleVisitor.h NodeHandleVisitor.cpp
+    WTOSGDefines.h
 )
 set_target_properties(${modelName} PROPERTIES AUTOMOC ON)
 target_include_directories(${modelName} PUBLIC ${includeDirs})

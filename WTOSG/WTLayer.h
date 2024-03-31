@@ -5,7 +5,7 @@
 #include <osg/Camera>
 #include <osgGA/CameraManipulator>
 
-#include "WTDefines.h"
+#include "WTFrame/WTDefines.h"
 
 WTNAMESPACESTART
 class WTLayer:public osg::Switch

@@ -5,7 +5,7 @@
 #include <QQmlEngine>
 #include <functional>
 #include <osgEarth/Common>
-#include "WTDefines.h"
+#include "WTFrame/WTDefines.h"
 #pragma execution_character_set("utf-8")
 WTNAMESPACESTART
 

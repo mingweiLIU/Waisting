@@ -1,6 +1,6 @@
 #ifndef DSMGROUP_H
 #define DSMGROUP_H
-#include "WTDefines.h"
+#include "WTOSGDefines.h"
 #include <optional>
 #include <osg/Matrix>
 #include <osgGA/CameraManipulator>
