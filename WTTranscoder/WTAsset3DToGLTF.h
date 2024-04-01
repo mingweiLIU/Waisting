@@ -31,6 +31,10 @@ namespace WT {
 		public:
 			Asset3DToGLTF(const aiScene& scene,const wtGLTFExportOptions& options={},WT::Frame::IWTCancellationTokenPtr cancellationToken=nullptr);
 			std::shared_ptr<Microsoft::glTF::Document> Write(IGLTFWriter& writer);
+
+		private:
+			void PopulateDocument(IGLTFWriter& bufferBuilder);
+			void AddPrimitiveToMesh(Microsoft::glTF::BufferBuilder& bufferBuilder, Microsoft::glTF::Mesh& gltfMesh, const Geometry& geometry, std::unordered_map<uint32_t, MaterialDescriptor*>& materials);
 		};
 
     }
