@@ -7,3 +7,5 @@
 #define USINGTRANSCODERNAMESPACE using namespace WT::Transcoder;
 
 using FractionalProgressCallback = std::function<void(float)>;
+
+#define GLTFVENDER "LiuMingwei"
