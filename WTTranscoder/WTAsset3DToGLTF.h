@@ -34,7 +34,21 @@ namespace WT {
 
 		private:
 			void PopulateDocument(IGLTFWriter& bufferBuilder);
-			void AddPrimitiveToMesh(Microsoft::glTF::BufferBuilder& bufferBuilder, Microsoft::glTF::Mesh& gltfMesh, const Geometry& geometry, std::unordered_map<uint32_t, MaterialDescriptor*>& materials);
+			void AddPrimitiveToMesh(Microsoft::glTF::BufferBuilder& bufferBuilder, Microsoft::glTF::Mesh& gltfMesh, const aiMesh& oneAiMesh, std::unordered_map<uint32_t, aiMaterial*>& materials);
+			Microsoft::glTF::MeshPrimitive CreateMeshPrimitive(Microsoft::glTF::BufferBuilder& bufferBuilder, const aiMesh& oneAiMesh) const;
+
+			void AddMaterials(IGLTFWriter& writer, const std::unordered_map<uint32_t, aiMaterial*> materials);
+			Microsoft::glTF::Material AddMaterials(IGLTFWriter& writer, aiMaterial* oneAiMaterial, const uint8_t scale);
+
+		private:
+			const aiScene& mAsset3d;
+			const wtGLTFExportOptions mOptions;
+			std::shared_ptr<Microsoft::glTF::Document> mGLTFDocument;
+
+			std::unordered_set<std::string> mTextures;
+			std::unordered_map<std::string, std::string>mGeneratedTextures;
+			std::vector<Microsoft::glTF::Sampler> mSampler;
+			WT::Frame::IWTCancellationTokenPtr mCancellationToken; 
 		};
 
     }

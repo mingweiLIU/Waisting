@@ -17,7 +17,7 @@ constexpr const char* WT_MIMETYPE_DDS = "image/vnd-ms.dds";
 constexpr const char* WT_MSFT_PACKING_NORMALROUGHNESSMETALLIC = "MSFT_packing_normalRoughnessMetallic";
 constexpr const char* WT_MSFT_PACKING_OCCLURSIONROUGHTNESSMETALLIC = "MSFT_packing_occlusionRoughnessMetallic";
 
-Microsoft::glTF::ExtensionDeserializer GetMSFTKHRExtensionSerializer();
+Microsoft::glTF::ExtensionSerializer GetMSFTKHRExtensionSerializer();
 
 struct MSFT_lod : Microsoft::glTF::Extension
 {

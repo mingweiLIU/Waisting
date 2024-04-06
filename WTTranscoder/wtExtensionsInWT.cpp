@@ -135,7 +135,8 @@ std::string SerializeMSFT_packing_occlusionRoughnessMetallic(const MSFT_packing_
 	return buffer.GetString();
 }
 
-Microsoft::glTF::ExtensionSerializer WT::Transcoder::GetMSFTKHRExtensionSerializer() {
+Microsoft::glTF::ExtensionSerializer WT::Transcoder::GetMSFTKHRExtensionSerializer()
+{
 	auto extensionSerializer = Microsoft::glTF::KHR::GetKHRExtensionSerializer();
 	extensionSerializer.AddHandler<MSFT_lod, Microsoft::glTF::Material>(WT_MSFTLOD, SerializeMSFT_Lod);
 	extensionSerializer.AddHandler<MSFT_texture_dds, Microsoft::glTF::Texture>(WT_MSFT_TEXTURE_DDS, SerializeMSFT_texture_dds);
