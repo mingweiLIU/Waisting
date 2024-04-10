@@ -22,6 +22,14 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/exe/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/exe/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/exe/lib)
 
+#设置Assimp的东西
+#如果更新了assimp记得修改assimp的
+#ASSIMP_BUILD_DRACO ON
+#BUILD_SHARED_LIBS OFF
+#ASSIMP_BUILD_TESTS OFF
+#ASSIMP_INSTALL OFF
+#end设置Assimp的东西
+
 find_package(Qt6 6.5 REQUIRED COMPONENTS Quick)
 qt_standard_project_setup(REQUIRES 6.5)
 
@@ -41,8 +49,9 @@ set(SubDirs
     WTFrame
     WTUlits
     WTOSG
-    WTTranscoder
-    GLTFSDK
+    # WTTranscoder
+    # GLTFSDK
+    assimp-5.4.0
 )
 
 #全局设置
