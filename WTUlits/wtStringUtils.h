@@ -162,8 +162,7 @@ template <size_t _Size> inline int BabylonSPrintf_s(char(&_Buffer)[_Size], char 
 
 static const size_t Babylon_TRUNCATE = static_cast<size_t>(-1);
 #endif // #ifndef _MSC_VER
-    } // namespace Utils
-} // namespace Babylon
+
 
 #ifndef _MSC_VER
 #define _TRUNCATE Babylon::Utils::Babylon_TRUNCATE

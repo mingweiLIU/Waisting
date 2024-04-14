@@ -18,7 +18,8 @@ WTGetTypeFilesRelative(
 )
 
 add_library(${PROJECT_NAME} SHARED ${SourceFileNames} ${HeaderFileNames})
-target_include_directories(${PROJECT_NAME} PUBLIC ${HeaderFileNames} ${SPDLOG_Inc})
+target_include_directories(${PROJECT_NAME} PUBLIC ${HeaderFileNames})
+
 target_link_libraries(${PROJECT_NAME} Threads::Threads)
 
 include(GNUInstallDirs)

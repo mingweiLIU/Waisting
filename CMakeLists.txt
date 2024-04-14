@@ -40,8 +40,9 @@ set(GeographicLib_DIR ${ThirdPartyPath}/GeographicLib2.3/cmake/GeographicLib)
 set(GDAL_ROOT ${ThirdPartyPath}/gdal)                                               #空间数据处理
 set(RapidJson_Inc ${ThirdPartyPath}/RapidJSON/include)                              #json处理
 set(taskflow_Inc ${ThirdPartyPath}/taskflow)                                        #图流程
-set(ASSIMP_DIR ${ThirdPartyPath}/assimp/lib/cmake/assimp-5.3)                       #模型格式
+set(ASSIMP_DIR ${ThirdPartyPath}/assimp/lib/cmake/assimp-5.4)                       #模型格式
 set(SPDLOG_Inc ${ThirdPartyPath}/spdlog/include)
+set(ASSIMP)
 
 set(SubDirs
     App
@@ -49,17 +50,19 @@ set(SubDirs
     WTFrame
     WTUlits
     WTOSG
-    # WTTranscoder
+    WTTranscoder
     # GLTFSDK
-    assimp-5.4.0
+    # assimp-5.4.0
 )
 
 #全局设置
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc  /Ob2")
 link_directories(${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
 # foreach(oneDir ${SubDirs} )
 #     include_directories(${oneDir})
 # endforeach( )
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${SPDLOG_Inc})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/GLTFSDK/Inc)
 
 foreach(oneDir ${SubDirs} )

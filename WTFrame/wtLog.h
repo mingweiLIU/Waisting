@@ -23,12 +23,6 @@ FRAMENAMESPACESTART
 //XLOG_WARN("this is warn log record, param: {}", double(++param)); // double type param is ok
 //XLOG_ERROR("this is error log record, param: {}", std::to_string(++param)); // string type param is ok
 
-#define wtLOG_TRACE(...) SPDLOG_LOGGER_CALL(wtLog::getInstance()->getLogger().get(), spdlog::level::trace, __VA_ARGS__)
-#define wtLOG_DEBUG(...) SPDLOG_LOGGER_CALL(wtLog::getInstance()->getLogger().get(), spdlog::level::debug, __VA_ARGS__)
-#define wtLOG_INFO(...) SPDLOG_LOGGER_CALL(wtLog::getInstance()->getLogger().get(), spdlog::level::info, __VA_ARGS__)
-#define wtLOG_WARN(...) SPDLOG_LOGGER_CALL(wtLog::getInstance()->getLogger().get(), spdlog::level::warn, __VA_ARGS__)
-#define wtLOG_ERROR(...) SPDLOG_LOGGER_CALL(wtLog::getInstance()->getLogger().get(), spdlog::level::err, __VA_ARGS__)
-
 class WTAPI wtLog
 {
 public:
@@ -42,6 +36,13 @@ private:
 
     std::shared_ptr<spdlog::logger> m_logger;
 };
+
+#define wtLOG_TRACE(...) SPDLOG_LOGGER_CALL(WT::Frame::wtLog::getInstance()->getLogger().get(), spdlog::level::trace, __VA_ARGS__)
+#define wtLOG_DEBUG(...) SPDLOG_LOGGER_CALL(WT::Frame::wtLog::getInstance()->getLogger().get(), spdlog::level::debug, __VA_ARGS__)
+#define wtLOG_INFO(...) SPDLOG_LOGGER_CALL(WT::Frame::wtLog::getInstance()->getLogger().get(), spdlog::level::info, __VA_ARGS__)
+#define wtLOG_WARN(...) SPDLOG_LOGGER_CALL(WT::Frame::wtLog::getInstance()->getLogger().get(), spdlog::level::warn, __VA_ARGS__)
+#define wtLOG_ERROR(...) SPDLOG_LOGGER_CALL(WT::Frame::wtLog::getInstance()->getLogger().get(), spdlog::level::err, __VA_ARGS__)
+
 FRAMENAMESPACEEND
 WTNAMESPACEEND
 #endif // WTLOG_H

@@ -29,8 +29,8 @@ private:
 };
 
 SimpleCancellationToken::SimpleCancellationToken() :
-	m_callbackindex(0),
-	m_cancelled(false)
+	mCallbackIndex(0),
+	mCancelled(false)
 {}
 
 void SimpleCancellationToken::Cancel()
@@ -54,13 +54,13 @@ void SimpleCancellationToken::Cancel()
 
 bool SimpleCancellationToken::IsCancelled() const
 {
-	std::lock_guard<std::mutex> stackLock(m_lock);
+	std::lock_guard<std::mutex> stackLock(mLock);
 	return mCancelled;
 }
 
 void SimpleCancellationToken::ClearAllCallbacks()
 {
-	std::lock_guard<std::mutex> stackLock(m_lock);
+	std::lock_guard<std::mutex> stackLock(mLock);
 	mCancelledCallback.clear();
 }
 
@@ -74,7 +74,7 @@ int SimpleCancellationToken::AddSlaveToken(IWTCancellationTokenPtr const& slaveT
 
 void SimpleCancellationToken::CheckCancelledAndThrow() const
 {
-	std::lock_guard<std::mutex> stackLock(m_lock);
+	std::lock_guard<std::mutex> stackLock(mLock);
 	if (mCancelled)
 	{
 		throw CancelledException();
@@ -86,7 +86,7 @@ int SimpleCancellationToken::SetCancelledCallback(std::function<void(void)> func
 	auto cancelled = false;
 	auto registrationToken = 0;
 	{
-		std::lock_guard<std::mutex> stackLock(m_lock);
+		std::lock_guard<std::mutex> stackLock(mLock);
 
 		registrationToken = ++mCallbackIndex;
 		cancelled = mCancelled;
@@ -105,7 +105,7 @@ int SimpleCancellationToken::SetCancelledCallback(std::function<void(void)> func
 
 void SimpleCancellationToken::ClearCancelledCallback(int registrationToken)
 {
-	std::lock_guard<std::mutex> stackLock(m_lock);
+	std::lock_guard<std::mutex> stackLock(mLock);
 
 	auto iter = mCancelledCallback.find(registrationToken);
 	if (iter != mCancelledCallback.end())

@@ -2,11 +2,13 @@
 #define WTCANCELATION_H
 
 #include "WTDefines.h"
+#include <functional>
+#include <stdexcept>
 
 WTNAMESPACESTART
 FRAMENAMESPACESTART
 
-WT_SMART_POINTER(IWTCancellationToken)
+WT_SMART_POINTER(IWTCancellationToken);
 
 struct CancelledException:public std::runtime_error
 {

@@ -19,7 +19,7 @@ find_package(ASSIMP REQUIRED)
 
 add_library(${PROJECT_NAME} SHARED ${SourceFileNames} ${HeaderFileNames})
 target_include_directories(${PROJECT_NAME} PUBLIC ${HeaderFileNames} ${ASSIMP_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} ${ASSIMP_LIBRARIES} ${GLTFSDK})
+target_link_libraries(${PROJECT_NAME} ${ASSIMP_LIBRARIES} )
 
 include(GNUInstallDirs)
 install(TARGETS ${modelName}

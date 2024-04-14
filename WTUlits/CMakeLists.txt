@@ -20,7 +20,7 @@ WTGetTypeFilesRelative(
 add_library(${PROJECT_NAME} SHARED ${SourceFileNames} ${HeaderFileNames}
     wtSmartThrow.h wtSmartThrow.cpp)
 target_include_directories(${PROJECT_NAME} PUBLIC ${HeaderFileNames})
-target_link_libraries(${PROJECT_NAME} Threads::Threads)
+target_link_libraries(${PROJECT_NAME} Threads::Threads WTFrame)
 
 include(GNUInstallDirs)
 install(TARGETS ${modelName}
