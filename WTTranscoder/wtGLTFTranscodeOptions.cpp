@@ -1,6 +1,7 @@
 #include "wtGLTFTranscodeOptions.h"
 #include "WTUlits/wtSmartThrow.h"
 
+USINGTRANSCODERNAMESPACE
 
 WT::Transcoder::wtGLTFTranscodeOptions::wtGLTFTranscodeOptions()
 {
@@ -9,14 +10,14 @@ WT::Transcoder::wtGLTFTranscodeOptions::wtGLTFTranscodeOptions()
 	AddOption({ "textureCompression","设置纹理压缩格式",[this](const std::string& value) {setTextureCompressiong(value); } });
 	AddOption({ "dracoUsing","设置是否使用法线",[this](const std::string& value) {setNormalInfo(value); } });
 	AddOption({ "doubleSide","设置是否双面渲染",[this](const std::string& value) {setDoubleSide(value); } });
+	AddOption({ "outpath","输出路径",[this](const std::string& value) {setOutputPath(value); } });
 }
 
-WT::Transcoder::wtGLTFTranscodeOptions::wtGLTFTranscodeOptions WT::Transcoder::wtGLTFTranscodeOptions::ParaseOptions(const std::unordered_map<std::string, std::string>& options)
+wtGLTFTranscodeOptions wtGLTFTranscodeOptions::ParaseOptions(const std::unordered_map<std::string, std::string>& options)
 {
-	return Transcoder::ParseOptions<GLTFExportOptions>(options);
+	return Transcoder::ParseOptions<wtGLTFTranscodeOptions>(options);
 }
 
-USINGTRANSCODERNAMESPACE
 
 void WT::Transcoder::wtGLTFTranscodeOptions::setFileExt(const std::string& value)
 {
@@ -26,11 +27,17 @@ void WT::Transcoder::wtGLTFTranscodeOptions::setFileExt(const std::string& value
 		{"gltf2",GLTFFileExt::GLTF2},
 		{"glb2",GLTFFileExt::GLB2}
 	};
-	glTFExt = gltfFileExt.at(value);
-	if (!glTFExt)
+
+	auto it = gltfFileExt.find(value);
+	if (it != gltfFileExt.end())
 	{
-		throw WTInvalidArgException("不支持的格式:" + value);
+		glTFExt = it->second;
 	}
+	else {
+		throw WT::Ulits::WTInvalidArgException("不支持的格式:" + value);
+	}
+
+	foramtID = value;
 }
 
 void WT::Transcoder::wtGLTFTranscodeOptions::setNormalInfo(const std::string& value)
@@ -40,10 +47,14 @@ void WT::Transcoder::wtGLTFTranscodeOptions::setNormalInfo(const std::string& va
 		{"generate",NormalInfo::GENERATE},
 		{"none",NormalInfo::NONE}
 	};
-	nornalInfo = normalInfos[value];
-	if (!nornalInfo)
+
+	auto it = normalInfos.find(value);
+	if (it != normalInfos.end())
 	{
-		throw WTInvalidArgException("不法线设置形式: " + value);
+		nornalInfo = it->second;
+	}
+	else {
+		throw WT::Ulits::WTInvalidArgException("不法线设置形式: " + value);
 	}
 }
 
@@ -56,10 +67,13 @@ void WT::Transcoder::wtGLTFTranscodeOptions::setTextureCompressiong(const std::s
 		{"webp",TextureCompression::WEBP},
 		{"basis",TextureCompression::BASIS}
 	};
-	textureCompression = textureCompressions[value];
-	if (!textureCompression)
+	auto it = textureCompressions.find(value);
+	if (it != textureCompressions.end())
 	{
-		throw WTInvalidArgException("不支持的纹理压缩形式: " + value);
+		textureCompression = it->second;
+	}
+	else {
+		throw WT::Ulits::WTInvalidArgException("不支持的纹理压缩形式: " + value);
 	}
 }
 
@@ -69,10 +83,14 @@ void WT::Transcoder::wtGLTFTranscodeOptions::setDracoUsing(const std::string& va
 		{"no",DracoUsing::NO},
 		{"yes",DracoUsing::YES}
 	};
-	dracoUsing = dracoUsings[value];
-	if (!dracoUsing)
+
+	auto it = dracoUsings.find(value);
+	if (it != dracoUsings.end())
 	{
-		throw WTInvalidArgException("不支持draco设置形式: " + value);
+		dracoUsing = it->second;
+	}
+	else {
+		throw WT::Ulits::WTInvalidArgException("不支持draco设置形式:" + value);
 	}
 }
 
@@ -82,9 +100,18 @@ void WT::Transcoder::wtGLTFTranscodeOptions::setDoubleSide(const std::string& va
 		{"no",DoubleSide::NO},
 		{"yes",DoubleSide::YES}
 	};
-	doubleSide = doubleSides[value];
-	if (!doubleSide)
+
+	auto it = doubleSides.find(value);
+	if (it != doubleSides.end())
 	{
-		throw WTInvalidArgException("不支持三角面双面渲染与否设置形式: " + value);
+		doubleSide = it->second;
 	}
+	else {
+		throw WT::Ulits::WTInvalidArgException("不支持三角面双面渲染与否设置形式: " + value);
+	}
+}
+
+void WT::Transcoder::wtGLTFTranscodeOptions::setOutputPath(const std::string& value)
+{
+	outputPath = value;
 }

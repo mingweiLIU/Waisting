@@ -65,7 +65,7 @@ template <typename CharT, typename Traits,
 
     inline std::shared_ptr<std::ifstream> CreateSharedInputFileStream(const std::string& filename, std::ios_base::openmode mode = std::ios_base::in)
     {
-        return CreateSharedInputFileStream(Babylon::Utils::StringToWString(filename), mode);
+        return CreateSharedInputFileStream(wtStringUtils::StringToWString(filename), mode);
     }
 
     inline std::shared_ptr<std::ofstream> CreateSharedOutputFileStream(const std::wstring& filename, std::ios_base::openmode mode = std::ios_base::out)
@@ -75,7 +75,7 @@ template <typename CharT, typename Traits,
 
     inline std::shared_ptr<std::ofstream> CreateSharedOutputFileStream(const std::string& filename, std::ios_base::openmode mode = std::ios_base::out)
     {
-        return CreateSharedOutputFileStream(Babylon::Utils::StringToWString(filename), mode);
+        return CreateSharedOutputFileStream(wtStringUtils::StringToWString(filename), mode);
     }
 
     inline std::unique_ptr<std::ifstream> CreateUniqueInputFileStream(const std::wstring& filename, std::ios_base::openmode mode = std::ios_base::in)
@@ -85,7 +85,7 @@ template <typename CharT, typename Traits,
 
     inline std::unique_ptr<std::ifstream> CreateUniqueInputFileStream(const std::string& filename, std::ios_base::openmode mode = std::ios_base::in)
     {
-        return CreateUniqueInputFileStream(Babylon::Utils::StringToWString(filename), mode);
+        return CreateUniqueInputFileStream(wtStringUtils::StringToWString(filename), mode);
     }
 
     inline std::unique_ptr<std::ofstream> CreateUniqueOutputFileStream(const std::wstring& filename, std::ios_base::openmode mode = std::ios_base::out)
@@ -95,7 +95,7 @@ template <typename CharT, typename Traits,
 
     inline std::unique_ptr<std::ofstream> CreateUniqueOutputFileStream(const std::string& filename, std::ios_base::openmode mode = std::ios_base::out)
     {
-        return CreateUniqueOutputFileStream(Babylon::Utils::StringToWString(filename), mode);
+        return CreateUniqueOutputFileStream(wtStringUtils::StringToWString(filename), mode);
     }   
 #else // For the time being assume all other platforms accept UTF-8 filenames
     inline std::shared_ptr<std::ifstream> CreateSharedInputFileStream(const std::string& filename, std::ios_base::openmode mode = std::ios_base::in)
@@ -137,7 +137,7 @@ inline size_t GetIStreamLength(std::istream& stream)
 inline std::unique_ptr<uint8_t[]> ReadStreamIntoUniquePtr(std::istream& stream, size_t& length)
 {
     stream.seekg(0, std::ios::end);
-    length = static_cast<size_t>(std::max(stream.tellg(), std::streampos(0))); // Guard against tellg returning -1 (EOF) by using std::max to ensure a stream 'size' is always greater than or equal to zero
+    length = static_cast<size_t>(max(stream.tellg(), std::streampos(0))); // Guard against tellg returning -1 (EOF) by using std::max to ensure a stream 'size' is always greater than or equal to zero
 
     std::unique_ptr<uint8_t[]> data = std::make_unique<uint8_t[]>(length);
 
@@ -146,7 +146,7 @@ inline std::unique_ptr<uint8_t[]> ReadStreamIntoUniquePtr(std::istream& stream, 
 
     if (static_cast<size_t>(stream.gcount()) != length)
     {
-        throw BabylonException("Failed to read the entire stream");
+        throw WTException("Failed to read the entire stream");
     }
             
     return data;

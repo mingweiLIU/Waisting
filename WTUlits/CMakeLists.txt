@@ -17,8 +17,7 @@ WTGetTypeFilesRelative(
     Recurse ON
 )
 
-add_library(${PROJECT_NAME} SHARED ${SourceFileNames} ${HeaderFileNames}
-    wtSmartThrow.h wtSmartThrow.cpp)
+add_library(${PROJECT_NAME} SHARED ${SourceFileNames} ${HeaderFileNames})
 target_include_directories(${PROJECT_NAME} PUBLIC ${HeaderFileNames})
 target_link_libraries(${PROJECT_NAME} Threads::Threads WTFrame)
 

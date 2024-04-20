@@ -50,6 +50,7 @@ enum class DoubleSide {
 //textureCompression==>¡¾ori¡¿/webp/png/jpg/basis
 //dracoUsing==>¡¾y¡¿/n
 //doubleSide==>y/¡¾n¡¿
+//outpath==>""
 
 class WTAPI wtGLTFTranscodeOptions : public TranscodeOptions
 {
@@ -62,12 +63,17 @@ public:
 	void setTextureCompressiong(const std::string& value);
 	void setDracoUsing(const std::string& value);
 	void setDoubleSide(const std::string& value);
+    void setOutputPath(const std::string& value);
 
     GLTFFileExt glTFExt = GLTFFileExt::GLB2;
     NormalInfo nornalInfo = NormalInfo::ORIGIN;
     TextureCompression textureCompression = TextureCompression::ORIGIN;
     DracoUsing dracoUsing = DracoUsing::YES;
     DoubleSide doubleSide = DoubleSide::NO;
+
+
+    std::string outputPath="";
+    std::string foramtID = "glb2";
 };
 
 TRANSCODERNAMESPACEEND

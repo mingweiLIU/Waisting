@@ -1,6 +1,7 @@
 #include "WTTranscodeOptions.h"
 #include "WTUlits/wtStringUtils.h"
 #include "WTFrame/wtLog.h"
+
 #include <sstream>
 
 USINGTRANSCODERNAMESPACE
@@ -24,11 +25,11 @@ void TranscodeOptions::Parse(const std::unordered_map<std::string, std::string>&
 	//在参数列表中的每一项参数都应该是已定义的参数中的一项
 	for (const auto& inputOption: inputOptions)
 	{
-		auto option = m_options.find(WT::Ulits::ToLower(inputOption.second));
+		auto option = m_options.find(WT::Ulits::wtStringUtils::ToLower(inputOption.second));
 
 		if (option!=m_options.end())
 		{
-			option->second.deserializer(WT::Ulits::ToLower(inputOption.second));
+			option->second.deserializer(WT::Ulits::wtStringUtils::ToLower(inputOption.second));
 		}
 		else {
 			wtLOG_WARN("Unrecognized Transcode option: %s", inputOption.first.c_str());
@@ -38,6 +39,6 @@ void TranscodeOptions::Parse(const std::unordered_map<std::string, std::string>&
 
 void WT::Transcoder::TranscodeOptions::AddOption(TranscodeOption&& option)
 {
-	auto key = WT::Ulits::ToLower(option.name);
+	auto key = WT::Ulits::wtStringUtils::ToLower(option.name);
 	m_options.emplace(std::move(key), std::move(option));
 }
