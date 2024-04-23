@@ -4,15 +4,6 @@
 #define WTNAMESPACESTART namespace WT{
 #define WTNAMESPACEEND }
 
-#define FRAMENAMESPACESTART namespace Frame{
-#define FRAMENAMESPACEEND }
-#define USINGFRAMENAMESPACE using namespace WT::Frame;
-
-#ifdef WT_Export
-#define WTAPI _declspec(dllexport)
-#else
-#define WTAPI _declspec(dllimport)
-#endif
 
 // Examples:
 // MyClassPtr = std::shared_ptr<MyClass>        (suitable for storage and passing as argument to function that needs to extend lifetime)

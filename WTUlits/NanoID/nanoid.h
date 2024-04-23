@@ -8,7 +8,7 @@
 
 namespace NANOID_NAMESPACE
 {
-	class WTAPI NanoID {
+	class WTULITSAPI NanoID {
 	public:
 		static std::string generate();
 		static std::string generate(const std::string& alphabet);

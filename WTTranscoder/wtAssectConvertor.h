@@ -8,7 +8,7 @@
 WTNAMESPACESTART
 TRANSCODERNAMESPACESTART
 
-class WTAPI wtAssectConvertor
+class WTTRANSCODERAPI wtAssectConvertor
 {
 public:
     wtAssectConvertor(aiScene* assets,const wtGLTFTranscodeOptions& options={}, WT::Frame::IWTCancellationTokenPtr cancellationToken=nullptr);

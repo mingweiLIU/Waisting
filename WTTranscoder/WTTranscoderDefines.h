@@ -1,11 +1,15 @@
 #pragma once
 #include "WTFrame/WTDefines.h"
-#include <functional>
+
+
 
 #define TRANSCODERNAMESPACESTART namespace Transcoder{
 #define TRANSCODERNAMESPACEEND }
+
 #define USINGTRANSCODERNAMESPACE using namespace WT::Transcoder;
 
-using FractionalProgressCallback = std::function<void(float)>;
-
-#define GLTFVENDER "LiuMingwei"
+#ifdef WTTRANSCODER_Export
+#define WTTRANSCODERAPI _declspec(dllexport)
+#else
+#define WTTRANSCODERAPI _declspec(dllimport)
+#endif

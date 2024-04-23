@@ -14,7 +14,7 @@
 WTNAMESPACESTART
 ULITSNAMESPACESTART
 
-class WTAPI wtStringUtils {
+class WTULITSAPI wtStringUtils {
 public:
     /**
     * Converts an UTF-8 string to a wide character string.

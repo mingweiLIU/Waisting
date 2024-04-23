@@ -52,7 +52,7 @@ enum class DoubleSide {
 //doubleSide==>y/¡¾n¡¿
 //outpath==>""
 
-class WTAPI wtGLTFTranscodeOptions : public TranscodeOptions
+class WTTRANSCODERAPI wtGLTFTranscodeOptions : public TranscodeOptions
 {
 public:
     wtGLTFTranscodeOptions();

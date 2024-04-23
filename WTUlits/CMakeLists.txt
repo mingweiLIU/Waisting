@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 project (WTUlits VERSION 1.0 LANGUAGES CXX)
-add_compile_definitions(WT_Export)
+add_compile_definitions(WTULITS_Export)
 
 set(CMAKE_CXX_STANDARD 11)
 set(THREADS_PREFER_PTHREAD_FLAG ON)

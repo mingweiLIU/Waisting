@@ -1,6 +1,6 @@
 #ifndef WTLOG_H
 #define WTLOG_H
-#include "WTDefines.h"
+#include "wtFrameDefines.h"
 #include <memory>
 #include <spdlog/spdlog.h>
 #include <spdlog/async_logger.h>
@@ -23,7 +23,7 @@ FRAMENAMESPACESTART
 //XLOG_WARN("this is warn log record, param: {}", double(++param)); // double type param is ok
 //XLOG_ERROR("this is error log record, param: {}", std::to_string(++param)); // string type param is ok
 
-class WTAPI wtLog
+class WTFRAMEAPI wtLog
 {
 public:
     static wtLog* getInstance();

@@ -1,7 +1,7 @@
 #ifndef WTCANCELATION_H
 #define WTCANCELATION_H
 
-#include "WTDefines.h"
+#include "wtFrameDefines.h"
 #include <functional>
 #include <stdexcept>
 
@@ -15,7 +15,7 @@ struct CancelledException:public std::runtime_error
     CancelledException():std::runtime_error("操作被取消."){}
 };
 
-class WTAPI IWTCancellationToken
+class WTFRAMEAPI IWTCancellationToken
 {
 public:
     virtual ~IWTCancellationToken() {};
@@ -74,7 +74,7 @@ public:
 /**
  * 创建一个取消令牌.
  */
-IWTCancellationTokenPtr WTAPI MakeCancellationToken();
+IWTCancellationTokenPtr WTFRAMEAPI MakeCancellationToken();
 
 //--------------------------------------------------------------------------------
 
@@ -83,7 +83,7 @@ IWTCancellationTokenPtr WTAPI MakeCancellationToken();
 /**
 * 创建一个空的取消令牌，在做空参数时使用
 */
-IWTCancellationTokenPtr WTAPI MakeNullCancellationToken();
+IWTCancellationTokenPtr WTFRAMEAPI MakeNullCancellationToken();
 
 //--------------------------------------------------------------------------------
 FRAMENAMESPACEEND

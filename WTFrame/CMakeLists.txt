@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 project (WTFrame VERSION 1.0 LANGUAGES CXX)
-add_compile_definitions(WT_Export)
+add_compile_definitions(WTFRAME_Export)
 
 set(CMAKE_CXX_STANDARD 11)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
@@ -17,7 +17,8 @@ WTGetTypeFilesRelative(
     Recurse ON
 )
 
-add_library(${PROJECT_NAME} SHARED ${SourceFileNames} ${HeaderFileNames})
+add_library(${PROJECT_NAME} SHARED ${SourceFileNames} ${HeaderFileNames}
+    wtFrameDefines.h)
 target_include_directories(${PROJECT_NAME} PUBLIC ${HeaderFileNames})
 
 target_link_libraries(${PROJECT_NAME} Threads::Threads)

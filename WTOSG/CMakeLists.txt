@@ -1,4 +1,5 @@
 set(modelName WTOSG)
+add_compile_definitions(WTOSG_Export)
 
 WTGetTypeFilesRelative(
     FileType "*.qml"

@@ -114,7 +114,7 @@ void SimpleCancellationToken::ClearCancelledCallback(int registrationToken)
 	}
 }
 
-IWTCancellationTokenPtr WTAPI MakeCancellationToken()
+IWTCancellationTokenPtr WTFRAMEAPI MakeCancellationToken()
 {
 	return std::make_shared<SimpleCancellationToken>();
 }
@@ -162,7 +162,7 @@ public: // IWTCancellationToken
 	}
 };
 
-IWTCancellationTokenPtr WTAPI MakeNullCancellationToken()
+IWTCancellationTokenPtr WTFRAMEAPI MakeNullCancellationToken()
 {
 	return std::make_shared<NullCancellationToken>();
 }

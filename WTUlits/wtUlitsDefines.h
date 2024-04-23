@@ -9,3 +9,9 @@
 #define ULITSNAMESPACEEND }
 
 #define USINGULITSNAMESPACE using namespace WT::Ulits;
+
+#ifdef WTULITS_Export
+#define WTULITSAPI _declspec(dllexport)
+#else
+#define WTULITSAPI _declspec(dllimport)
+#endif

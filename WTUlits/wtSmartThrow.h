@@ -29,7 +29,7 @@
 WTNAMESPACESTART
 ULITSNAMESPACESTART
 
-struct WTException : public std::runtime_error
+struct WTULITSAPI WTException : public std::runtime_error
 {
 	WTException(std::string const& message, bool assert = false);
 #ifdef _WIN32
@@ -44,7 +44,7 @@ struct WTException : public std::runtime_error
 #endif // _WIN32
 };
 
-struct WTInvalidArgException : public WTException
+struct WTULITSAPI WTInvalidArgException : public WTException
 {
 	WTInvalidArgException(std::string const& message, bool assert = false)
 #ifdef _WIN32
@@ -55,7 +55,7 @@ struct WTInvalidArgException : public WTException
 	{}
 };
 
-struct WTFailException : public WTException
+struct WTULITSAPI WTFailException : public WTException
 {
 	WTFailException(std::string const& message, bool assert = false)
 #ifdef _WIN32
@@ -66,7 +66,7 @@ struct WTFailException : public WTException
 	{}
 };
 
-struct WTNotImplException : public WTException
+struct WTULITSAPI WTNotImplException : public WTException
 {
 	WTNotImplException(std::string const& message, bool assert = false)
 #ifdef _WIN32
