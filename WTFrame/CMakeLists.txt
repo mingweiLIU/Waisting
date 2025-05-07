@@ -1,30 +1,47 @@
 cmake_minimum_required(VERSION 3.5)
 project (WTFrame VERSION 1.0 LANGUAGES CXX)
-add_compile_definitions(WT_Export)
-
-set(CMAKE_CXX_STANDARD 11)
-set(THREADS_PREFER_PTHREAD_FLAG ON)
-find_package(Threads REQUIRED)
+set(CMAKE_CXX_STANDARD 17)
 
 WTGetTypeFilesRelative(
     FileType "*.h"
     OutRelative HeaderFileNames
-    Recurse ON
+    Recurse OFF
 )
 WTGetTypeFilesRelative(
     FileType "*.cpp"
     OutRelative SourceFileNames
-    Recurse ON
+    Recurse OFF
 )
 
-add_library(${PROJECT_NAME} SHARED ${SourceFileNames} ${HeaderFileNames})
-target_include_directories(${PROJECT_NAME} PUBLIC ${HeaderFileNames})
+if(POLICY CMP0074)
+  cmake_policy(SET CMP0074 NEW)
+endif()
 
-target_link_libraries(${PROJECT_NAME} Threads::Threads)
+find_package(GDAL REQUIRED gdal)
+find_package(TBB REQUIRED)
+find_package(GLM REQUIRED)
+find_package(SPLOG)
+
+set(includeDirs 
+    # ${OPENSCENEGRAPH_INCLUDE_DIRS}
+    # ${osgEarth_INCLUDE_DIRS}
+    ${TBB_INCLUDE_DIRS}
+    ${GLM_INCLUDE_DIRS}
+    # ${GeographicLib_INCLUDE_DIRS}
+)
+
+add_library(${PROJECT_NAME} STATIC ${SourceFileNames} ${HeaderFileNames})
+target_include_directories(${PROJECT_NAME}  PUBLIC ${includeDirs} ${HeaderFileNames})
+target_link_libraries(${PROJECT_NAME} PRIVATE 
+    ${GDAL_LIBRARY}
+    TBB::tbb
+    glm::glm
+)
 
 include(GNUInstallDirs)
-install(TARGETS ${modelName}
+install(TARGETS ${PROJECT_NAME}
     BUNDLE DESTINATION .
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+

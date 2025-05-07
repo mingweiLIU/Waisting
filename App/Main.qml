@@ -3,268 +3,202 @@ import QtQuick.Controls
 import QtQuick.Window
 import QtQuick.Layouts
 
-import WTComponents
-import WTOSG
-import Waisting 1.0
+import "./components"
+//import WTComponents
+Window {
+    width: 800
+    height: 500
 
-Window{
-    id:mainwindow
     visible: true
-//    visibility: "Maximized"
-    title:qsTr("地理场景可视化编辑系统")
-    color:"#2b2d30"
-    minimumHeight: 900
-    minimumWidth: 1300
+    title: "QDS"
 
-    property int leftMenuWidth: 50
-    property int rightMenuWidth:40
-    property int bottomMenuWidth:25
-    property int splitlineWidth: 1
-
-    property int buttonOffset: 5
-
-    property color leftMenuColor:"#2b2d30"
-    property color rightMenuColor:"#2b2d30"
-    property color bottomMenuColor:"#2b2d30"
-    property color workAreaColor:"#1e1f22"
-    property color splitlineColor:"#1e1f22"
-
-
-    //左侧菜单栏
-    Rectangle{
-        id:leftMenu
-        width:leftMenuWidth-splitlineWidth
-        height:parent.height
-        color:leftMenuColor
-        anchors{
-            left:parent.left
-            top:parent.top
-            bottom:bottomMenu.top
-        }
-        //设置一个边线
-        Rectangle{
-            height: parent.height
-            width:splitlineWidth
-            anchors.right: parent.right
-            border.color: splitlineColor
+    Ribbon{
+        id: mainRibbon
+        anchors {
+            top: parent.top
+            left: parent.left
+            right: parent.right
         }
 
-        //设置各个功能按钮
-        Column{
-            anchors.horizontalCenter: parent.horizontalCenter
-            // anchors.verticalCenter: parent.verticalCenter
-            spacing: 2*buttonOffset
-            topPadding:buttonOffset
-            WButton{
-                id:packageBtn
-                color:leftMenuColor
-                width:leftMenuWidth-2*buttonOffset;height:leftMenuWidth-2*buttonOffset
-                source:"qrc:/qt/qml/Waisting/svg/package.svg"
-                tooltipdirection:right
-                tooltipText:"刘铭崴"
-                onClicked:{
-                    mainWindowObj.buttonClicked(packageBtn,0)
-                }
-            }
-            WButton{
-                id:boxBtn
-                color:leftMenuColor
-                width:leftMenuWidth-2*buttonOffset;height:leftMenuWidth-2*buttonOffset
-                source:"qrc:/qt/qml/Waisting/svg/box.svg"
-                tooltipdirection:right
-                tooltipText:"wweeeeeeeeee"
-                onClicked:{
-                    mainWindowObj.buttonClicked(boxBtn,1)
-                }
-            }
-            WButton{
-                id:getBtn
-                color:leftMenuColor
-                width:leftMenuWidth-2*buttonOffset;height:leftMenuWidth-2*buttonOffset
-                source:"qrc:/qt/qml/Waisting/svg/get.svg"
-                tooltipdirection:right
-                tooltipText:"aa"
-                onClicked:{
-                    mainWindowObj.buttonClicked(getBtn,2)
-                }
-            }
-            WButton{
-                id:compareBtn
-                color:leftMenuColor
-                width:leftMenuWidth-2*buttonOffset;height:leftMenuWidth-2*buttonOffset
-                source:"qrc:/qt/qml/Waisting/svg/compare.svg"
-                tooltipdirection:right
-                tooltipText:"dddd"
-                onClicked:{
-                    mainWindowObj.buttonClicked(compareBtn,3)
-                }
-            }
-            WButton{
-                id:exportBtn
-                color:leftMenuColor
-                width:leftMenuWidth-2*buttonOffset;height:leftMenuWidth-2*buttonOffset
-                source:"qrc:/qt/qml/Waisting/svg/export.svg"
-                tooltipdirection:right
-                tooltipText:"刘铭崴ddd"
-                onClicked:{
-                    mainWindowObj.buttonClicked(exportBtn,4)
-                }
-            }
-            WButton{
-                id:iosmoreBtn
-                color:leftMenuColor
-                width:leftMenuWidth-2*buttonOffset;height:leftMenuWidth-2*buttonOffset
-                source:"qrc:/qt/qml/Waisting/svg/iosmore.svg"
-                tooltipdirection:right
-                tooltipText:"刘铭崴啊发发的"
-                onClicked:{
-                    mainWindowObj.buttonClicked(iosmoreBtn,5)
-                }
-            }
-        }
-    }
+        // 组件初始化完成后添加标签页
+        Component.onCompleted: {
+            // 创建第一个标签页及其内容
+            let tab1Content = Qt.createComponent("./components/RibbonTab.qml").createObject();
+            let tab1Index = addTab("文件", tab1Content);
 
-    //右侧菜单栏
-    Rectangle{
-        id:rightMenu
-        width:rightMenuWidth
-        height:parent.height
-        color:rightMenuColor
-        anchors{
-            right:parent.right
-            top:parent.top
-            bottom:bottomMenu.top
-        }
+            // 添加面板到第一个标签页
+            let filePanel = tab1Content.addPanel("文件操作");
+            filePanel.addButton("qrc:/qt/qml/Waisting/icon/add-rectangle.png", "新建", function() {
+                console.log("新建文件");
+            });
+            filePanel.addButton("qrc:/qt/qml/Waisting/icon/max.png", "打开", function() {
+                console.log("打开文件");
+            });
+            filePanel.addButton("qrc:/qt/qml/Waisting/icon/caiwu.png", "保存", function() {
+                console.log("保存文件");
+            });
 
-        //设置一个边线
-        Rectangle{
-            height: parent.height
-            width:splitlineWidth
-            anchors.left: parent.left
-            border.color: splitlineColor
+            let dataHandlerPanel = tab1Content.addPanel("数据轻量化处理");
+            dataHandlerPanel.addButton("qrc:/qt/qml/Waisting/icon/shitujuzhen.png", "影像切片", function() {
+                console.log("影像切片");
+            });
+            dataHandlerPanel.addButton("qrc:/qt/qml/Waisting/icon/yingyongAPP.png", "STK地形切片", function() {
+                console.log("STK地形切片");
+            });
+            dataHandlerPanel.addButton("qrc:/qt/qml/Waisting/icon/banjia.png", "矢量转3DTiles", function() {
+                console.log("矢量转3DTiles");
+            });
+            dataHandlerPanel.addButton("qrc:/qt/qml/Waisting/icon/baoguo_hezi.png", "OSGB转3DTiles", function() {
+                console.log("OSGB转3DTiles");
+            });
+            dataHandlerPanel.addButton("qrc:/qt/qml/Waisting/icon/dakaiwenjian1.png", "离散OBJ转3DTiles", function() {
+                console.log("离散OBJ转3DTiles");
+            });
+
+            // let importPanel = tab1Content.addPanel("导入数据");
+            // importPanel.addButton("qrc:/qt/qml/Waisting/icon/tupian.png", "导入影像", function() {
+            //     console.log("导入影像");
+            // });
+            // importPanel.addButton("qrc:/qt/qml/Waisting/icon/X1/Mesh Derivative.png", "导入地形", function() {
+            //     console.log("导入地形");
+            // });
+            // importPanel.addButton("qrc:/qt/qml/Waisting/icon/cangku.png", "导入三维模型", function() {
+            //     console.log("导入三维模型");
+            // });
+
+            let osgbHandlerPanel = tab1Content.addPanel("osgb数据处理");
+            osgbHandlerPanel.addButton("qrc:/qt/qml/Waisting/icon/X1/Mesh To Points.png", "提取点云", function() {
+                console.log("OSGB提取点云");
+            });
+            osgbHandlerPanel.addButton("qrc:/qt/qml/Waisting/icon/X1/Regular Terrain Triangulation.png", "生成DSM", function() {
+                console.log("OSGB生成DSM");
+            });
+            osgbHandlerPanel.addButton("qrc:/qt/qml/Waisting/icon/X1/Quad Viewports.png", "生成TDOM", function() {
+                console.log("OSGB生成TDOM");
+            });
+            osgbHandlerPanel.addButton("qrc:/qt/qml/Waisting/icon/cengji.png", "粗糙层生成", function() {
+                console.log("OSGB粗糙层生成");
+            });
+            osgbHandlerPanel.addButton("qrc:/qt/qml/Waisting/icon/X1/Swap Creases _ Edges.png", "与地形融合", function() {
+                console.log("OSGB与地形融合");
+            });
+            osgbHandlerPanel.addButton("qrc:/qt/qml/Waisting/icon/X1/Volume Rendering.png", "颜色调整", function() {
+                console.log("OSGB颜色调整");
+            });
+
+            //参数化建模
+            let paramModelingTabContent = Qt.createComponent("./components/RibbonTab.qml").createObject();
+            addTab("参数化建模", paramModelingTabContent);
+
+            // 管网参数化建模
+            let pipePanel = paramModelingTabContent.addPanel("管网参数化建模");
+            pipePanel.addButton("qrc:/qt/qml/Waisting/icon/baoguo_hezi.png", "配置管网数据", function() {
+                console.log("配置管网数据");
+            });
+            pipePanel.addButton("qrc:/qt/qml/Waisting/icon/duoxuanxuanzhong.png", "参数设置", function() {
+                console.log("管网参数设置");
+            });
+            pipePanel.addButton("qrc:/qt/qml/Waisting/icon/X1/Stitch two Holes.png", "管网建模", function() {
+                console.log("管网建模");
+            });
+            // 道路参数化建模
+            let roadPanel = paramModelingTabContent.addPanel("道路参数化建模");
+            roadPanel.addButton("qrc:/qt/qml/Waisting/icon/X1/Voxels Path.png", "配置路网数据", function() {
+                console.log("配置路网数据");
+            });
+            roadPanel.addButton("qrc:/qt/qml/Waisting/icon/lianjie.png", "参数设置", function() {
+                console.log("道路参数设置");
+            });
+            roadPanel.addButton("qrc:/qt/qml/Waisting/icon/X1/Stitch two Holes.png", "道路建模", function() {
+                console.log("道路建模");
+            });
+            // 风机参数化建模
+            let windmillPanel = paramModelingTabContent.addPanel("风机参数化建模");
+            windmillPanel.addButton("qrc:/qt/qml/Waisting/icon/gongzuoliu.png", "风机断面数据", function() {
+                console.log("配置风机断面数据");
+            });
+            windmillPanel.addButton("qrc:/qt/qml/Waisting/icon/gongzuoliu.png", "参数设置", function() {
+                console.log("风机参数设置");
+            });
+            windmillPanel.addButton("qrc:/qt/qml/Waisting/icon/fuwuguanli.png", "风机建模", function() {
+                console.log("风机建模");
+            });
+
+
+            // 创建第一个标签页及其内容
+            let systemContent = Qt.createComponent("./components/RibbonTab.qml").createObject();
+            let systemIndex = addTab("系统", systemContent);
+
+            
+            let systemPanel = systemContent.addPanel("系统设置");
+            systemPanel.addButton("qrc:/qt/qml/Waisting/icon/guanyu.png", "关于", function() {
+                console.log("关于系统");
+            });
+
+            // 设置默认选中第一个标签页
+            checkTab(0);
         }
     }
-
-    //底面消息栏
-    Rectangle{
-        id:bottomMenu
-        width:parent.width
-        height:bottomMenuWidth
-        color:bottomMenuColor
-        anchors.bottom:parent.bottom
-
-        //设置一个边线
-        Rectangle{
-            width: parent.width
-            height:splitlineWidth
-            anchors.top: parent.top
-            border.color: splitlineColor
-        }
-    }
-
-    //中间工作区
-    Rectangle{
-        id:workArea
-        width:parent.width-leftMenu.width-rightMenu.width
-        height: parent.height-bottomMenu.height
+    RowLayout{
         anchors{
-            left:leftMenu.right
-            right:rightMenu.left
-            bottom:bottomMenu.top
-            top:parent.top
+            top:mainRibbon.bottom
+            left: parent.left
+            right: parent.right
+            bottom:parent.bottom
         }
-        color:workAreaColor
+        spacing:0
 
-        WSpliter{
-            anchors.fill:parent
-            leftItemWidth:295
-            leftItemMinWidth:200
-            leftItem: [
-                StackLayout{
-                    anchors.fill: parent
-                    currentIndex:mainWindowObj.selectedMenuIndex
-                    WLayerTree{
-                        anchors.fill: parent
-                        anchors.leftMargin:5
-                    }
-                    DataHandlerTool{
-                        anchors.fill: parent
+        //创建下面的部分
+        SplitView{
+            Layout.fillWidth:true
+            Layout.fillHeight:true
+            handle:Rectangle{
+                implicitWidth:2
+                color:SplitHandle.pressed? "#417bbf" : "#3f4347"
+                Behavior on opacity{
+                    OpacityAnimator{
+                        duration:400
                     }
                 }
+            }
 
-//
+            //左侧面板
+            Rectangle{
+                id:leftPanel
+                SplitView.minimumWidth:350
+                SplitView.fillHeight:true
 
-            ]
-            rightItem:[
-                 WTOSGViewer{
-                    id:wtOSGViewer
+                RowLayout{                    
                     anchors.fill:parent
-                }
-            ]
-        }
+                    spacing:0
 
-    }
-
-    Rectangle{
-        id:toolTip
-        Text {
-            id: toolTipText
-            text: qsTr("测试")
-            anchors.centerIn: parent
-        }
-        height: leftMenuWidth-2*buttonOffset
-        width: 56
-        x:120
-        y:126
-        color: "#393b40"
-        radius: 4
-        border{
-            width: 2
-            color: "#43454a"
-        }
-        visible: false
-    }
-
-    WFileObject{
-        id:globe_FileObject
-    }
-
-    QtObject{
-        id:mainWindowObj
-        property int charWidth:15
-        property int x: 0
-        property int y: 0
-        property bool visible: false
-        property int width:0
-        property int height:leftMenuWidth-2*buttonOffset
-        property int offset: 4*buttonOffset
-        property var selectedBtn
-        property int selectedMenuIndex: 0
-
-        //计算长度
-        function setToolTip(tips,x,y){
-            if(tips===""||tips===undefined) return
-            toolTip.visible=true
-            toolTipText.text=tips
-            let numChar=tips.length
-            toolTip.width=numChar*charWidth
-            toolTip.x=x;toolTip.y=y
-        }
-        function clearToolTip(){
-            toolTipText.text=""
-            toolTip.visible=false
-        }
-        //切换菜单栏上的按钮颜色
-        function buttonClicked(btnID,selectedIndex){
-            if(mainWindowObj.selectedBtn!==undefined){
-                mainWindowObj.selectedBtn.color=mainwindow.leftMenuColor
+                    //最左侧的菜单栏
+                    Rectangle{
+                        id:mostLeftMenuBar
+                        width:50
+                        Layout.fillHeight:true
+                        color:"#2b2d30"
+                        border.color:"#1e1f22"
+                    }
+                    //图层树等
+                
+                    Rectangle{
+                        id:mostLeftMenuBarView 
+                        Layout.fillWidth:true
+                        Layout.fillHeight:true
+                        color:"#2b2d30"
+                        border.color:"#1e1f22"
+                    }
+                    }                
             }
-            mainWindowObj.selectedBtn=btnID
-            mainWindowObj.selectedBtn.color="#3574f0"
-            mainWindowObj.selectedMenuIndex=selectedIndex
+
+            //主视图
+            Rectangle{
+                id:mainViewer
+                color:"#1e1f22"
+                SplitView.fillWidth:true
+                SplitView.fillHeight:true
+            }
         }
-    }
-    Component.onCompleted: {
-        mainWindowObj.buttonClicked(packageBtn,0);
     }
 }

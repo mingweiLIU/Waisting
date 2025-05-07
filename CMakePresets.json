@@ -7,19 +7,16 @@
       "cacheVariables": {
         "CMAKE_PREFIX_PATH": "$env{QTDIR}"
       },
-      "environment": {
-        "PATH": "$penv{PATH};$env{QTDIR}/bin"
-      },
       "vendor": {
         "qt-project.org/Qt": {
-          "checksum": "Sp19WUpde73JS7nK33HZMqVZTyI="
+          "checksum": "wVa86FgEkvdCTVp1/nxvrkaemJc="
         }
       }
     }
   ],
   "vendor": {
     "qt-project.org/Presets": {
-      "checksum": "+knLrtcP3xTAxZGDu4uUoEIBvBs="
+      "checksum": "67SmY24ZeVbebyKD0fGfIzb/bGI="
     }
   }
 }

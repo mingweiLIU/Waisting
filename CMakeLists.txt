@@ -2,10 +2,8 @@ cmake_minimum_required(VERSION 3.16)
 
 project(Waisting VERSION 0.1 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
-set(CMAKE_CXX_STANDARD 17)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/gltfSDK/Modules")
@@ -30,8 +28,8 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/exe/lib)
 #ASSIMP_INSTALL OFF
 #end设置Assimp的东西
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Quick)
-qt_standard_project_setup(REQUIRES 6.5)
+find_package(Qt6 6.9 REQUIRED COMPONENTS Quick)
+qt_standard_project_setup(REQUIRES 6.9)
 
 set(ThirdPartyPath ${CMAKE_CURRENT_SOURCE_DIR}/3rd)
 set(OSG_DIR ${ThirdPartyPath}/osg)
@@ -42,15 +40,19 @@ set(RapidJson_Inc ${ThirdPartyPath}/RapidJSON/include)                          
 set(taskflow_Inc ${ThirdPartyPath}/taskflow)                                        #图流程
 set(ASSIMP_DIR ${ThirdPartyPath}/assimp/lib/cmake/assimp-5.4)                       #模型格式
 set(SPDLOG_Inc ${ThirdPartyPath}/spdlog/include)
-set(ASSIMP)
+set(TBB_ROOT ${ThirdPartyPath}/tbb-2021.13.0-x64/lib/cmake/TBB)
+set(GLM_ROOT ${ThirdPartyPath}/glm/share/glm)
+set()
 
 set(SubDirs
+    # WTComponents
     App
-    WTComponents
+    WTDataManipulate
+    WTEarth
     WTFrame
-    WTUlits
-    WTOSG
-    WTTranscoder
+    # WTUlits
+    # WTOSG
+    # WTTranscoder
     # GLTFSDK
     # assimp-5.4.0
 )
@@ -63,7 +65,6 @@ link_directories(${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
 #     include_directories(${oneDir})
 # endforeach( )
 include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${SPDLOG_Inc})
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/GLTFSDK/Inc)
 
 foreach(oneDir ${SubDirs} )
     add_subdirectory(${oneDir})
