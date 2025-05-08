@@ -7,7 +7,7 @@
 #include "tbb/concurrent_queue.h"
 
 // jemallocÍ·ÎÄ¼þ
-#include <jemalloc/jemalloc.h>
+#include "jemalloc/jemalloc.h"
 
 namespace WT {
     /**

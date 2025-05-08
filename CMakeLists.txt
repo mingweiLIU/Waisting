@@ -42,6 +42,7 @@ set(ASSIMP_DIR ${ThirdPartyPath}/assimp/lib/cmake/assimp-5.4)                   
 set(SPDLOG_Inc ${ThirdPartyPath}/spdlog/include)
 set(TBB_ROOT ${ThirdPartyPath}/tbb-2021.13.0-x64/lib/cmake/TBB)
 set(GLM_ROOT ${ThirdPartyPath}/glm/share/glm)
+set(Jemolloc_ROOT ${ThirdPartyPath}/jemalloc)
 
 
 set(SubDirs
