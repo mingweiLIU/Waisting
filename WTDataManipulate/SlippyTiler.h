@@ -34,6 +34,8 @@ public:
 	bool useMemoryMapping = true;//是否启用文件映射
 	std::string outputFormat = "png";//输出瓦片后缀
 	int numThreads = 5;//使用的线程数
+	std::string prjFilePath = "";//外部prj文件路径 可以为空
+	std::string wktString = "";//外部wkt字符串 可以为空
 };
 
 

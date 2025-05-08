@@ -42,7 +42,7 @@ set(ASSIMP_DIR ${ThirdPartyPath}/assimp/lib/cmake/assimp-5.4)                   
 set(SPDLOG_Inc ${ThirdPartyPath}/spdlog/include)
 set(TBB_ROOT ${ThirdPartyPath}/tbb-2021.13.0-x64/lib/cmake/TBB)
 set(GLM_ROOT ${ThirdPartyPath}/glm/share/glm)
-set()
+
 
 set(SubDirs
     # WTComponents
@@ -50,6 +50,7 @@ set(SubDirs
     WTDataManipulate
     WTEarth
     WTFrame
+    Test
     # WTUlits
     # WTOSG
     # WTTranscoder
@@ -61,9 +62,9 @@ set(SubDirs
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc  /Ob2")
 link_directories(${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
-# foreach(oneDir ${SubDirs} )
-#     include_directories(${oneDir})
-# endforeach( )
+foreach(oneDir ${SubDirs} )
+    include_directories(${oneDir})
+endforeach( )
 include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${SPDLOG_Inc})
 
 foreach(oneDir ${SubDirs} )

@@ -10,9 +10,10 @@ namespace WT{
 		Rectangle mRectangle;
 	public:
 		GeographicTilingScheme(Rectangle rectangle=Rectangle::MAX_VALUE,int numberOfLevelZeroTilesX=2, int numberOfLevelZeroTilesY = 1)
-			:numberOfLevelZeroTilesX(numberOfLevelZeroTilesX)
-			,numberOfLevelZeroTilesY(numberOfLevelZeroTilesY)
-			,mRectangle(rectangle){}
+			:mRectangle(rectangle){
+			this->numberOfLevelZeroTilesX = numberOfLevelZeroTilesX;
+			this->numberOfLevelZeroTilesY = numberOfLevelZeroTilesY;
+		}
 
 		//获取level时X方向的瓦片数
 		int getNumberOfXTilesAtLevel(int level) override;

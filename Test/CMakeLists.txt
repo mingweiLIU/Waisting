@@ -26,6 +26,7 @@ set(includeDirs
     # ${osgEarth_INCLUDE_DIRS}
     ${GDAL_INCLUDE_DIRS}
     ${TBB_INCLUDE_DIRS}
+
     # ${GeographicLib_INCLUDE_DIRS}
 )
 
@@ -35,6 +36,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ${GDAL_LIBRARY}
     TBB::tbb
     WTDataManipulate
+    WTFrame
+    WTEarth
 )
 
 include(GNUInstallDirs)

@@ -20,13 +20,13 @@ endif()
 find_package(GDAL REQUIRED gdal)
 find_package(TBB REQUIRED)
 find_package(GLM REQUIRED)
-find_package(SPLOG)
 
 set(includeDirs 
     # ${OPENSCENEGRAPH_INCLUDE_DIRS}
     # ${osgEarth_INCLUDE_DIRS}
     ${TBB_INCLUDE_DIRS}
     ${GLM_INCLUDE_DIRS}
+    ${SPDLOG_Inc}
     # ${GeographicLib_INCLUDE_DIRS}
 )
 

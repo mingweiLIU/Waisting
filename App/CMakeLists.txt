@@ -6,6 +6,12 @@ find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Qml Quick)
 
 qt_standard_project_setup(REQUIRES 6.5)
 
+if(POLICY CMP0074)
+  cmake_policy(SET CMP0074 NEW)
+endif()
+
+qt_policy(SET QTP0004 NEW)
+
 
 WTGetTypeFilesRelative(
     FileType "*.h"

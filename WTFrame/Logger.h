@@ -1,4 +1,5 @@
 #pragma once
+#include "Logger.h"
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/basic_file_sink.h>
@@ -15,7 +16,7 @@ namespace WT{
             DEBUG = 1,
             INFO = 2,
             WARN = 3,
-            ERROR = 4,
+            ERRORi = 4,//ERROR会和一个宏冲突 所以叫ERRORi
             CRITICAL = 5,
             OFF = 6
         };
@@ -60,7 +61,7 @@ namespace WT{
 
         template<typename... Args>
         static void Error(const std::string& file, int line, const std::string& func, Args&&... args) {
-            Log(Level::ERROR, file, line, func, std::forward<Args>(args)...);
+            Log(Level::ERRORi, file, line, func, std::forward<Args>(args)...);
         }
 
         template<typename... Args>
@@ -79,15 +80,16 @@ namespace WT{
 
             // 根据级别选择日志函数
             switch (level) {
-            case Level::TRACE:
-                if (static_cast<int>(level) >= static_cast<int>(s_ConsoleLevel) {
+            case Level::TRACE: {
+                if (static_cast<int>(level) >= static_cast<int>(s_ConsoleLevel)) {
                     s_Logger->trace("[{}:{}:{}] {}", file, line, func, fmt::format(std::forward<Args>(args)...));
                 }
                 if (static_cast<int>(level) >= static_cast<int>(s_FileLevel)) {
                     s_Logger->trace("[{}:{}:{}] {}", file, line, func, fmt::format(std::forward<Args>(args)...));
                 }
                 break;
-            case Level::DEBUG:
+            }
+            case Level::DEBUG: {
                 if (static_cast<int>(level) >= static_cast<int>(s_ConsoleLevel)) {
                     s_Logger->debug("[{}:{}:{}] {}", file, line, func, fmt::format(std::forward<Args>(args)...));
                 }
@@ -95,7 +97,8 @@ namespace WT{
                     s_Logger->debug("[{}:{}:{}] {}", file, line, func, fmt::format(std::forward<Args>(args)...));
                 }
                 break;
-            case Level::INFO:
+            }
+            case Level::INFO: {
                 if (static_cast<int>(level) >= static_cast<int>(s_ConsoleLevel)) {
                     s_Logger->info("[{}:{}:{}] {}", file, line, func, fmt::format(std::forward<Args>(args)...));
                 }
@@ -103,7 +106,8 @@ namespace WT{
                     s_Logger->info("[{}:{}:{}] {}", file, line, func, fmt::format(std::forward<Args>(args)...));
                 }
                 break;
-            case Level::WARN:
+            }
+            case Level::WARN: {
                 if (static_cast<int>(level) >= static_cast<int>(s_ConsoleLevel)) {
                     s_Logger->warn("[{}:{}:{}] {}", file, line, func, fmt::format(std::forward<Args>(args)...));
                 }
@@ -111,15 +115,17 @@ namespace WT{
                     s_Logger->warn("[{}:{}:{}] {}", file, line, func, fmt::format(std::forward<Args>(args)...));
                 }
                 break;
-            case Level::ERROR:
+            }
+            case Level::ERRORi:{
                 if (static_cast<int>(level) >= static_cast<int>(s_ConsoleLevel)) {
                     s_Logger->error("[{}:{}:{}] {}", file, line, func, fmt::format(std::forward<Args>(args)...));
                 }
                 if (static_cast<int>(level) >= static_cast<int>(s_FileLevel)) {
                     s_Logger->error("[{}:{}:{}] {}", file, line, func, fmt::format(std::forward<Args>(args)...));
                 }
-                break;
-            case Level::CRITICAL:
+                break; 
+            }
+            case Level::CRITICAL: {
                 if (static_cast<int>(level) >= static_cast<int>(s_ConsoleLevel)) {
                     s_Logger->critical("[{}:{}:{}] {}", file, line, func, fmt::format(std::forward<Args>(args)...));
                 }
@@ -127,6 +133,7 @@ namespace WT{
                     s_Logger->critical("[{}:{}:{}] {}", file, line, func, fmt::format(std::forward<Args>(args)...));
                 }
                 break;
+            }
             default:
                 break;
             }

@@ -23,7 +23,7 @@ namespace WT {
 
 		//定义地球上最大的矩形
 		static Rectangle MAX_VALUE;
-	private:
+	public:
 		double west; double south; double east; double north;
 	};
 };

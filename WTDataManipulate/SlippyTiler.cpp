@@ -64,32 +64,61 @@ namespace WT{
 		tile_min_y = atan(sinh(M_PI * (1 - 2 * (tile_y + 1) / (1 << zoom)))) * 180.0 / M_PI;
 	}
 
-	void SlippyMapTiler::geo_to_pixel(const double& geo_x, const double& geo_y, int& pixel_x, int& pixel_y)
+	bool SlippyMapTiler::geo_to_pixel(const double& geo_x, const double& geo_y, int& pixel_x, int& pixel_y)
 	{
-		pixel_x = static_cast<int>((geo_x - geo_transform[0]) / geo_transform[1]);
-		pixel_y = static_cast<int>((geo_y - geo_transform[3]) / geo_transform[5]);
+		double x = geo_x;
+		double y = geo_y;
+
+		// 如果需要坐标转换，将WGS84坐标转换为影像原始坐标系
+		if (coord_system->requires_transform()) {
+			OGRCoordinateTransformationH inv_transform = coord_system->create_inverse_transform();
+
+			if (!inv_transform) {
+				return false;
+			}
+
+			if (!OCTTransform(inv_transform, 1, &x, &y, nullptr)) {
+				OCTDestroyCoordinateTransformation(inv_transform);
+				return false;
+			}
+
+			OCTDestroyCoordinateTransformation(inv_transform);
+		}
+
+		// 使用地理变换参数将坐标转换为像素坐标
+		double det = geo_transform[1] * geo_transform[5] - geo_transform[2] * geo_transform[4];
+		if (fabs(det) < 1e-10) {
+			return false; // 无法转换
+		}
+
+		double inv_det = 1.0 / det;
+
+		double dx = x - geo_transform[0];
+		double dy = y - geo_transform[3];
+
+		pixel_x = static_cast<int>(std::round((dx * geo_transform[5] - dy * geo_transform[2]) * inv_det));
+		pixel_y = static_cast<int>(std::round((dy * geo_transform[1] - dx * geo_transform[4]) * inv_det));
+
+		return true;
 	}
 
 	bool SlippyMapTiler::generate_tile(int zoom, int tile_x, int tile_y)
 	{
 		try {
-			// 计算瓦片的地理范围
+			// 计算瓦片的地理范围（在WGS84坐标系下）
 			double tile_min_x, tile_min_y, tile_max_x, tile_max_y;
 			get_tile_geo_bounds(zoom, tile_x, tile_y, tile_min_x, tile_min_y, tile_max_x, tile_max_y);
 
 			// 创建瓦片路径
-			std::string outputDir = options->outputDir;
-			fs::path x_dir = fs::path(outputDir) / std::to_string(zoom) / std::to_string(tile_x);
-			if (!fs::exists(x_dir)) {
-				fs::create_directories(x_dir);
-			}
-
-			std::string tile_path = (x_dir / (std::to_string(tile_y) + "." + options->outputFormat)).string();
+			fs::path x_dir = fs::path(output_dir) / std::to_string(zoom) / std::to_string(tile_x);
+			std::string tile_path = (x_dir / (std::to_string(tile_y) + "." + format)).string();
 
 			// 计算瓦片在原始影像中的像素范围
 			int src_min_x, src_min_y, src_max_x, src_max_y;
-			geo_to_pixel(tile_min_x, tile_max_y, src_min_x, src_min_y);
-			geo_to_pixel(tile_max_x, tile_min_y, src_max_x, src_max_y);
+			if (!geo_to_pixel(tile_min_x, tile_max_y, src_min_x, src_min_y) ||
+				!geo_to_pixel(tile_max_x, tile_min_y, src_max_x, src_max_y)) {
+				return false; // 坐标转换失败
+			}
 
 			// 边界检查
 			if (src_max_x < 0 || src_min_x >= img_width || src_max_y < 0 || src_min_y >= img_height) {
@@ -110,72 +139,77 @@ namespace WT{
 				return false;
 			}
 
-			// 创建内存数据集
-			void* pData = memory_pool->allocate(width * height * 3); // 假设RGB
+			// 获取有效波段数量
+			int bands = std::min(band_count, 4); // 最多支持4个波段(RGBA)
+
+			// 分配内存为每个波段创建缓冲区
+			size_t pixel_size = GDALGetDataTypeSize(data_type) / 8;
+			size_t buffer_size = width * height * bands * pixel_size;
+
+			// 使用jemalloc分配内存
+			void* pData = memory_allocator->allocate(buffer_size);
 			if (!pData) {
 				std::cerr << "内存分配失败!" << std::endl;
 				return false;
 			}
 
 			// 读取数据
-			int bands = GDALGetRasterCount(dataset);
-			bands = std::min(bands, 3); // 限制为最多3个波段
-
-			// 使用 RasterIO 读取数据
 			CPLErr err = GDALDatasetRasterIO(
 				dataset, GF_Read,
 				src_min_x, src_min_y, width, height,
 				pData, width, height,
-				GDT_Byte, bands, nullptr,
+				data_type, bands, nullptr,
 				0, 0, 0
 			);
 
 			if (err != CE_None) {
-				memory_pool->deallocate(pData);
+				memory_allocator->deallocate(pData);
 				return false;
 			}
 
 			// 创建目标瓦片数据集
 			GDALDriverH memDriver = GDALGetDriverByName("MEM");
-			GDALDatasetH memDS = GDALCreate(memDriver, "", config.tile_size, config.tile_size, bands, GDT_Byte, nullptr);
+			GDALDatasetH memDS = GDALCreate(memDriver, "", tile_size, tile_size, bands, data_type, nullptr);
 
 			if (!memDS) {
-				memory_pool->deallocate(pData);
+				memory_allocator->deallocate(pData);
 				return false;
 			}
 
-			// 写入数据到内存数据集
+			// 写入数据到内存数据集，需要重采样
 			err = GDALDatasetRasterIO(
 				memDS, GF_Write,
-				0, 0, config.tile_size, config.tile_size,
+				0, 0, tile_size, tile_size,
 				pData, width, height,
-				GDT_Byte, bands, nullptr,
+				data_type, bands, nullptr,
 				0, 0, 0
 			);
 
+			// 释放原始数据内存
+			memory_allocator->deallocate(pData);
+
 			if (err != CE_None) {
 				GDALClose(memDS);
-				memory_pool->deallocate(pData);
 				return false;
 			}
 
-			// 释放原始数据内存
-			memory_pool->deallocate(pData);
-
 			// 创建输出驱动
-			GDALDriverH outputDriver = GDALGetDriverByName(options->outputFormat.c_str());
+			GDALDriverH outputDriver = GDALGetDriverByName(format.c_str());
 			if (!outputDriver) {
 				GDALClose(memDS);
 				return false;
 			}
 
 			// 创建内存文件
-			CPLStringList optionsList;
-			if (options->outputFormat == "JPEG") {
-				optionsList.AddString("QUALITY=90");
+			CPLStringList options;
+			if (format == "JPEG") {
+				options.AddString("QUALITY=90");
 			}
-			else if (options->outputFormat == "PNG") {
-				optionsList.AddString("COMPRESS=DEFLATE");
+			else if (format == "PNG") {
+				options.AddString("COMPRESS=DEFLATE");
+			}
+			else if (format == "WEBP") {
+				options.AddString("QUALITY=80");
 			}
 
 			// 使用内存文件系统创建临时文件
@@ -184,11 +218,17 @@ namespace WT{
 
 			GDALDatasetH outDS = GDALCreateCopy(
 				outputDriver, vsimem_filename.c_str(),
-				memDS, FALSE, optionsList.List(), nullptr, nullptr
+				memDS, FALSE, options.List(), nullptr, nullptr
 			);
 
 			// 关闭数据集
 			GDALClose(memDS);
+
+			if (!outDS) {
+				VSIUnlink(vsimem_filename.c_str());
+				return false;
+			}
+
 			GDALClose(outDS);
 
 			// 从内存文件系统读取数据
