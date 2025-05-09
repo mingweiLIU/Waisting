@@ -43,6 +43,12 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     WTFrame
 )
 
+target_compile_definitions(${PROJECT_NAME} 
+    PRIVATE 
+        JEMALLOC_EXPORT=
+        JEMALLOC_STATIC
+)
+
 include(GNUInstallDirs)
 install(TARGETS ${PROJECT_NAME}
     BUNDLE DESTINATION .

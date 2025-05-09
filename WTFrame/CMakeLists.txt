@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.5)
 project (WTFrame VERSION 1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 
-
 WTGetTypeFilesRelative(
     FileType "*.h"
     OutRelative HeaderFileNames
@@ -40,6 +39,12 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     TBB::tbb
     glm::glm
     ${Jemolloc_ROOT}/lib/jemalloc_sd.lib
+)
+
+target_compile_definitions(${PROJECT_NAME} 
+    PRIVATE 
+        JEMALLOC_EXPORT=
+        JEMALLOC_STATIC
 )
 
 include(GNUInstallDirs)

@@ -28,7 +28,7 @@ public:
 	std::string inputFile="";//输入的文件
 	std::string outputDir="";//输出路径
 	int minLevel = 0;//最小切片级数
-	int maxLevel = 5;//最大切片级数
+	int maxLevel = 15;//最大切片级数
 	int tileSize = 255;//瓦片大小
 	bool useVRT = true;//是否使用VRT
 	bool useMemoryMapping = true;//是否启用文件映射

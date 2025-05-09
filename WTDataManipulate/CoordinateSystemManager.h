@@ -1,12 +1,26 @@
 #pragma once
 #include <sstream>
+#include <string>
+#include <iostream>
 // GDAL库
 #include <gdal_priv.h>
 #include <ogr_spatialref.h>
 #include <cpl_conv.h>
 #include <cpl_string.h>
 #include <cpl_vsi.h>
+#include <filesystem>
 
+#ifdef _WIN32
+#define NOMINMAX // 在包含Windows.h之前定义
+#include <windows.h>
+#elif defined(__APPLE__)
+#include <mach-o/dyld.h>
+#elif defined(__linux__)
+#include <unistd.h>
+#include <limits.h>
+#endif
+
+namespace fs = std::filesystem;
 namespace WT {
     /**
      * @brief 坐标系统封装类，处理空间参考和转换
@@ -33,9 +47,52 @@ namespace WT {
             }
         }
 
+		fs::path getExecutablePath() {
+			fs::path executablePath;
+
+            #ifdef _WIN32
+			    // Windows平台
+			    wchar_t path[MAX_PATH] = { 0 };
+			    GetModuleFileNameW(NULL, path, MAX_PATH);
+			    executablePath = path;
+            #elif defined(__APPLE__)
+			    // macOS平台
+			    char path[PATH_MAX];
+			    uint32_t size = sizeof(path);
+			    if (_NSGetExecutablePath(path, &size) == 0) {
+				    executablePath = path;
+			    }
+            #elif defined(__linux__)
+			    // Linux平台
+			    char path[PATH_MAX];
+			    ssize_t count = readlink("/proc/self/exe", path, PATH_MAX);
+			    if (count != -1) {
+				    path[count] = '\0';
+				    executablePath = path;
+			    }
+            #else
+			    // 其他平台可能需要特定的实现
+			    throw std::runtime_error("不支持的平台");
+            #endif
+
+			return fs::canonical(executablePath);
+		}
+
+        void setGDALEnv() {
+            std::filesystem::path exePath = getExecutablePath();
+            std::filesystem::path exeFolder = exePath.parent_path();
+            std::filesystem::path gdalDir = exeFolder / "gdal-data";
+			CPLSetConfigOption("GDAL_DATA", gdalDir.string().c_str());
+            std::string projPath = (exeFolder /"proj9"/"share").string();
+			const char* proj_path[] = { projPath.c_str(), nullptr };
+			OSRSetPROJSearchPaths(proj_path);
+        }
+
     public:
         CoordinateSystem() : src_srs(nullptr), dst_srs(nullptr),
-            coord_transform(nullptr), needs_transform(false) {}
+            coord_transform(nullptr), needs_transform(false) {
+            setGDALEnv();
+        }
 
         ~CoordinateSystem() {
             cleanup();
@@ -173,9 +230,9 @@ namespace WT {
          * @param point_count 点的数量
          * @return 是否转换成功
          */
-        bool transform_points(double* points, int point_count) const {
+        bool transform_points(double* x,double * y, int point_count) const {
             if (needs_transform && coord_transform) {
-                return OCTTransform(coord_transform, point_count, points, points + point_count, nullptr) != 0;
+                return OCTTransform(coord_transform, point_count, x, y, nullptr);
             }
             return true; // 不需要转换
         }

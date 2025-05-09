@@ -4,19 +4,17 @@
 namespace WT{
 	SlippyMapTiler::SlippyMapTiler(std::shared_ptr<SlippyMapTilerOptions> options) {
 		this->options = options;
-		// 初始化GDAL
-		GDALAllRegister();
-
-		// 创建内存池
-		memory_allocator = std::make_shared<JemallocAllocator>(); 
-
-		// 创建文件缓冲管理器
-		file_buffer = std::make_shared<FileBufferManager>(5000); // 允许5000个文件缓存
-
-		// 如果没有指定线程数，使用系统逻辑CPU数量的一半
-		if (this->options->numThreads <= 0) {
-			this->options->numThreads = std::max(1, static_cast<int>(std::thread::hardware_concurrency() / 2));
+		// 初始化地理变换参数
+		for (int i = 0; i < 6; ++i) {
+			geo_transform[i] = 0.0;
 		}
+
+		// 创建内存管理器和文件缓冲管理器
+		memory_allocator = std::make_shared<JemallocAllocator>();
+		file_buffer = std::make_shared<FileBufferManager>();
+
+		// 创建坐标系统对象
+		coord_system = std::make_unique<CoordinateSystem>();
 	}
 
 	SlippyMapTiler::~SlippyMapTiler()
@@ -434,28 +432,24 @@ namespace WT{
 		}
 
 		// 计算影像的地理范围
-		double corners[8] = {
-			0, 0,                   // 左上角
-			img_width, 0,           // 右上角
-			img_width, img_height,  // 右下角
-			0, img_height           // 左下角
-		};
+		double xBounds[4] = { 0,img_width,img_width,0 };
+		double yBounds[4] = { 0,0,img_height,img_height };
 
 		// 应用地理变换
 		for (int i = 0; i < 4; ++i) {
-			double x = corners[i * 2];
-			double y = corners[i * 2 + 1];
+			double x = xBounds[i];
+			double y = yBounds[i];
 
 			// 像素坐标转为地理坐标
 			double geo_x = geo_transform[0] + x * geo_transform[1] + y * geo_transform[2];
 			double geo_y = geo_transform[3] + x * geo_transform[4] + y * geo_transform[5];
 
-			corners[i * 2] = geo_x;
-			corners[i * 2 + 1] = geo_y;
+			xBounds[i] = geo_x;
+			yBounds[i] = geo_y;
 		}
 
 		// 转换到WGS84坐标系
-		coord_system->transform_points(corners, 4);
+		coord_system->transform_points(xBounds,yBounds, 4);
 
 		// 找出地理范围
 		min_x = std::numeric_limits<double>::max();
@@ -464,10 +458,10 @@ namespace WT{
 		max_y = std::numeric_limits<double>::lowest();
 
 		for (int i = 0; i < 4; ++i) {
-			min_x = std::min(min_x, corners[i * 2]);
-			max_x = std::max(max_x, corners[i * 2]);
-			min_y = std::min(min_y, corners[i * 2 + 1]);
-			max_y = std::max(max_y, corners[i * 2 + 1]);
+			min_x = std::min(min_x, yBounds[i]);
+			max_x = std::max(max_x, yBounds[i]);
+			min_y = std::min(min_y, xBounds[i]);
+			max_y = std::max(max_y, xBounds[i]);
 		}
 
 		// 确保范围在有效的经纬度范围内
