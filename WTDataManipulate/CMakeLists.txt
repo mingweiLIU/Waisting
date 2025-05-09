@@ -32,13 +32,15 @@ set(includeDirs
     # ${GeographicLib_INCLUDE_DIRS}
 )
 
+
 add_library(${PROJECT_NAME} STATIC ${SourceFileNames} ${HeaderFileNames})
 target_include_directories(${PROJECT_NAME}  PUBLIC ${includeDirs} ${HeaderFileNames} )
 target_link_libraries(${PROJECT_NAME} PRIVATE 
     ${GDAL_LIBRARY}
     TBB::tbb
     glm::glm
-    ${Jemolloc_ROOT}/lib/jemalloc_s.lib
+    ${Jemolloc_ROOT}/lib/jemalloc_sd.lib
+    WTFrame
 )
 
 include(GNUInstallDirs)

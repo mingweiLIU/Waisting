@@ -1,11 +1,4 @@
 #pragma once
-// TBB¿â
-#include "tbb/task_group.h"
-#include "tbb/parallel_for.h"
-#include "tbb/blocked_range2d.h"
-#include "tbb/global_control.h"
-#include "tbb/concurrent_queue.h"
-
 // jemallocÍ·ÎÄ¼þ
 #include "jemalloc/jemalloc.h"
 

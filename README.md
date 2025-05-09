@@ -9,9 +9,9 @@
 
 简介
 ------
-Waisting是一个以OSGEarth为核心的三维GIS数据处理和场景编辑工具，其采用Qt6 QML作为UI框架，采用CMake作为编译工具
+Waisting是一个闲得没事边学边整的三维GIS数据处理和场景编辑工具，其采用Qt6 QML作为UI框架，采用CMake作为编译工具
 
-# 功能设计
+# 功能计划
 ## OSGB数据处理
 - 裁剪
 - 整平
@@ -24,6 +24,10 @@ Waisting是一个以OSGEarth为核心的三维GIS数据处理和场景编辑工�
 - 全球网格剖分
 - 粗糙层生成
 - 与地形融合
+## 3D Gauss 
+- Colmap sfm
+- 3D gauss 模型生成
+- 3D gauss 模型查看
 ## 数据处理
 - obj模型转3DTiles
 - shp转3DTiles

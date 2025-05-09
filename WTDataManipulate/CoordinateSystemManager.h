@@ -1,4 +1,11 @@
 #pragma once
+#include <sstream>
+// GDAL¿â
+#include <gdal_priv.h>
+#include <ogr_spatialref.h>
+#include <cpl_conv.h>
+#include <cpl_string.h>
+#include <cpl_vsi.h>
 
 namespace WT {
     /**

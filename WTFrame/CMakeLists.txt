@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.5)
 project (WTFrame VERSION 1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 
+
 WTGetTypeFilesRelative(
     FileType "*.h"
     OutRelative HeaderFileNames
@@ -26,7 +27,9 @@ set(includeDirs
     # ${osgEarth_INCLUDE_DIRS}
     ${TBB_INCLUDE_DIRS}
     ${GLM_INCLUDE_DIRS}
-    ${SPDLOG_Inc}
+    ${SPDLOG_Inc}    
+    ${Jemolloc_ROOT}/include
+    ${Jemolloc_ROOT}/include/msvc_compat
     # ${GeographicLib_INCLUDE_DIRS}
 )
 
@@ -36,6 +39,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ${GDAL_LIBRARY}
     TBB::tbb
     glm::glm
+    ${Jemolloc_ROOT}/lib/jemalloc_sd.lib
 )
 
 include(GNUInstallDirs)

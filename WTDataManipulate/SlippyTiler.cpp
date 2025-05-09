@@ -8,7 +8,7 @@ namespace WT{
 		GDALAllRegister();
 
 		// 创建内存池
-		memory_allocator = std::make_shared<JemallocAllocator>(1024 * 1024 * 10); // 10MB 块大小
+		memory_allocator = std::make_shared<JemallocAllocator>(); 
 
 		// 创建文件缓冲管理器
 		file_buffer = std::make_shared<FileBufferManager>(5000); // 允许5000个文件缓存
