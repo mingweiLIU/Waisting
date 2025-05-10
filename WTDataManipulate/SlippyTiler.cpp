@@ -10,8 +10,8 @@ namespace WT{
 		}
 
 		// 创建内存管理器和文件缓冲管理器
-		memory_allocator = std::make_shared<JemallocAllocator>();
-		file_buffer = std::make_shared<FileBufferManager>();
+		//memory_allocator = std::make_shared<JemallocAllocator>();
+		//file_buffer = std::make_shared<FileBufferManager>();
 
 		// 创建坐标系统对象
 		coord_system = std::make_unique<CoordinateSystem>();
@@ -22,7 +22,9 @@ namespace WT{
 		// 确保释放资源
 		if (dataset) {
 			GDALClose(dataset);
+			dataset = nullptr;
 		}
+		GDALDestroyDriverManager();
 	}
 
 	void SlippyMapTiler::setOptions(std::shared_ptr<IDataOptions> options) {
@@ -41,12 +43,12 @@ namespace WT{
 	void SlippyMapTiler::get_tile_range(int zoom, int& min_tile_x, int& min_tile_y, int& max_tile_x, int& max_tile_y)
 	{
 		// 计算最小瓦片坐标
-		min_tile_x = static_cast<int>(floor((min_x + 180.0) / 360.0 * (1 << zoom)));
-		min_tile_y = static_cast<int>(floor((1.0 - log(tan(min_y * M_PI / 180.0) + 1.0 / cos(min_y * M_PI / 180.0)) / M_PI) / 2.0 * (1 << zoom)));
+		min_tile_x = long2tilex(min_x, zoom);// static_cast<int>(floor((min_x + 180.0) / 360.0 * (1 << zoom)));
+		min_tile_y = lat2tiley(min_y,zoom);// static_cast<int>(floor((1.0 - log(tan(min_y * M_PI / 180.0) + 1.0 / cos(min_y * M_PI / 180.0)) / M_PI) / 2.0 * (1 << zoom)));
 
 		// 计算最大瓦片坐标
-		max_tile_x = static_cast<int>(floor((max_x + 180.0) / 360.0 * (1 << zoom)));
-		max_tile_y = static_cast<int>(floor((1.0 - log(tan(max_y * M_PI / 180.0) + 1.0 / cos(max_y * M_PI / 180.0)) / M_PI) / 2.0 * (1 << zoom)));
+		max_tile_x = long2tilex(max_x, zoom);//static_cast<int>(floor((max_x + 180.0) / 360.0 * (1 << zoom)));
+		max_tile_y = lat2tiley(max_y, zoom);//static_cast<int>(floor((1.0 - log(tan(max_y * M_PI / 180.0) + 1.0 / cos(max_y * M_PI / 180.0)) / M_PI) / 2.0 * (1 << zoom)));
 
 		// 确保y坐标的大小关系正确（在切片坐标系中，y值从上到下增加）
 		if (min_tile_y > max_tile_y) {
@@ -57,11 +59,11 @@ namespace WT{
 	void SlippyMapTiler::get_tile_geo_bounds(int zoom, int tile_x, int tile_y, double& tile_min_x, double& tile_min_y, double& tile_max_x, double& tile_max_y)
 	{
 		// 瓦片经纬度范围
-		tile_min_x = tile_x * 360.0 / (1 << zoom) - 180.0;
-		tile_max_x = (tile_x + 1) * 360.0 / (1 << zoom) - 180.0;
+		tile_min_x = tilex2long(tile_x,zoom);
+		tile_max_x = tilex2long(tile_x+1, zoom);
 
-		tile_max_y = atan(sinh(M_PI * (1 - 2 * tile_y / (1 << zoom)))) * 180.0 / M_PI;
-		tile_min_y = atan(sinh(M_PI * (1 - 2 * (tile_y + 1) / (1 << zoom)))) * 180.0 / M_PI;
+		tile_max_y = tiley2lat(tile_y,zoom);
+		tile_min_y = tiley2lat(tile_y+1, zoom);
 	}
 
 	bool SlippyMapTiler::geo_to_pixel(const double& geo_x, const double& geo_y, int& pixel_x, int& pixel_y)
@@ -77,7 +79,7 @@ namespace WT{
 				return false;
 			}
 
-			if (!OCTTransform(inv_transform, 1, &x, &y, nullptr)) {
+			if (!OCTTransform(inv_transform, 1,  &y, &x, nullptr)) {
 				OCTDestroyCoordinateTransformation(inv_transform);
 				return false;
 			}
@@ -86,23 +88,56 @@ namespace WT{
 		}
 
 		// 使用地理变换参数将坐标转换为像素坐标
-		double det = geo_transform[1] * geo_transform[5] - geo_transform[2] * geo_transform[4];
-		if (fabs(det) < 1e-10) {
-			return false; // 无法转换
-		}
+		//double det = geo_transform[1] * geo_transform[5] - geo_transform[2] * geo_transform[4];
+		//if (fabs(det) < 1e-10) {
+		//	return false; // 无法转换
+		//}
 
-		double inv_det = 1.0 / det;
+		//double inv_det = 1.0 / det;
 
-		double dx = x - geo_transform[0];
-		double dy = y - geo_transform[3];
+		//double dx = x - geo_transform[0];
+		//double dy = y - geo_transform[3];
 
-		pixel_x = static_cast<int>(std::round((dx * geo_transform[5] - dy * geo_transform[2]) * inv_det));
-		pixel_y = static_cast<int>(std::round((dy * geo_transform[1] - dx * geo_transform[4]) * inv_det));
+		//pixel_x = static_cast<int>(std::round((dx * geo_transform[5] - dy * geo_transform[2]) * inv_det));
+		//pixel_y = static_cast<int>(std::round((dy * geo_transform[1] - dx * geo_transform[4]) * inv_det));
+
+
+		pixel_x = int((y - geo_transform[0]) / geo_transform[1]);
+
+		pixel_y = int((x - geo_transform[3]) / geo_transform[5]);
 
 		return true;
 	}
 
-	bool SlippyMapTiler::generate_tile(int zoom, int tile_x, int tile_y)
+	int SlippyMapTiler::long2tilex(double lon, int z)
+	{
+		return (int)(floor((lon + 180.0) / 360.0 * (1 << z)));
+	}
+
+	double SlippyMapTiler::tilex2long(int x, int z)
+	{
+		return x / (double)(1 << z) * 360.0 - 180;
+	}
+
+	int SlippyMapTiler::lat2tiley(double lat, int z)
+	{
+		double latrad = lat * M_PI / 180.0;  // 转换为弧度
+		return (int)(floor((1.0 - asinh(tan(latrad)) / M_PI) / 2.0 * (1 << z)));
+	}
+
+	double SlippyMapTiler::tiley2lat(int y, int z)
+	{
+		double n = M_PI - 2.0 * M_PI * y / (double)(1 << z);
+		return 180.0 / M_PI * atan(0.5 * (exp(n) - exp(-n)));  // 反双曲正切计算
+	}
+
+	// 创建一个线程本地的GDAL数据集
+	GDALDatasetH SlippyMapTiler::create_local_dataset() {
+		std::lock_guard<std::mutex> lock(gdal_mutex);
+		return GDALOpen(options->inputFile.c_str(), GA_ReadOnly);
+	}
+
+	bool SlippyMapTiler::generate_tile(int zoom, int tile_x, int tile_y, GDALDatasetH local_dataset)
 	{
 		try {
 			// 计算瓦片的地理范围（在WGS84坐标系下）
@@ -111,6 +146,14 @@ namespace WT{
 
 			// 创建瓦片路径
 			fs::path x_dir = fs::path(options->outputDir) / std::to_string(zoom) / std::to_string(tile_x);
+
+			// 确保x目录存在
+			{
+				std::lock_guard<std::mutex> lock(fs_mutex);
+				if (!fs::exists(x_dir)) {
+					fs::create_directories(x_dir);
+				}
+			}
 			std::string tile_path = (x_dir / (std::to_string(tile_y) + "." + options->outputFormat)).string();
 
 			// 计算瓦片在原始影像中的像素范围
@@ -147,109 +190,104 @@ namespace WT{
 			size_t buffer_size = width * height * bands * pixel_size;
 
 			// 使用jemalloc分配内存
-			void* pData = memory_allocator->allocate(buffer_size);
+			//void* pData = memory_allocator->allocate(buffer_size);
+			//if (!pData) {
+			//	std::cerr << "内存分配失败!" << std::endl;
+			//	return false;
+			//}
+			
+			void* pData = malloc(buffer_size); 
 			if (!pData) {
 				std::cerr << "内存分配失败!" << std::endl;
 				return false;
 			}
 
-			// 读取数据
-			CPLErr err = GDALDatasetRasterIO(
-				dataset, GF_Read,
-				src_min_x, src_min_y, width, height,
-				pData, width, height,
-				data_type, bands, nullptr,
-				0, 0, 0
-			);
+			// 读取数据 - 使用线程本地的dataset
+			CPLErr err;
+			{
+				std::lock_guard<std::mutex> lock(gdal_mutex);
+				err = GDALDatasetRasterIO(
+					local_dataset, GF_Read,
+					src_min_x, src_min_y, width, height,
+					pData, width, height,
+					data_type, bands, nullptr,
+					0, 0, 0
+				);
+			}
 
 			if (err != CE_None) {
-				memory_allocator->deallocate(pData);
+				free(pData);
 				return false;
 			}
 
-			// 创建目标瓦片数据集
-			GDALDriverH memDriver = GDALGetDriverByName("MEM");
-			GDALDatasetH memDS = GDALCreate(memDriver, "", options->tileSize, options->tileSize, bands, data_type, nullptr);
+			// 创建输出驱动和目标数据集
+			GDALDriver* outputDriver = nullptr;
+			GDALDatasetH poDstDS = nullptr;
 
-			if (!memDS) {
-				memory_allocator->deallocate(pData);
-				return false;
+			{
+				std::lock_guard<std::mutex> lock(gdal_mutex);
+				outputDriver = GetGDALDriverManager()->GetDriverByName(options->outputFormat.c_str());
+				if (!outputDriver) {
+					free(pData);
+					return false;
+				}
+
+				poDstDS = outputDriver->Create(tile_path.c_str(), options->tileSize, options->tileSize, bands, data_type, nullptr);
+				if (!poDstDS) {
+					std::cerr << "错误: 文件创建失败 - " << CPLGetLastErrorMsg() << std::endl;
+
+					// 检查具体错误
+					if (CPLGetLastErrorType() == CE_Failure) {
+						std::cerr << "详细错误: " << CPLGetLastErrorMsg() << std::endl;
+					}
+					free(pData);
+					return false;
+				}
+
+				// 写入数据到数据集，需要重采样
+				err = GDALDatasetRasterIO(
+					poDstDS, GF_Write,
+					0, 0, options->tileSize, options->tileSize,
+					pData, width, height,
+					data_type, bands, nullptr,
+					0, 0, 0
+				);
 			}
 
-			// 写入数据到内存数据集，需要重采样
-			err = GDALDatasetRasterIO(
-				memDS, GF_Write,
-				0, 0, options->tileSize, options->tileSize,
-				pData, width, height,
-				data_type, bands, nullptr,
-				0, 0, 0
-			);
-
-			// 释放原始数据内存
-			memory_allocator->deallocate(pData);
+			free(pData);
 
 			if (err != CE_None) {
-				GDALClose(memDS);
+				GDALClose(poDstDS);
 				return false;
 			}
-
-			// 创建输出驱动
-			GDALDriverH outputDriver = GDALGetDriverByName(options->outputFormat.c_str());
-			if (!outputDriver) {
-				GDALClose(memDS);
-				return false;
-			}
-
-			// 创建内存文件
-			CPLStringList optionsList;
-			if (options->outputFormat == "JPEG") {
-				optionsList.AddString("QUALITY=90");
-			}
-			else if (options->outputFormat == "PNG") {
-				optionsList.AddString("COMPRESS=DEFLATE");
-			}
-			else if (options->outputFormat == "WEBP") {
-				optionsList.AddString("QUALITY=80");
-			}
-
-			// 使用内存文件系统创建临时文件
-			std::string vsimem_filename = "/vsimem/temp_tile_" + std::to_string(zoom) + "_" +
-				std::to_string(tile_x) + "_" + std::to_string(tile_y);
-
-			GDALDatasetH outDS = GDALCreateCopy(
-				outputDriver, vsimem_filename.c_str(),
-				memDS, FALSE, optionsList.List(), nullptr, nullptr
-			);
-
+			
 			// 关闭数据集
-			GDALClose(memDS);
+			GDALClose(poDstDS);
 
-			if (!outDS) {
-				VSIUnlink(vsimem_filename.c_str());
-				return false;
-			}
+			//if (data && size > 0) {
+			//	// 将内存数据移动到vector中
+			//	std::vector<unsigned char> buffer_data(data, data + size);
+			//	CPLFree(data); // 释放GDAL分配的内存
 
-			GDALClose(outDS);
+			//	// 将文件加入写入队列
+			//	file_buffer->write_file(tile_path, std::move(buffer_data));
+			//	return true;
+			//}
 
-			// 从内存文件系统读取数据
-			vsi_l_offset size = 0;
-			unsigned char* data = VSIGetMemFileBuffer(vsimem_filename.c_str(), &size, TRUE);
-
-			if (data && size > 0) {
-				// 将内存数据移动到vector中
-				std::vector<unsigned char> buffer_data(data, data + size);
-				CPLFree(data); // 释放GDAL分配的内存
-
-				// 将文件加入写入队列
-				file_buffer->write_file(tile_path, std::move(buffer_data));
-				return true;
-			}
-
-			return false;
+			return true;
 		}
 		catch (const std::exception& e) {
 			std::cerr << "瓦片生成异常: " << e.what() << std::endl;
 			return false;
+		}
+	}
+
+	// 增加一个线程安全的进度更新函数
+	void SlippyMapTiler::update_progress(int zoom, int tile_x, int tile_y, int total_tiles, std::shared_ptr<IProgressInfo> progressInfo) {
+		int current = ++total_tiles_processed;
+		if (current % 50 == 0 || current == total_tiles) {
+			std::lock_guard<std::mutex> lock(progress_mutex);
+			progressInfo->showProgress(current, std::to_string(zoom) + "/" + std::to_string(tile_x) + "/" + std::to_string(tile_y), "数据切片");
 		}
 	}
 
@@ -276,25 +314,47 @@ namespace WT{
 		// 重置计数器
 		total_tiles_processed = 0;
 
+		// 使用线程本地存储处理Dataset
+		struct ThreadLocalData {
+			GDALDatasetH local_dataset;
+			ThreadLocalData() : local_dataset(nullptr) {}
+			~ThreadLocalData() {
+				if (local_dataset) {
+					GDALClose(local_dataset);
+				}
+			}
+		};
+
+		tbb::enumerable_thread_specific<ThreadLocalData> tls_data;
+
 		// 使用TBB并行处理
 		tbb::parallel_for(
 			tbb::blocked_range2d<int, int>(min_tile_y, max_tile_y + 1, min_tile_x, max_tile_x + 1),
-			[this, zoom, total_tiles,&progressInfo](const tbb::blocked_range2d<int, int>& r) {
+			[this, zoom, total_tiles, &progressInfo, &tls_data](const tbb::blocked_range2d<int, int>& r) {
+				// 获取线程本地存储
+				ThreadLocalData& local_data = tls_data.local();
+
+				// 懒初始化本地数据集
+				if (!local_data.local_dataset) {
+					local_data.local_dataset = this->create_local_dataset();
+					if (!local_data.local_dataset) {
+						std::cerr << "无法创建线程本地数据集" << std::endl;
+						return;
+					}
+				}
+
 				for (int tile_y = r.rows().begin(); tile_y != r.rows().end(); ++tile_y) {
 					for (int tile_x = r.cols().begin(); tile_x != r.cols().end(); ++tile_x) {
-						// 生成单个瓦片
-						if (generate_tile(zoom, tile_x, tile_y)) {
+						// 使用线程本地数据集生成瓦片
+						if (generate_tile(zoom, tile_x, tile_y, local_data.local_dataset)) {
 							// 更新进度
-							int processed = ++total_tiles_processed;
-							if (processed % 50 == 0 || processed == total_tiles) {
-								// 显示进度
-								progressInfo->showProgress(processed, std::to_string(zoom) + "/" + std::to_string(tile_x) + "/" + std::to_string(tile_y), "数据切片");
-							}
+							update_progress(zoom, tile_x, tile_y, total_tiles, progressInfo);
 						}
 					}
 				}
 			}
 		);
+
 
 		std::cout << std::endl;
 	}
@@ -322,62 +382,7 @@ namespace WT{
 
 		// 使用VSI文件系统
 		if (options->useMemoryMapping) {
-			delete poOpenInfo;
-			std::string virtual_file = "/vsimem/input_" + std::to_string(std::time(nullptr));
-			std::cout << "使用内存映射方式加载文件: " << options->inputFile << std::endl;
-
-			// 使用GDAL的VSI文件系统进行文件读取，而非系统调用
-			// 这种方法跨平台，不依赖于特定操作系统的mmap系统调用
-
-			// 打开文件以读取
-			VSILFILE* fp = VSIFOpenL(options->inputFile.c_str(), "rb");
-			if (fp == nullptr) {
-				std::cerr << "无法打开输入文件: " << options->inputFile << std::endl;
-				return false;
-			}
-
-			// 获取文件大小
-			VSIFSeekL(fp, 0, SEEK_END);
-			size_t file_size = static_cast<size_t>(VSIFTellL(fp));
-			VSIFSeekL(fp, 0, SEEK_SET);
-
-			// 分配内存
-			GByte* buffer = static_cast<GByte*>(VSIMalloc(file_size));
-			if (buffer == nullptr) {
-				std::cerr << "内存分配失败: " << options->inputFile << std::endl;
-				VSIFCloseL(fp);
-				return false;
-			}
-
-			// 读取整个文件到内存
-			if (VSIFReadL(buffer, 1, file_size, fp) != file_size) {
-				std::cerr << "读取文件到内存失败: " << options->inputFile << std::endl;
-				VSIFree(buffer);
-				VSIFCloseL(fp);
-				return false;
-			}
-
-			// 关闭原始文件
-			VSIFCloseL(fp);
-
-			// 创建GDAL虚拟文件
-			VSILFILE* vsi_mem_fp = VSIFileFromMemBuffer(virtual_file.c_str(), buffer, file_size, TRUE);
-
-			if (vsi_mem_fp == nullptr) {
-				std::cerr << "创建内存文件失败: " << options->inputFile << std::endl;
-				VSIFree(buffer);
-				return false;
-			}
-
-			// 现在使用虚拟文件打开数据集
-			dataset = GDALOpen(virtual_file.c_str(), GA_ReadOnly);
-
-			if (dataset == nullptr) {
-				std::cerr << "打开数据集失败: " << virtual_file << std::endl;
-				// 注意：不要关闭vsi_mem_fp，因为VSIFileFromMemBuffer已经将其管理起来
-				// 当我们不再需要buffer时，会被GDAL清理
-				return false;
-			}
+			
 		}
 		else {
 			// 直接打开文件
@@ -479,7 +484,6 @@ namespace WT{
 
 	bool SlippyMapTiler::process(std::shared_ptr<IProgressInfo> progressInfo)
 	{
-
 		if (!dataset) {
 			std::cerr << "数据集未初始化，请先调用initialize()" << std::endl;
 			return false;
@@ -493,7 +497,7 @@ namespace WT{
 			}
 		}
 
-		//计算所有的瓦片数 方便进度条的处理
+		// 计算所有的瓦片数 方便进度条的处理
 		int total_tiles = 0;
 		for (int zoom = options->minLevel; zoom <= options->maxLevel; zoom++) {
 			// 计算该级别的瓦片范围
@@ -505,83 +509,24 @@ namespace WT{
 		}
 		progressInfo->setTotalNum(total_tiles);
 
-
 		// 记录开始时间
 		start_time = std::chrono::high_resolution_clock::now();
 
 		// 处理每个缩放级别
 		for (int zoom = options->minLevel; zoom <= options->maxLevel; ++zoom) {
-			process_zoom_level(zoom,progressInfo);
+			process_zoom_level(zoom, progressInfo);
 		}
 
 		// 等待所有文件写入完成
 		std::cout << "等待文件写入完成..." << std::endl;
-		file_buffer->wait_completion();
 
 		// 计算总处理时间
 		auto end_time = std::chrono::high_resolution_clock::now();
 		auto duration = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count();
 
 		// 输出统计信息
-		size_t total_bytes = file_buffer->get_bytes_written();
-		size_t total_files = file_buffer->get_files_written();
-
 		std::cout << "\n切片完成!" << std::endl;
-		std::cout << "总瓦片数: " << total_files << std::endl;
-		std::cout << "总数据量: " << (total_bytes / (1024.0 * 1024.0)) << " MB" << std::endl;
 		std::cout << "总处理时间: " << duration << " 秒" << std::endl;
-		if (duration > 0) {
-			std::cout << "平均速度: " << (total_files / duration) << " 瓦片/秒, "
-				<< (total_bytes / (1024.0 * 1024.0) / duration) << " MB/秒" << std::endl;
-		}
-
-		return true;
-
-
-
-		if (!dataset) {
-			std::cerr << "数据集未初始化" << std::endl;
-			return false;
-		}
-
-		// 设置TBB线程数量
-		tbb::global_control global_limit(tbb::global_control::max_allowed_parallelism, options->numThreads);
-
-		
-
-		// 处理所有缩放级别
-		for (int zoom = options->minLevel; zoom <= options->maxLevel; zoom++) {
-			std::cout << "处理缩放级别: " << zoom << std::endl;
-
-			// 创建该缩放级别的目录
-			create_directories(zoom);
-
-			// 计算该级别的瓦片范围
-			int min_tile_x, min_tile_y, max_tile_x, max_tile_y;
-			get_tile_range(zoom, min_tile_x, min_tile_y, max_tile_x, max_tile_y);
-
-			std::cout << "  瓦片范围: X(" << min_tile_x << "-" << max_tile_x
-				<< "), Y(" << min_tile_y << "-" << max_tile_y << ")" << std::endl;
-			std::atomic<int> processed_tiles(0);
-
-			// 使用TBB并行处理
-			tbb::parallel_for(
-				tbb::blocked_range2d<int, int>(min_tile_y, max_tile_y + 1, min_tile_x, max_tile_x + 1),
-				[&](const tbb::blocked_range2d<int, int>& r) {
-					for (int y = r.rows().begin(); y != r.rows().end(); ++y) {
-						for (int x = r.cols().begin(); x != r.cols().end(); ++x) {
-							if (generate_tile(zoom, x, y)) {
-								processed_tiles++;
-							}
-
-							
-						}
-					}
-				}
-			);
-
-			progressInfo->finished();
-		}
 
 		return true;
 	}

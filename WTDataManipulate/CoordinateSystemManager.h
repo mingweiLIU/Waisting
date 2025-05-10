@@ -2,6 +2,7 @@
 #include <sstream>
 #include <string>
 #include <iostream>
+#include <fstream> 
 // GDAL库
 #include <gdal_priv.h>
 #include <ogr_spatialref.h>
@@ -86,6 +87,10 @@ namespace WT {
             std::string projPath = (exeFolder /"proj9"/"share").string();
 			const char* proj_path[] = { projPath.c_str(), nullptr };
 			OSRSetPROJSearchPaths(proj_path);
+            // 在初始化时设置最优参数
+            //CPLSetConfigOption("GDAL_PAM_ENABLED", "NO");  // 禁用辅助文件
+            //CPLSetConfigOption("PNG_WRITE_TO_MEMORY", "YES"); // 启用内存优化
+            //CPLSetConfigOption("CPL_VSIL_DELAYED_RANGE_WRITE", "YES"); // 延迟写入
         }
 
     public:

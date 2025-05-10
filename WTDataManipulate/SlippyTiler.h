@@ -1,6 +1,8 @@
 #pragma once
 // 切片生成类
 #include <filesystem>
+#include <atomic>
+#include <mutex>
 // GDAL库
 #include "gdal_priv.h"
 #include "ogr_spatialref.h"
@@ -9,14 +11,13 @@
 #include "cpl_vsi.h"
 
 // TBB库
-#include "tbb/task_group.h"
-#include "tbb/parallel_for.h"
-#include "tbb/blocked_range2d.h"
-#include "tbb/global_control.h"
-#include "tbb/concurrent_queue.h"
+#include <tbb/parallel_for.h>
+#include <tbb/blocked_range2d.h>
+#include <tbb/global_control.h>
+#include <tbb/enumerable_thread_specific.h>
 
-#include "MemoryPool.h"
-#include "FileBufferManager.h"
+//#include "MemoryPool.h"
+//#include "FileBufferManager.h"
 #include "IDataM.h"
 #include "CoordinateSystemManager.h"
 
@@ -27,13 +28,13 @@ class SlippyMapTilerOptions :public IDataOptions {
 public:
 	std::string inputFile="";//输入的文件
 	std::string outputDir="";//输出路径
-	int minLevel = 0;//最小切片级数
+	int minLevel = 15;//最小切片级数
 	int maxLevel = 15;//最大切片级数
 	int tileSize = 255;//瓦片大小
-	bool useVRT = true;//是否使用VRT
-	bool useMemoryMapping = true;//是否启用文件映射
-	std::string outputFormat = "png";//输出瓦片后缀
-	int numThreads = 5;//使用的线程数
+	bool useVRT = false;//是否使用VRT
+	bool useMemoryMapping = false;//是否启用文件映射
+	std::string outputFormat = "GTiff";//输出瓦片后缀
+	int numThreads = 1;//使用的线程数
 	std::string prjFilePath = "";//外部prj文件路径 可以为空
 	std::string wktString = "";//外部wkt字符串 可以为空
 };
@@ -70,12 +71,17 @@ private:
 	// 坐标系统和转换
 	std::unique_ptr<CoordinateSystem> coord_system;
 
-	std::shared_ptr<JemallocAllocator> memory_allocator;
-	std::shared_ptr<FileBufferManager> file_buffer;
+	/*std::shared_ptr<JemallocAllocator> memory_allocator;
+	std::shared_ptr<FileBufferManager> file_buffer;*/
 
 	// 统计信息
 	std::atomic<int> total_tiles_processed;
 	std::chrono::time_point<std::chrono::high_resolution_clock> start_time;
+
+	// 多线程同步用的互斥锁
+	std::mutex gdal_mutex;
+	std::mutex progress_mutex;
+	std::mutex fs_mutex;
 
 	//// 使用非锁定的缓存来存储常用的变量
 	//struct {
@@ -124,12 +130,55 @@ private:
 	* @param tile_y 瓦片Y坐标
 	* @return 是否成功生成瓦片
 	*/
-	bool generate_tile(int zoom, int tile_x, int tile_y);
+	bool generate_tile(int zoom, int tile_x, int tile_y, GDALDatasetH local_dataset);
 
 	/**
 	* @brief 处理指定缩放级别的所有瓦片
 	* @param zoom 缩放级别
 	*/
 	void process_zoom_level(int zoom,std::shared_ptr<IProgressInfo> progressInfo);
+
+
+	/**
+	 * 将经度转换为瓦片坐标 X 值（基于 Web Mercator 投影）
+	 *
+	 * @param lon 经度（单位：度，范围 -180 到 180）
+	 * @param z 缩放级别（通常 0-20，取决于地图服务）
+	 * @return 瓦片 X 坐标（从 0 开始）
+	 */
+	int long2tilex(double lon, int z);
+
+	/**
+	 * 将纬度转换为瓦片坐标 Y 值（基于 Web Mercator 投影）
+	 *
+	 * @param lat 纬度（单位：度，范围 -85.0511 到 85.0511，超出会被投影截断）
+	 * @param z 缩放级别（通常 0-20，取决于地图服务）
+	 * @return 瓦片 Y 坐标（从 0 开始）
+	 */
+	int lat2tiley(double lat, int z);
+
+	/**
+	 * 将瓦片 X 坐标转换回经度（基于 Web Mercator 投影）
+	 *
+	 * @param x 瓦片 X 坐标（从 0 开始）
+	 * @param z 缩放级别（必须与瓦片坐标生成时一致）
+	 * @return 经度（单位：度，范围 -180 到 180）
+	 */
+	double tilex2long(int x, int z);
+
+	/**
+	 * 将瓦片 Y 坐标转换回纬度（基于 Web Mercator 投影）
+	 *
+	 * @param y 瓦片 Y 坐标（从 0 开始）
+	 * @param z 缩放级别（必须与瓦片坐标生成时一致）
+	 * @return 纬度（单位：度，范围 -85.0511 到 85.0511）
+	 */
+	double tiley2lat(int y, int z);
+	
+	// 创建一个线程本地的GDAL数据集
+	GDALDatasetH create_local_dataset();
+
+	// 增加一个线程安全的进度更新函数
+	void SlippyMapTiler::update_progress(int zoom, int tile_x, int tile_y, int total_tiles, std::shared_ptr<IProgressInfo> progressInfo);
 };
 }
