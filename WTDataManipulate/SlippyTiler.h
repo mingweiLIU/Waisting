@@ -16,8 +16,7 @@
 #include <tbb/global_control.h>
 #include <tbb/enumerable_thread_specific.h>
 
-//#include "MemoryPool.h"
-//#include "FileBufferManager.h"
+#include "FileBatchOutput.h"
 #include "IDataM.h"
 #include "CoordinateSystemManager.h"
 
@@ -61,7 +60,7 @@ private:
 private:
 	//处理所使用的Options
 	std::shared_ptr<SlippyMapTilerOptions> options;
-	GDALDatasetH dataset;
+	GDALDatasetH dataset=nullptr;
 	double geo_transform[6];
 	int img_width, img_height;
 	double min_x, min_y, max_x, max_y;
@@ -73,6 +72,7 @@ private:
 
 	/*std::shared_ptr<JemallocAllocator> memory_allocator;
 	std::shared_ptr<FileBufferManager> file_buffer;*/
+	std::shared_ptr<FileBatchOutput> fileBatchOutputer;
 
 	// 统计信息
 	std::atomic<int> total_tiles_processed;

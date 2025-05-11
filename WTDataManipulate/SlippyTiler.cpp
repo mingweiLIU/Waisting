@@ -1,5 +1,6 @@
 #include "SlippyTiler.h"
 
+#include "ImageFileIOAdapter.h"
 
 namespace WT{
 	SlippyMapTiler::SlippyMapTiler(std::shared_ptr<SlippyMapTilerOptions> options) {
@@ -12,6 +13,9 @@ namespace WT{
 		// 创建内存管理器和文件缓冲管理器
 		//memory_allocator = std::make_shared<JemallocAllocator>();
 		//file_buffer = std::make_shared<FileBufferManager>();
+		fileBatchOutputer = std::make_shared<FileBatchOutput>();
+		std::unique_ptr<ImageFileIOAdapter> imageIOAdatper = std::make_unique<ImageFileIOAdapter>(options->outputDir);
+		fileBatchOutputer->setAdapter(std::move(imageIOAdatper));
 
 		// 创建坐标系统对象
 		coord_system = std::make_unique<CoordinateSystem>();
@@ -88,22 +92,7 @@ namespace WT{
 		}
 
 		// 使用地理变换参数将坐标转换为像素坐标
-		//double det = geo_transform[1] * geo_transform[5] - geo_transform[2] * geo_transform[4];
-		//if (fabs(det) < 1e-10) {
-		//	return false; // 无法转换
-		//}
-
-		//double inv_det = 1.0 / det;
-
-		//double dx = x - geo_transform[0];
-		//double dy = y - geo_transform[3];
-
-		//pixel_x = static_cast<int>(std::round((dx * geo_transform[5] - dy * geo_transform[2]) * inv_det));
-		//pixel_y = static_cast<int>(std::round((dy * geo_transform[1] - dx * geo_transform[4]) * inv_det));
-
-
 		pixel_x = int((y - geo_transform[0]) / geo_transform[1]);
-
 		pixel_y = int((x - geo_transform[3]) / geo_transform[5]);
 
 		return true;
@@ -220,59 +209,52 @@ namespace WT{
 				return false;
 			}
 
-			// 创建输出驱动和目标数据集
-			GDALDriver* outputDriver = nullptr;
-			GDALDatasetH poDstDS = nullptr;
+			//// 创建输出驱动和目标数据集
+			//GDALDriver* outputDriver = nullptr;
+			//GDALDatasetH poDstDS = nullptr;
+			//{
+			//	std::lock_guard<std::mutex> lock(gdal_mutex);
+			//	outputDriver = GetGDALDriverManager()->GetDriverByName(options->outputFormat.c_str());
+			//	if (!outputDriver) {
+			//		free(pData);
+			//		return false;
+			//	}
 
-			{
-				std::lock_guard<std::mutex> lock(gdal_mutex);
-				outputDriver = GetGDALDriverManager()->GetDriverByName(options->outputFormat.c_str());
-				if (!outputDriver) {
-					free(pData);
-					return false;
-				}
+			//	poDstDS = outputDriver->Create(tile_path.c_str(), options->tileSize, options->tileSize, bands, data_type, nullptr);
+			//	if (!poDstDS) {
+			//		std::cerr << "错误: 文件创建失败 - " << CPLGetLastErrorMsg() << std::endl;
 
-				poDstDS = outputDriver->Create(tile_path.c_str(), options->tileSize, options->tileSize, bands, data_type, nullptr);
-				if (!poDstDS) {
-					std::cerr << "错误: 文件创建失败 - " << CPLGetLastErrorMsg() << std::endl;
+			//		// 检查具体错误
+			//		if (CPLGetLastErrorType() == CE_Failure) {
+			//			std::cerr << "详细错误: " << CPLGetLastErrorMsg() << std::endl;
+			//		}
+			//		free(pData);
+			//		return false;
+			//	}
 
-					// 检查具体错误
-					if (CPLGetLastErrorType() == CE_Failure) {
-						std::cerr << "详细错误: " << CPLGetLastErrorMsg() << std::endl;
-					}
-					free(pData);
-					return false;
-				}
-
-				// 写入数据到数据集，需要重采样
-				err = GDALDatasetRasterIO(
-					poDstDS, GF_Write,
-					0, 0, options->tileSize, options->tileSize,
-					pData, width, height,
-					data_type, bands, nullptr,
-					0, 0, 0
-				);
-			}
-
-			free(pData);
-
-			if (err != CE_None) {
-				GDALClose(poDstDS);
-				return false;
-			}
-			
-			// 关闭数据集
-			GDALClose(poDstDS);
-
-			//if (data && size > 0) {
-			//	// 将内存数据移动到vector中
-			//	std::vector<unsigned char> buffer_data(data, data + size);
-			//	CPLFree(data); // 释放GDAL分配的内存
-
-			//	// 将文件加入写入队列
-			//	file_buffer->write_file(tile_path, std::move(buffer_data));
-			//	return true;
+			//	// 写入数据到数据集，需要重采样
+			//	err = GDALDatasetRasterIO(
+			//		poDstDS, GF_Write,
+			//		0, 0, options->tileSize, options->tileSize,
+			//		pData, width, height,
+			//		data_type, bands, nullptr,
+			//		0, 0, 0
+			//	);
 			//}
+
+			//free(pData);
+
+			//if (err != CE_None) {
+			//	GDALClose(poDstDS);
+			//	return false;
+			//}
+			//
+			//// 关闭数据集
+			//GDALClose(poDstDS);
+		
+			// 将内存数据移动到vector中
+			fs::path file = fs::path(std::to_string(zoom)) / std::to_string(tile_x) / std::to_string(tile_y);
+			fileBatchOutputer->addFile({file.string(),pData,buffer_size });
 
 			return true;
 		}

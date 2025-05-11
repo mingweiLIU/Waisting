@@ -24,6 +24,7 @@ find_package(GLM REQUIRED)
 set(includeDirs 
     # ${OPENSCENEGRAPH_INCLUDE_DIRS}
     # ${osgEarth_INCLUDE_DIRS}
+    ${GDAL_INCLUDE_DIRS}
     ${TBB_INCLUDE_DIRS}
     ${GLM_INCLUDE_DIRS}
     ${SPDLOG_Inc}    
@@ -39,6 +40,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     TBB::tbb
     glm::glm
     ${Jemolloc_ROOT}/lib/jemalloc_sd.lib
+    ${GDAL_ROOT}/lib/libpng16.lib
+    ${GDAL_ROOT}/lib/libjpeg.lib
 )
 
 target_compile_definitions(${PROJECT_NAME} 
