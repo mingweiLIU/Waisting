@@ -13,8 +13,8 @@ namespace WT {
 		return std::filesystem::exists(mBasePath);
 	}
 
-	bool FilesystemAdapter::output(const std::string& virtualPath, void* data, size_t dataSize) {
-		const auto fullPath = std::filesystem::path(mBasePath) / virtualPath;
+	bool FilesystemAdapter::output(const IOFileInfo file) {
+		const auto fullPath = std::filesystem::path(mBasePath) / file.filePath;
 		std::error_code ec; // 用于捕获文件系统错误而不抛出异常
 
 		// 1. 创建目录（如果需要）
@@ -28,14 +28,14 @@ namespace WT {
 		}
 
 		// 2. 打开文件
-		std::ofstream out(fullPath, std::ios::binary);
+		std::ofstream out(fullPath.string(), std::ios::binary);
 		if (!out.is_open()) {
 			// 可以记录具体错误信息
 			return false;
 		}
 
 		// 3. 写入数据
-		out.write(static_cast<const char*>(data), static_cast<std::streamsize>(dataSize));
+		out.write(reinterpret_cast<const char*>(file.data), file.dataSize);
 
 		// 4. 确保所有操作成功
 		const bool success = out.good();

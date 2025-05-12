@@ -11,7 +11,7 @@ namespace WT {
 
 		size_t newSize = mCurrentMemoryUsage + fileInfo.dataSize;
 		if (newSize > mMemoryLimit) {
-			if (!outputInternal()) {
+			if (!outputInternal(false)) {
 				return false;
 			}
 		}
@@ -22,7 +22,7 @@ namespace WT {
 	}
 
 	bool FileBatchOutput::output() {
-		return outputInternal();
+		return outputInternal(true);
 	}
 
 	std::future<bool> FileBatchOutput::outputAsync() {
@@ -31,20 +31,24 @@ namespace WT {
 			});
 	}
 
-	bool FileBatchOutput::outputInternal() {
+	bool FileBatchOutput::outputInternal(bool shouldLock) {
 		if (!mAdapter || mFileCache.empty()) {
 			return false;
 		}
 
 		if (mCancellationRequested) return false;
 
-
 		std::vector<IOFileInfo> filesToOutput;
-		{
+	
+		if (shouldLock) {
 			std::lock_guard<std::mutex> lock(mutex);
 			filesToOutput.swap(mFileCache);
 			mCurrentMemoryUsage = 0;
 		}
+		else {
+			filesToOutput.swap(mFileCache);
+			mCurrentMemoryUsage = 0;
+		}		
 
 		bool result = mAdapter->outputBatch(filesToOutput);
 		return result && !mCancellationRequested;

@@ -17,7 +17,7 @@ namespace WT {
 		virtual ~IOAdapter() = default;
 
 		virtual bool initialize() = 0;
-		virtual bool output(const std::string& virtualPath, void* data, size_t dataSize) = 0;
+		virtual bool output(const IOFileInfo fileInfo) = 0;
 		virtual bool outputBatch(const std::vector<IOFileInfo> files) = 0;
 		virtual bool finalize() = 0;
 		virtual std::string type() const = 0;

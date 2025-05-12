@@ -176,7 +176,7 @@ namespace WT{
 
 			// 分配内存为每个波段创建缓冲区
 			size_t pixel_size = GDALGetDataTypeSize(data_type) / 8;
-			size_t buffer_size = width * height * bands * pixel_size;
+			size_t buffer_size = options->tileSize * options->tileSize * bands * pixel_size;
 
 			// 使用jemalloc分配内存
 			//void* pData = memory_allocator->allocate(buffer_size);
@@ -185,22 +185,31 @@ namespace WT{
 			//	return false;
 			//}
 			
-			void* pData = malloc(buffer_size); 
-			if (!pData) {
-				std::cerr << "内存分配失败!" << std::endl;
-				return false;
-			}
+			unsigned char * pData = (unsigned char*) malloc(buffer_size);
+			//std::unique_ptr<unsigned char[]> pData(new unsigned char[buffer_size]);
+			//if (!pData) {
+			//	std::cerr << "内存分配失败!" << std::endl;
+			//	return false;
+			//}
 
 			// 读取数据 - 使用线程本地的dataset
 			CPLErr err;
 			{
+				int panBandMap[3] = { 1, 2, 3 }; // 指定波段顺序
+				// 设置内存布局参数
+				int pixel_size = bands * GDALGetDataTypeSizeBytes(data_type); // 每个像素的总字节数
+				int nPixelSpace = GDALGetDataTypeSizeBytes(data_type);        // 每个波段分量的字节间隔（如Float32=4）
+				int nLineSpace = options->tileSize * pixel_size;              // 每行的字节间隔
+				int nBandSpace = 1;
+
 				std::lock_guard<std::mutex> lock(gdal_mutex);
 				err = GDALDatasetRasterIO(
 					local_dataset, GF_Read,
 					src_min_x, src_min_y, width, height,
-					pData, width, height,
-					data_type, bands, nullptr,
-					0, 0, 0
+					pData, options->tileSize, options->tileSize,
+					data_type, bands, panBandMap,
+					nPixelSpace, nLineSpace, nBandSpace
+					//0,0,0
 				);
 			}
 
@@ -214,9 +223,8 @@ namespace WT{
 			//GDALDatasetH poDstDS = nullptr;
 			//{
 			//	std::lock_guard<std::mutex> lock(gdal_mutex);
-			//	outputDriver = GetGDALDriverManager()->GetDriverByName(options->outputFormat.c_str());
+			//	outputDriver = GetGDALDriverManager()->GetDriverByName("GTiff");
 			//	if (!outputDriver) {
-			//		free(pData);
 			//		return false;
 			//	}
 
@@ -228,7 +236,6 @@ namespace WT{
 			//		if (CPLGetLastErrorType() == CE_Failure) {
 			//			std::cerr << "详细错误: " << CPLGetLastErrorMsg() << std::endl;
 			//		}
-			//		free(pData);
 			//		return false;
 			//	}
 
@@ -236,13 +243,12 @@ namespace WT{
 			//	err = GDALDatasetRasterIO(
 			//		poDstDS, GF_Write,
 			//		0, 0, options->tileSize, options->tileSize,
-			//		pData, width, height,
+			//		pData.get(), options->tileSize, options->tileSize,
 			//		data_type, bands, nullptr,
 			//		0, 0, 0
 			//	);
 			//}
 
-			//free(pData);
 
 			//if (err != CE_None) {
 			//	GDALClose(poDstDS);
@@ -254,7 +260,7 @@ namespace WT{
 		
 			// 将内存数据移动到vector中
 			fs::path file = fs::path(std::to_string(zoom)) / std::to_string(tile_x) / std::to_string(tile_y);
-			fileBatchOutputer->addFile({file.string(),pData,buffer_size });
+			fileBatchOutputer->addFile({file.string(),pData,buffer_size});
 
 			return true;
 		}
@@ -499,6 +505,8 @@ namespace WT{
 			process_zoom_level(zoom, progressInfo);
 		}
 
+		//所有处理完毕后 需要清空
+		fileBatchOutputer->output();
 		// 等待所有文件写入完成
 		std::cout << "等待文件写入完成..." << std::endl;
 

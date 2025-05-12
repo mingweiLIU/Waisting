@@ -27,6 +27,6 @@ namespace WT {
 		std::atomic<size_t> mMemoryLimit;
 		std::atomic<bool> mCancellationRequested{false};
 
-		bool outputInternal();
+		bool outputInternal(bool shouldLock=true);
 	};
 };

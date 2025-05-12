@@ -1,6 +1,14 @@
 #include "ImageFileIOAdapter.h"
 #include <fstream>
 #include <unordered_map>
+
+// GDAL库
+#include "gdal_priv.h"
+#include "ogr_spatialref.h"
+#include "cpl_conv.h"
+#include "cpl_string.h"
+#include "cpl_vsi.h"
+
 namespace WT {
 	ImageFileIOAdapter::ImageFileIOAdapter(const std::string& basePath, bool createDirs, int width /*= 256*/, int height /*= 256*/, std::string format /*= "png"*/)
 		: mBasePath(basePath), mCreateDirs(createDirs)
@@ -24,8 +32,8 @@ namespace WT {
 		return std::filesystem::exists(mBasePath);
 	}
 
-	bool ImageFileIOAdapter::output(const std::string& virtualPath, void* data, size_t dataSize) {
-		const auto fullPath = std::filesystem::path(mBasePath) / virtualPath;
+	bool ImageFileIOAdapter::output(const IOFileInfo fileInfo) {
+		const auto fullPath = std::filesystem::path(mBasePath) / fileInfo.filePath;
 		std::error_code ec; // 用于捕获文件系统错误而不抛出异常
 
 		// 1. 创建目录（如果需要）
@@ -46,7 +54,7 @@ namespace WT {
 		}
 
 		// 3. 写入数据
-		out.write(static_cast<const char*>(data), static_cast<std::streamsize>(dataSize));
+		out.write(reinterpret_cast<const char*> (fileInfo.data),fileInfo.dataSize);
 
 		// 4. 确保所有操作成功
 		const bool success = out.good();
@@ -57,7 +65,7 @@ namespace WT {
 
 	bool ImageFileIOAdapter::outputBatch(const std::vector<IOFileInfo> files) {
 		// 使用路径和原始数据指针+大小的pair
-		std::unordered_map<std::string, std::vector<IOFileInfo&>> dirGroups;
+		std::unordered_map<std::string, std::vector<IOFileInfo>> dirGroups;
 
 		// 按目录分组
 		for (const auto& fileInfo : files) {  // 正确解包三元组
@@ -88,21 +96,20 @@ namespace WT {
 
 	bool ImageFileIOAdapter::dataToImage(IOFileInfo ioFileInfo)
 	{
-
 		switch (mFormat)
 		{
 		case IMAGEFORMAT::PNG: {
-			write_png(ioFileInfo, mWidth, mHeight);
+			return write_png(ioFileInfo, mWidth, mHeight);
 			break;
 		}
 		case  IMAGEFORMAT::JPG: {
 			int n = (mWidth * mHeight) / (ioFileInfo.dataSize);
 			if (1==n)
 			{
-				writeGrayscaleJPEG(ioFileInfo, mWidth, mHeight);
+				return writeGrayscaleJPEG(ioFileInfo, mWidth, mHeight);
 			}else if (n>=3)
 			{
-				writeRGBJPEG(ioFileInfo, mWidth, mHeight);
+				return writeRGBJPEG(ioFileInfo, mWidth, mHeight);
 			}
 			break;
 		}
@@ -112,10 +119,12 @@ namespace WT {
 		default:
 			break;
 		}
+		return true;
 	}
 
 	bool ImageFileIOAdapter::writeJPEG(IOFileInfo fileInfo, int width, int height, const JPEGOptions& opts) {
-		std::string filename = fileInfo.filePath;
+		const auto fullPath = std::filesystem::path(mBasePath) / fileInfo.filePath;
+		std::string filename = fullPath.string();
 		unsigned char* data = fileInfo.data;
 
 		FILE* outfile = fopen((filename + ".jpg").c_str(), "wb");
@@ -178,32 +187,37 @@ namespace WT {
 	
 	bool ImageFileIOAdapter::write_png(IOFileInfo fileInfo, int width, int height, int color_type /*= PNG_COLOR_TYPE_RGB*/, int bit_depth /*= 8*/)
 	{
-		std::string filename = fileInfo.filePath;
+		const auto fullPath = std::filesystem::path(mBasePath) / fileInfo.filePath;
+		std::string filename = fullPath.string();
 		const png_byte* image_data = fileInfo.data;
 
-		FILE* fp = fopen((filename+".png").c_str(), "wb");
+		FILE* fp = fopen((filename + ".png").c_str(), "wb");
 		if (!fp) {
-			throw std::runtime_error("无法打开文件: " + filename);
+			return false;
+			//throw std::runtime_error("无法打开文件: " + filename);
 		}
 
 		png_structp png_ptr = png_create_write_struct(
 			PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
 		if (!png_ptr) {
 			fclose(fp);
-			throw std::runtime_error("png_create_write_struct失败");
+			return false;
+			//throw std::runtime_error("png_create_write_struct失败");
 		}
 
 		png_infop info_ptr = png_create_info_struct(png_ptr);
 		if (!info_ptr) {
 			png_destroy_write_struct(&png_ptr, nullptr);
 			fclose(fp);
-			throw std::runtime_error("png_create_info_struct失败");
+			return false;
+			//throw std::runtime_error("png_create_info_struct失败");
 		}
 
 		if (setjmp(png_jmpbuf(png_ptr))) {
 			png_destroy_write_struct(&png_ptr, &info_ptr);
 			fclose(fp);
-			throw std::runtime_error("PNG写入过程中出错");
+			return false;
+			//throw std::runtime_error("PNG写入过程中出错");
 		}
 
 		png_init_io(png_ptr, fp);
@@ -220,7 +234,7 @@ namespace WT {
 			(color_type == PNG_COLOR_TYPE_GA) ? 2 :
 			(color_type == PNG_COLOR_TYPE_RGB) ? 3 : 4;
 
-		
+
 		std::vector<png_bytep> row_pointers(height);
 
 		for (int y = 0; y < height; ++y) {
@@ -233,5 +247,48 @@ namespace WT {
 		// 清理
 		png_destroy_write_struct(&png_ptr, &info_ptr);
 		fclose(fp);
+
+		//// 创建输出驱动和目标数据集
+		//GDALDriver* outputDriver = nullptr;
+		//GDALDatasetH poDstDS = nullptr;
+		//CPLErr err;
+		//{
+		//	outputDriver = GetGDALDriverManager()->GetDriverByName("GTiff");
+		//	if (!outputDriver) {
+		//		return false;
+		//	}
+
+		//	poDstDS = outputDriver->Create((filename + ".tif").c_str(), width, height, channels, GDT_Byte, nullptr);
+		//	if (!poDstDS) {
+		//		//std::cerr << "错误: 文件创建失败 - " << CPLGetLastErrorMsg() << std::endl;
+
+		//		// 检查具体错误
+		//		if (CPLGetLastErrorType() == CE_Failure) {
+		//			//std::cerr << "详细错误: " << CPLGetLastErrorMsg() << std::endl;
+		//		}
+		//		return false;
+		//	}
+
+		//	// 写入数据到数据集，需要重采样
+		//	err = GDALDatasetRasterIO(
+		//		poDstDS, GF_Write,
+		//		0, 0, width, height,
+		//		fileInfo.data, width, height,
+		//		GDT_Byte, channels, nullptr,
+		//		0, 0, 0
+		//	);
+		//}
+
+
+		//if (err != CE_None) {
+		//	GDALClose(poDstDS);
+		//	return false;
+		//}
+
+		//// 关闭数据集
+		//GDALClose(poDstDS);
+
+
+		//return true;
 	}
 };

@@ -24,7 +24,7 @@ namespace WT {
 		explicit ImageFileIOAdapter(const std::string& basePath, bool createDirs = true,int width = 256,int height=256, std::string format="png");
 
 		bool initialize() override;
-		bool output(const std::string& virtualPath, void* data, size_t dataSize) override;
+		bool output(const IOFileInfo fileInfo) override;
 		bool outputBatch(const std::vector<IOFileInfo> files) override;
 		bool finalize() override;
 		std::string type() const override { return "filesystem"; }
