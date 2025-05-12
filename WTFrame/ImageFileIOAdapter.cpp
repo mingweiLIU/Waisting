@@ -103,7 +103,7 @@ namespace WT {
 			break;
 		}
 		case  IMAGEFORMAT::JPG: {
-			int n = (mWidth * mHeight) / (ioFileInfo.dataSize);
+			int n = (ioFileInfo.dataSize)/ (mWidth * mHeight) ;
 			if (1==n)
 			{
 				return writeGrayscaleJPEG(ioFileInfo, mWidth, mHeight);
@@ -247,7 +247,7 @@ namespace WT {
 		// 清理
 		png_destroy_write_struct(&png_ptr, &info_ptr);
 		fclose(fp);
-
+		return true;
 		//// 创建输出驱动和目标数据集
 		//GDALDriver* outputDriver = nullptr;
 		//GDALDatasetH poDstDS = nullptr;

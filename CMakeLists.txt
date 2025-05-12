@@ -60,6 +60,13 @@ set(SubDirs
 )
 
 #全局设置
+# 强制关闭优化（适用于所有编译器）
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_compile_options(
+        "$<$<C_COMPILER_ID:MSVC>:/Od>"          # MSVC: 禁用优化
+        "$<$<NOT:$<C_COMPILER_ID:MSVC>>:-O0>"   # GCC/Clang: -O0
+    )
+endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc  /Ob2")
 link_directories(${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})

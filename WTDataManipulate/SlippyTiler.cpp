@@ -14,7 +14,7 @@ namespace WT{
 		//memory_allocator = std::make_shared<JemallocAllocator>();
 		//file_buffer = std::make_shared<FileBufferManager>();
 		fileBatchOutputer = std::make_shared<FileBatchOutput>();
-		std::unique_ptr<ImageFileIOAdapter> imageIOAdatper = std::make_unique<ImageFileIOAdapter>(options->outputDir);
+		std::unique_ptr<ImageFileIOAdapter> imageIOAdatper = std::make_unique<ImageFileIOAdapter>(options->outputDir,true,options->tileSize, options->tileSize, options->outputFormat);
 		fileBatchOutputer->setAdapter(std::move(imageIOAdatper));
 
 		// 创建坐标系统对象
@@ -195,7 +195,6 @@ namespace WT{
 			// 读取数据 - 使用线程本地的dataset
 			CPLErr err;
 			{
-				int panBandMap[3] = { 1, 2, 3 }; // 指定波段顺序
 				// 设置内存布局参数
 				int pixel_size = bands * GDALGetDataTypeSizeBytes(data_type); // 每个像素的总字节数
 				int nPixelSpace = GDALGetDataTypeSizeBytes(data_type);        // 每个波段分量的字节间隔（如Float32=4）
@@ -207,8 +206,8 @@ namespace WT{
 					local_dataset, GF_Read,
 					src_min_x, src_min_y, width, height,
 					pData, options->tileSize, options->tileSize,
-					data_type, bands, panBandMap,
-					nPixelSpace, nLineSpace, nBandSpace
+					data_type, bands, nullptr,
+					bands, options->tileSize*bands, 1
 					//0,0,0
 				);
 			}
