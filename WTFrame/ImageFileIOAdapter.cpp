@@ -1,6 +1,7 @@
 #include "ImageFileIOAdapter.h"
 #include <fstream>
 #include <unordered_map>
+#include <limits>
 
 // GDAL库
 #include "gdal_priv.h"
@@ -10,9 +11,12 @@
 #include "cpl_vsi.h"
 
 namespace WT {
-	ImageFileIOAdapter::ImageFileIOAdapter(const std::string& basePath, bool createDirs, int width /*= 256*/, int height /*= 256*/, std::string format /*= "png"*/)
+	ImageFileIOAdapter::ImageFileIOAdapter(const std::string& basePath, bool createDirs
+		, int width /*= 256*/, int height /*= 256*/
+		, std::string format /*= "png"*/, int bands/*=3*/,  std::vector<double> noData/*={}*/)
 		: mBasePath(basePath), mCreateDirs(createDirs)
-		,mWidth(width),mHeight(height){
+		,mWidth(width),mHeight(height),mBandsNum(bands)
+		, mNoData(noData){
 		if ("png"==format)
 		{
 			this->mFormat = IMAGEFORMAT::PNG;
@@ -99,15 +103,28 @@ namespace WT {
 		switch (mFormat)
 		{
 		case IMAGEFORMAT::PNG: {
-			return write_png(ioFileInfo, mWidth, mHeight);
+			//做个波段数映射
+			std::vector<int>colorTypeMap = {0,PNG_COLOR_TYPE_GRAY ,PNG_COLOR_TYPE_GA ,PNG_COLOR_TYPE_RGB,PNG_COLOR_TYPE_RGBA };			
+			int depth=ioFileInfo.dataSize / (mWidth * mHeight * mBandsNum) * 8;
+
+			//要看看是否是需要添加透明图层
+			unsigned char* tempNewData = nullptr;
+			int tempNewDataSize = 0;
+			if (nodataCheckAndTrans(ioFileInfo.data, ioFileInfo.dataSize, tempNewData, tempNewDataSize)) {
+				free(ioFileInfo.data);
+				ioFileInfo.data = tempNewData;
+				ioFileInfo.dataSize = tempNewDataSize;
+				return write_png(ioFileInfo, mWidth, mHeight, mBandsNum + 1, colorTypeMap[mBandsNum+1], depth);
+			}
+
+			return write_png(ioFileInfo, mWidth, mHeight, mBandsNum,colorTypeMap[mBandsNum],depth);
 			break;
 		}
 		case  IMAGEFORMAT::JPG: {
-			int n = (ioFileInfo.dataSize)/ (mWidth * mHeight) ;
-			if (1==n)
+			if (1==mBandsNum)
 			{
 				return writeGrayscaleJPEG(ioFileInfo, mWidth, mHeight);
-			}else if (n>=3)
+			}else if (mBandsNum>=3)
 			{
 				return writeRGBJPEG(ioFileInfo, mWidth, mHeight);
 			}
@@ -185,7 +202,7 @@ namespace WT {
 		return writeJPEG(fileInfo, width, height,{ quality, true, JCS_GRAYSCALE });
 	}
 	
-	bool ImageFileIOAdapter::write_png(IOFileInfo fileInfo, int width, int height, int color_type /*= PNG_COLOR_TYPE_RGB*/, int bit_depth /*= 8*/)
+	bool ImageFileIOAdapter::write_png(IOFileInfo fileInfo, int width, int height,int bands, int color_type /*= PNG_COLOR_TYPE_RGB*/, int bit_depth /*= 8*/)
 	{
 		const auto fullPath = std::filesystem::path(mBasePath) / fileInfo.filePath;
 		std::string filename = fullPath.string();
@@ -230,15 +247,10 @@ namespace WT {
 		png_write_info(png_ptr, info_ptr);
 
 		// 准备行指针
-		const int channels = (color_type == PNG_COLOR_TYPE_GRAY) ? 1 :
-			(color_type == PNG_COLOR_TYPE_GA) ? 2 :
-			(color_type == PNG_COLOR_TYPE_RGB) ? 3 : 4;
-
-
 		std::vector<png_bytep> row_pointers(height);
 
 		for (int y = 0; y < height; ++y) {
-			row_pointers[y] = const_cast<png_bytep>(image_data + y * width * channels);
+			row_pointers[y] = const_cast<png_bytep>(image_data + y * width * bands);
 		}
 
 		png_write_image(png_ptr, row_pointers.data());
@@ -247,48 +259,105 @@ namespace WT {
 		// 清理
 		png_destroy_write_struct(&png_ptr, &info_ptr);
 		fclose(fp);
-		return true;
-		//// 创建输出驱动和目标数据集
-		//GDALDriver* outputDriver = nullptr;
-		//GDALDatasetH poDstDS = nullptr;
-		//CPLErr err;
-		//{
-		//	outputDriver = GetGDALDriverManager()->GetDriverByName("GTiff");
-		//	if (!outputDriver) {
-		//		return false;
-		//	}
+		return true;		
+	}
 
-		//	poDstDS = outputDriver->Create((filename + ".tif").c_str(), width, height, channels, GDT_Byte, nullptr);
-		//	if (!poDstDS) {
-		//		//std::cerr << "错误: 文件创建失败 - " << CPLGetLastErrorMsg() << std::endl;
+	bool ImageFileIOAdapter::nodataCheckAndTrans(unsigned char* oriData, int oriDataSize, unsigned char* newData, int& newDataSize) {
+		if (mNoData.size() == 0) return false;
+		
+		//oriData是rgb rgb这样的形式了 
+		//同时需要考虑int8 和int16这样的形式
+		int dataType=oriDataSize / (mWidth * mHeight * mBandsNum);
+		newDataSize = (oriDataSize / mBandsNum) * (mBandsNum + 1);
 
-		//		// 检查具体错误
-		//		if (CPLGetLastErrorType() == CE_Failure) {
-		//			//std::cerr << "详细错误: " << CPLGetLastErrorMsg() << std::endl;
-		//		}
-		//		return false;
-		//	}
+		//需要先检查
+		bool needTrans = false;
+		if (1 == dataType) {
+			uint8_t* data = static_cast<uint8_t*>(oriData);
+			for (int j = 0; j < mWidth; j++)
+			{
+				for (int k = 0; k < mHeight; k++)
+				{
+					int cellPos=mWidth* j + k;
+					bool cellIsNodata = true;
+					for (int i = 0; i < mBandsNum; i++)
+					{
+						cellIsNodata = cellIsNodata && (data[cellPos*mBandsNum + i] == mNoData[i]);
+					}
+					if (cellIsNodata)
+					{
+						needTrans = true;
+						break;
+					}
+				}
+				if (needTrans) break;
+			}
 
-		//	// 写入数据到数据集，需要重采样
-		//	err = GDALDatasetRasterIO(
-		//		poDstDS, GF_Write,
-		//		0, 0, width, height,
-		//		fileInfo.data, width, height,
-		//		GDT_Byte, channels, nullptr,
-		//		0, 0, 0
-		//	);
-		//}
+			//真正需要透明的一定比不透明的瓦片少 所以分开是合适的
+			if (needTrans)
+			{
+				newData = (unsigned char* )malloc(newDataSize);
+				for (int i = 0; i < mWidth; i++)
+				{
+					for (int j = 0; j < mHeight; j++)
+					{
+						int cellPos = mWidth * i + j;
+						bool cellIsNodata = true;
+						for (int k = 0; k < mBandsNum; k++)
+						{
+							cellIsNodata = cellIsNodata && (data[cellPos * mBandsNum + k] == mNoData[k]);
+							*(newData + cellPos * (mBandsNum + 1)+k) = *(data + cellPos * mBandsNum+k);
+						}
+						//写新的那个波段 但是要根据是否为透明决定						
+						*(newData + cellPos * (mBandsNum + 1) + mBandsNum) = cellIsNodata ? 0 : 255;
+					}
+				}
+			}
+		}else if(2==dataType) {
+			uint16_t* data = reinterpret_cast<uint16_t*>(oriData);
+			for (int j = 0; j < mWidth; j++)
+			{
+				for (int k = 0; k < mHeight; k++)
+				{
+					int cellPos = mWidth * j + k;
+					bool cellIsNodata = true;
+					for (int i = 0; i < mBandsNum; i++)
+					{
+						cellIsNodata = cellIsNodata && (data[cellPos * mBandsNum + i] == mNoData[i]);
+					}
+					if (cellIsNodata)
+					{
+						needTrans = true;
+						break;
+					}
+				}
+				if (needTrans) break;
+			}
 
-
-		//if (err != CE_None) {
-		//	GDALClose(poDstDS);
-		//	return false;
-		//}
-
-		//// 关闭数据集
-		//GDALClose(poDstDS);
-
-
-		//return true;
+			//真正需要透明的一定比不透明的瓦片少 所以分开是合适的
+			if (needTrans)
+			{
+				uint16_t*  newDataTemp = (uint16_t*)malloc(newDataSize);
+				for (int i = 0; i < mWidth; i++)
+				{
+					for (int j = 0; j < mHeight; j++)
+					{
+						int cellPos = mWidth * i + j;
+						bool cellIsNodata = true;
+						for (int k = 0; k < mBandsNum; k++)
+						{
+							cellIsNodata = cellIsNodata && (data[cellPos * mBandsNum + i] == mNoData[i]);
+							*(newDataTemp + cellPos * (mBandsNum + 1) + k) = *(data + cellPos * mBandsNum + k);
+						}
+						//写新的那个波段 但是要根据是否为透明决定						
+						*(newDataTemp + cellPos * (mBandsNum + 1) + mBandsNum) = cellIsNodata ? 0 : std::numeric_limits<uint16_t>::max();
+					}
+				}
+				newData = (unsigned char*)malloc(newDataSize);
+				std::memmove(newData, newDataTemp, newDataSize);
+				free(newDataTemp);
+			}
+		}
+		return needTrans;
 	}
 };

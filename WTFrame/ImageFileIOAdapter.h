@@ -21,13 +21,15 @@ namespace WT {
 			WEBP
 		};
 	public:
-		explicit ImageFileIOAdapter(const std::string& basePath, bool createDirs = true,int width = 256,int height=256, std::string format="png");
+		explicit ImageFileIOAdapter(const std::string& basePath, bool createDirs = true
+			,int width = 256,int height=256, std::string format="png"
+			, int bands = 3, std::vector<double> noData = {});
 
 		bool initialize() override;
 		bool output(const IOFileInfo fileInfo) override;
 		bool outputBatch(const std::vector<IOFileInfo> files) override;
 		bool finalize() override;
-		std::string type() const override { return "filesystem"; }
+		std::string type() const override { return "ImageFileIOAdapter"; }
 	private:
 		bool dataToImage(IOFileInfo ioFileInfo);
 
@@ -38,7 +40,10 @@ namespace WT {
 		bool writeGrayscaleJPEG(IOFileInfo fileInfo, int width, int height, int quality = 85);
 
 		//写出png
-		bool write_png(IOFileInfo fileInfo, int width, int height,int color_type = PNG_COLOR_TYPE_RGB,int bit_depth = 8);
+		bool write_png(IOFileInfo fileInfo, int width, int height,int bands,int color_type = PNG_COLOR_TYPE_RGB,int bit_depth = 8);
+
+		//根据Nodata情况拼装透明图层 如果需要半透明 则返回为true 不需要则false
+		bool nodataCheckAndTrans(unsigned char* oriData, int oriDataSize, unsigned char* newData, int& newDataSize);
 
 	private:
 		std::string mBasePath;
@@ -46,5 +51,7 @@ namespace WT {
 		IMAGEFORMAT mFormat;
 		int mWidth;
 		int mHeight;
+		int mBandsNum;//波段数
+		std::vector<double> mNoData;
 	};
 };

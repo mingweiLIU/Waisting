@@ -43,6 +43,8 @@ set(SPDLOG_Inc ${ThirdPartyPath}/spdlog/include)
 set(TBB_ROOT ${ThirdPartyPath}/tbb-2021.13.0-x64/lib/cmake/TBB)
 set(GLM_ROOT ${ThirdPartyPath}/glm/share/glm)
 set(Jemolloc_ROOT ${ThirdPartyPath}/jemalloc)
+set(PNG_ROOT ${ThirdPartyPath}/libpng)
+set(ZLIB_ROOT ${ThirdPartyPath}/zlib)
 
 
 set(SubDirs

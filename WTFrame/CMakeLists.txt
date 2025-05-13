@@ -20,6 +20,10 @@ endif()
 find_package(GDAL REQUIRED gdal)
 find_package(TBB REQUIRED)
 find_package(GLM REQUIRED)
+find_package(PNG REQUIRED)
+
+set(ZLIB_USE_STATIC_LIBS ON)
+find_package(ZLIB REQUIRED)
 
 set(includeDirs 
     # ${OPENSCENEGRAPH_INCLUDE_DIRS}
@@ -27,6 +31,8 @@ set(includeDirs
     ${GDAL_INCLUDE_DIRS}
     ${TBB_INCLUDE_DIRS}
     ${GLM_INCLUDE_DIRS}
+    ${PNG_INCLUDE_DIRS}
+    ${ZLIB_INCLUDE_DIRS}
     ${SPDLOG_Inc}    
     ${Jemolloc_ROOT}/include
     ${Jemolloc_ROOT}/include/msvc_compat
@@ -40,14 +46,17 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     TBB::tbb
     glm::glm
     ${Jemolloc_ROOT}/lib/jemalloc_sd.lib
-    ${GDAL_ROOT}/lib/libpng16.lib
     ${GDAL_ROOT}/lib/libjpeg.lib
+    ${PNG_LIBRARY}
+    ${ZLIB_LIBRARY}
 )
 
 target_compile_definitions(${PROJECT_NAME} 
     PRIVATE 
         JEMALLOC_EXPORT=
         JEMALLOC_STATIC
+        PNG_STATIC
+        ZLIB_STATIC
 )
 
 include(GNUInstallDirs)

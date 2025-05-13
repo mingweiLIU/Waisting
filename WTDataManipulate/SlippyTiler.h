@@ -32,7 +32,8 @@ namespace WT{
 		int tileSize = 256;//瓦片大小
 		bool useVRT = false;//是否使用VRT
 		bool useMemoryMapping = false;//是否启用文件映射
-		std::string outputFormat = "jpg";//输出瓦片后缀
+		std::vector<double> nodata = { 0.0,0.0,0.0 };//NoData设置 如果影像没有nodata就使用这个
+		std::string outputFormat = "png";//输出瓦片后缀
 		int numThreads = 1;//使用的线程数
 		std::string prjFilePath = "";//外部prj文件路径 可以为空
 		std::string wktString = "";//外部wkt字符串 可以为空

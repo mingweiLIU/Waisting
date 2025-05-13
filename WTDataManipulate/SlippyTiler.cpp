@@ -9,14 +9,7 @@ namespace WT{
 		for (int i = 0; i < 6; ++i) {
 			geo_transform[i] = 0.0;
 		}
-
-		// 创建内存管理器和文件缓冲管理器
-		//memory_allocator = std::make_shared<JemallocAllocator>();
-		//file_buffer = std::make_shared<FileBufferManager>();
-		fileBatchOutputer = std::make_shared<FileBatchOutput>();
-		std::unique_ptr<ImageFileIOAdapter> imageIOAdatper = std::make_unique<ImageFileIOAdapter>(options->outputDir,true,options->tileSize, options->tileSize, options->outputFormat);
-		fileBatchOutputer->setAdapter(std::move(imageIOAdatper));
-
+				
 		// 创建坐标系统对象
 		coord_system = std::make_unique<CoordinateSystem>();
 	}
@@ -172,11 +165,19 @@ namespace WT{
 			}
 
 			// 获取有效波段数量
-			int bands = std::min(band_count, 4); // 最多支持4个波段(RGBA)
+			//int bands = std::min(band_count, 4); // 最多支持4个波段(RGBA)
 
 			// 分配内存为每个波段创建缓冲区
 			size_t pixel_size = GDALGetDataTypeSize(data_type) / 8;
-			size_t buffer_size = options->tileSize * options->tileSize * bands * pixel_size;
+			//这里需要定义下 如果输出jpg 其只支持8位，如果是png 其只支持8或者16位，大于16位的我们用8位代替 那么像素位不管是多少 都应为1 然后gdal会自动将数值范围缩放
+			if (options->outputFormat=="jpg")
+			{
+				pixel_size = 1;
+			}
+			else if (options->outputFormat == "png") {
+				pixel_size = pixel_size > 2 ? 1 : pixel_size;
+			}
+			size_t buffer_size = options->tileSize * options->tileSize * band_count * pixel_size;
 
 			// 使用jemalloc分配内存
 			//void* pData = memory_allocator->allocate(buffer_size);
@@ -185,6 +186,7 @@ namespace WT{
 			//	return false;
 			//}
 			
+			//这里得到的pData是rgb rgb这样的形式
 			unsigned char * pData = (unsigned char*) malloc(buffer_size);
 			//std::unique_ptr<unsigned char[]> pData(new unsigned char[buffer_size]);
 			//if (!pData) {
@@ -196,18 +198,13 @@ namespace WT{
 			CPLErr err;
 			{
 				// 设置内存布局参数
-				int pixel_size = bands * GDALGetDataTypeSizeBytes(data_type); // 每个像素的总字节数
-				int nPixelSpace = GDALGetDataTypeSizeBytes(data_type);        // 每个波段分量的字节间隔（如Float32=4）
-				int nLineSpace = options->tileSize * pixel_size;              // 每行的字节间隔
-				int nBandSpace = 1;
-
 				std::lock_guard<std::mutex> lock(gdal_mutex);
 				err = GDALDatasetRasterIO(
 					local_dataset, GF_Read,
 					src_min_x, src_min_y, width, height,
 					pData, options->tileSize, options->tileSize,
-					data_type, bands, nullptr,
-					bands, options->tileSize*bands, 1
+					data_type, band_count, nullptr,
+					band_count, options->tileSize* band_count, 1
 					//0,0,0
 				);
 			}
@@ -465,6 +462,35 @@ namespace WT{
 		std::cout << "地理范围: "
 			<< "经度=" << min_x << "至" << max_x
 			<< ", 纬度=" << min_y << "至" << max_y << std::endl;
+
+		//下面要处理NoDataValue
+		if (options->outputFormat == "png") {
+			for (size_t i = 0; i < band_count; i++)
+			{
+				GDALRasterBandH  hBand = GDALGetRasterBand(dataset, 1+i);
+				if (hBand == nullptr) {
+					std::cerr << "Error: Failed to access band " << i << std::endl;
+					continue;
+				}
+				int hasNoData = 0;
+				double noDataValue = GDALGetRasterNoDataValue(hBand, &hasNoData);
+				//如果有就使用原文件的 没有就使用设置的
+				if (hasNoData) {
+					if (options->nodata.size() == 0)
+					{
+						options->nodata.resize(band_count);
+					}
+					options->nodata[i] = noDataValue;
+				}
+			}
+		}
+
+		// 创建内存管理器和文件缓冲管理器
+		fileBatchOutputer = std::make_shared<FileBatchOutput>();
+		std::unique_ptr<ImageFileIOAdapter> imageIOAdatper = std::make_unique<ImageFileIOAdapter>(options->outputDir, true
+			, options->tileSize, options->tileSize, options->outputFormat
+			, band_count,options->nodata);
+		fileBatchOutputer->setAdapter(std::move(imageIOAdatper));
 
 		return true;
 	}
