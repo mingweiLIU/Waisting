@@ -1,5 +1,6 @@
 #include "ImageFileIOAdapter.h"
 #include <fstream>
+#include <iostream>
 #include <unordered_map>
 #include <limits>
 
@@ -104,20 +105,24 @@ namespace WT {
 		{
 		case IMAGEFORMAT::PNG: {
 			//做个波段数映射
-			std::vector<int>colorTypeMap = {0,PNG_COLOR_TYPE_GRAY ,PNG_COLOR_TYPE_GA ,PNG_COLOR_TYPE_RGB,PNG_COLOR_TYPE_RGBA };			
-			int depth=ioFileInfo.dataSize / (mWidth * mHeight * mBandsNum) * 8;
+			int depth = ioFileInfo.dataSize / (mWidth * mHeight * mBandsNum) * 8;
+			return saveGDALDataAsPNG(ioFileInfo, mWidth, mHeight, mBandsNum, depth, mNoData);
 
-			//要看看是否是需要添加透明图层
-			unsigned char* tempNewData = nullptr;
-			int tempNewDataSize = 0;
-			if (nodataCheckAndTrans(ioFileInfo.data, ioFileInfo.dataSize, tempNewData, tempNewDataSize)) {
-				free(ioFileInfo.data);
-				ioFileInfo.data = tempNewData;
-				ioFileInfo.dataSize = tempNewDataSize;
-				return write_png(ioFileInfo, mWidth, mHeight, mBandsNum + 1, colorTypeMap[mBandsNum+1], depth);
-			}
 
-			return write_png(ioFileInfo, mWidth, mHeight, mBandsNum,colorTypeMap[mBandsNum],depth);
+			//std::vector<int>colorTypeMap = {0,PNG_COLOR_TYPE_GRAY ,PNG_COLOR_TYPE_GA ,PNG_COLOR_TYPE_RGB,PNG_COLOR_TYPE_RGBA };			
+			//int depth=ioFileInfo.dataSize / (mWidth * mHeight * mBandsNum) * 8;
+
+			////要看看是否是需要添加透明图层
+			//unsigned char* tempNewData = nullptr;
+			//int tempNewDataSize = 0;
+			//if (nodataCheckAndTrans(ioFileInfo.data, ioFileInfo.dataSize, tempNewData, tempNewDataSize)) {
+			//	free(ioFileInfo.data);
+			//	ioFileInfo.data = tempNewData;
+			//	ioFileInfo.dataSize = tempNewDataSize;
+			//	return write_png(ioFileInfo, mWidth, mHeight, mBandsNum + 1, colorTypeMap[mBandsNum+1], depth);
+			//}
+
+			//return write_png(ioFileInfo, mWidth, mHeight, mBandsNum,colorTypeMap[mBandsNum],depth);
 			break;
 		}
 		case  IMAGEFORMAT::JPG: {
@@ -202,162 +207,217 @@ namespace WT {
 		return writeJPEG(fileInfo, width, height,{ quality, true, JCS_GRAYSCALE });
 	}
 	
-	bool ImageFileIOAdapter::write_png(IOFileInfo fileInfo, int width, int height,int bands, int color_type /*= PNG_COLOR_TYPE_RGB*/, int bit_depth /*= 8*/)
+	bool ImageFileIOAdapter::hasNodataPixels(const unsigned char* imageData, int width, int height, int bandCount, int bitDepth, const std::vector<double>& nodata)
 	{
-		const auto fullPath = std::filesystem::path(mBasePath) / fileInfo.filePath;
-		std::string filename = fullPath.string();
-		const png_byte* image_data = fileInfo.data;
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < width; x++) {
+				int pixelPos = (y * width + x) * bandCount;
 
-		FILE* fp = fopen((filename + ".png").c_str(), "wb");
-		if (!fp) {
-			return false;
-			//throw std::runtime_error("无法打开文件: " + filename);
+				// 检查每个波段是否所有值都等于nodata
+				bool isNodata = true;
+				for (int b = 0; b < bandCount; b++) {
+					double pixelValue;
+					if (bitDepth == 8) {
+						pixelValue = static_cast<double>(imageData[pixelPos + b]);
+					}
+					else { // 16位
+						unsigned short value =
+							(static_cast<unsigned short>(imageData[(pixelPos + b) * 2]) << 8) |
+							static_cast<unsigned short>(imageData[(pixelPos + b) * 2 + 1]);
+						pixelValue = static_cast<double>(value);
+					}
+
+					if (pixelValue != nodata[b]) {
+						isNodata = false;
+						break;
+					}
+				}
+
+				if (isNodata) {
+					return true;  // 发现nodata像素，直接返回
+				}
+			}
 		}
+		return false;  // 没有发现nodata像素
+	}
 
-		png_structp png_ptr = png_create_write_struct(
-			PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
+	bool ImageFileIOAdapter::isNodataPixel(const unsigned char* imageData, int pixelPos, int bandCount, int bitDepth, const std::vector<double>& nodata)
+	{
+		for (int b = 0; b < bandCount; b++) {
+			double pixelValue;
+			if (bitDepth == 8) {
+				pixelValue = static_cast<double>(imageData[pixelPos + b]);
+			}
+			else { // 16位
+				unsigned short value =
+					(static_cast<unsigned short>(imageData[(pixelPos + b) * 2]) << 8) |
+					static_cast<unsigned short>(imageData[(pixelPos + b) * 2 + 1]);
+				pixelValue = static_cast<double>(value);
+			}
+
+			if (pixelValue != nodata[b]) {
+				return false;  // 只要有一个波段不等于nodata值，就不是nodata像素
+			}
+		}
+		return true;  // 所有波段都等于nodata值
+	}
+
+	bool ImageFileIOAdapter::initPNG(FILE* fp, png_structp& png_ptr, png_infop& info_ptr)
+	{
+		// 初始化PNG写入结构
+		png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
 		if (!png_ptr) {
-			fclose(fp);
+			std::cerr << "无法创建PNG写入结构" << std::endl;
 			return false;
-			//throw std::runtime_error("png_create_write_struct失败");
 		}
 
-		png_infop info_ptr = png_create_info_struct(png_ptr);
+		// 初始化PNG信息结构
+		info_ptr = png_create_info_struct(png_ptr);
 		if (!info_ptr) {
-			png_destroy_write_struct(&png_ptr, nullptr);
-			fclose(fp);
+			png_destroy_write_struct(&png_ptr, NULL);
+			std::cerr << "无法创建PNG信息结构" << std::endl;
 			return false;
-			//throw std::runtime_error("png_create_info_struct失败");
 		}
 
+		// 设置错误处理
 		if (setjmp(png_jmpbuf(png_ptr))) {
 			png_destroy_write_struct(&png_ptr, &info_ptr);
+			std::cerr << "PNG写入错误" << std::endl;
+			return false;
+		}
+
+		// 设置输出
+		png_init_io(png_ptr, fp);
+		return true;
+	}
+
+	void ImageFileIOAdapter::processPixelData(const unsigned char* imageData, std::vector<unsigned char>& outData, int width, int height, int bandCount, int outBandCount, int bitDepth, const std::vector<double>& nodata, bool requiresAlpha)
+	{
+		size_t rowSize = width * outBandCount * (bitDepth / 8);
+
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < width; x++) {
+				int inPixelPos = (y * width + x) * bandCount;  // 输入数据的像素位置
+				int outPixelPos = (y * width + x) * outBandCount;  // 输出数据的像素位置
+
+				// 检查是否为nodata，仅当需要透明通道时
+				bool isNodata = false;
+				if (requiresAlpha) {
+					isNodata = isNodataPixel(imageData, inPixelPos, bandCount, bitDepth, nodata);
+				}
+
+				// 复制原始数据到输出数组
+				if (bitDepth == 8) {
+					// 8位数据处理
+					for (int b = 0; b < bandCount; b++) {
+						outData[outPixelPos + b] = imageData[inPixelPos + b];
+					}
+
+					// 如果需要透明通道，设置透明度
+					if (requiresAlpha) {
+						outData[outPixelPos + bandCount] = isNodata ? 0 : 255;
+					}
+				}
+				else {
+					// 16位数据处理
+					for (int b = 0; b < bandCount; b++) {
+						memcpy(&outData[y * rowSize + (outPixelPos + b) * 2],
+							&imageData[inPixelPos * 2 + b * 2],
+							2);
+					}
+
+					// 如果需要透明通道，设置透明度
+					if (requiresAlpha) {
+						unsigned short alpha = isNodata ? 0 : 65535;
+						outData[y * rowSize + (outPixelPos + bandCount) * 2] = (alpha >> 8) & 0xFF;
+						outData[y * rowSize + (outPixelPos + bandCount) * 2 + 1] = alpha & 0xFF;
+					}
+				}
+			}
+		}
+	}
+
+	bool ImageFileIOAdapter::saveGDALDataAsPNG(IOFileInfo fileInfo,  int width, int height, int bandCount, int bitDepth, const std::vector<double>& nodata)
+	{
+		const unsigned char* imageData = fileInfo.data;
+		const auto fullPath = std::filesystem::path(mBasePath) / fileInfo.filePath;
+		std::string outputFilename = fullPath.string()+".png";
+		// 参数检查
+		if (!imageData || width <= 0 || height <= 0 ||
+			(bandCount != 1 && bandCount != 3) ||
+			(bitDepth != 8 && bitDepth != 16) ||
+			nodata.size() != bandCount) {
+			std::cerr << "参数错误" << std::endl;
+			return false;
+		}
+
+		// 首先扫描一遍，检查是否存在nodata值
+		bool requiresAlpha = hasNodataPixels(imageData, width, height, bandCount, bitDepth, nodata);
+
+		// 打开输出文件
+		FILE* fp = fopen(outputFilename.c_str(), "wb");
+		if (!fp) {
+			std::cerr << "无法创建输出文件: " << outputFilename << std::endl;
+			return false;
+		}
+
+		// 初始化PNG结构
+		png_structp png_ptr;
+		png_infop info_ptr;
+		if (!initPNG(fp, png_ptr, info_ptr)) {
 			fclose(fp);
 			return false;
-			//throw std::runtime_error("PNG写入过程中出错");
 		}
 
-		png_init_io(png_ptr, fp);
+		// 设置PNG头部信息
+		int png_color_type;
+		if (bandCount == 1) {
+			png_color_type = requiresAlpha ? PNG_COLOR_TYPE_GRAY_ALPHA : PNG_COLOR_TYPE_GRAY;
+		}
+		else {
+			png_color_type = requiresAlpha ? PNG_COLOR_TYPE_RGB_ALPHA : PNG_COLOR_TYPE_RGB;
+		}
 
-		// 设置图像头信息
-		png_set_IHDR(png_ptr, info_ptr, width, height,
-			bit_depth, color_type, PNG_INTERLACE_NONE,
-			PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
+		png_set_IHDR(png_ptr, info_ptr, width, height, bitDepth,
+			png_color_type, PNG_INTERLACE_NONE,
+			PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
 
+		// 写入PNG头部
 		png_write_info(png_ptr, info_ptr);
 
-		// 准备行指针
-		std::vector<png_bytep> row_pointers(height);
+		// 计算每行字节数和输出的波段数
+		int outBandCount = bandCount + (requiresAlpha ? 1 : 0);  // 如果有nodata，则需要透明通道
+		size_t rowSize = width * outBandCount * (bitDepth / 8);
 
-		for (int y = 0; y < height; ++y) {
-			row_pointers[y] = const_cast<png_bytep>(image_data + y * width * bands);
+		// 创建行指针数组
+		std::vector<png_bytep> rowPointers(height);
+
+		// 申请输出图像数据内存
+		std::vector<unsigned char> outData(height * rowSize);
+
+		// 处理像素数据
+		processPixelData(imageData, outData, width, height, bandCount, outBandCount,
+			bitDepth, nodata, requiresAlpha);
+
+		// 设置行指针
+		for (int y = 0; y < height; y++) {
+			rowPointers[y] = &outData[y * rowSize];
 		}
 
-		png_write_image(png_ptr, row_pointers.data());
-		png_write_end(png_ptr, nullptr);
+		// 写入图像数据
+		png_write_image(png_ptr, rowPointers.data());
+
+		// 完成写入
+		png_write_end(png_ptr, NULL);
 
 		// 清理
 		png_destroy_write_struct(&png_ptr, &info_ptr);
 		fclose(fp);
-		return true;		
+
+		std::cout << "PNG文件创建成功: " << outputFilename
+			<< (requiresAlpha ? " (带透明通道)" : " (不带透明通道)") << std::endl;
+
+		return true;
 	}
 
-	bool ImageFileIOAdapter::nodataCheckAndTrans(unsigned char* oriData, int oriDataSize, unsigned char* newData, int& newDataSize) {
-		if (mNoData.size() == 0) return false;
-		
-		//oriData是rgb rgb这样的形式了 
-		//同时需要考虑int8 和int16这样的形式
-		int dataType=oriDataSize / (mWidth * mHeight * mBandsNum);
-		newDataSize = (oriDataSize / mBandsNum) * (mBandsNum + 1);
-
-		//需要先检查
-		bool needTrans = false;
-		if (1 == dataType) {
-			uint8_t* data = static_cast<uint8_t*>(oriData);
-			for (int j = 0; j < mWidth; j++)
-			{
-				for (int k = 0; k < mHeight; k++)
-				{
-					int cellPos=mWidth* j + k;
-					bool cellIsNodata = true;
-					for (int i = 0; i < mBandsNum; i++)
-					{
-						cellIsNodata = cellIsNodata && (data[cellPos*mBandsNum + i] == mNoData[i]);
-					}
-					if (cellIsNodata)
-					{
-						needTrans = true;
-						break;
-					}
-				}
-				if (needTrans) break;
-			}
-
-			//真正需要透明的一定比不透明的瓦片少 所以分开是合适的
-			if (needTrans)
-			{
-				newData = (unsigned char* )malloc(newDataSize);
-				for (int i = 0; i < mWidth; i++)
-				{
-					for (int j = 0; j < mHeight; j++)
-					{
-						int cellPos = mWidth * i + j;
-						bool cellIsNodata = true;
-						for (int k = 0; k < mBandsNum; k++)
-						{
-							cellIsNodata = cellIsNodata && (data[cellPos * mBandsNum + k] == mNoData[k]);
-							*(newData + cellPos * (mBandsNum + 1)+k) = *(data + cellPos * mBandsNum+k);
-						}
-						//写新的那个波段 但是要根据是否为透明决定						
-						*(newData + cellPos * (mBandsNum + 1) + mBandsNum) = cellIsNodata ? 0 : 255;
-					}
-				}
-			}
-		}else if(2==dataType) {
-			uint16_t* data = reinterpret_cast<uint16_t*>(oriData);
-			for (int j = 0; j < mWidth; j++)
-			{
-				for (int k = 0; k < mHeight; k++)
-				{
-					int cellPos = mWidth * j + k;
-					bool cellIsNodata = true;
-					for (int i = 0; i < mBandsNum; i++)
-					{
-						cellIsNodata = cellIsNodata && (data[cellPos * mBandsNum + i] == mNoData[i]);
-					}
-					if (cellIsNodata)
-					{
-						needTrans = true;
-						break;
-					}
-				}
-				if (needTrans) break;
-			}
-
-			//真正需要透明的一定比不透明的瓦片少 所以分开是合适的
-			if (needTrans)
-			{
-				uint16_t*  newDataTemp = (uint16_t*)malloc(newDataSize);
-				for (int i = 0; i < mWidth; i++)
-				{
-					for (int j = 0; j < mHeight; j++)
-					{
-						int cellPos = mWidth * i + j;
-						bool cellIsNodata = true;
-						for (int k = 0; k < mBandsNum; k++)
-						{
-							cellIsNodata = cellIsNodata && (data[cellPos * mBandsNum + i] == mNoData[i]);
-							*(newDataTemp + cellPos * (mBandsNum + 1) + k) = *(data + cellPos * mBandsNum + k);
-						}
-						//写新的那个波段 但是要根据是否为透明决定						
-						*(newDataTemp + cellPos * (mBandsNum + 1) + mBandsNum) = cellIsNodata ? 0 : std::numeric_limits<uint16_t>::max();
-					}
-				}
-				newData = (unsigned char*)malloc(newDataSize);
-				std::memmove(newData, newDataTemp, newDataSize);
-				free(newDataTemp);
-			}
-		}
-		return needTrans;
-	}
 };
