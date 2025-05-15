@@ -414,6 +414,10 @@ namespace WT {
 		png_destroy_write_struct(&png_ptr, &info_ptr);
 		fclose(fp);
 
+		//delete  fileInfo.data;
+		free(fileInfo.data);
+		fileInfo.data = nullptr;
+
 		std::cout << "PNG文件创建成功: " << outputFilename
 			<< (requiresAlpha ? " (带透明通道)" : " (不带透明通道)") << std::endl;
 

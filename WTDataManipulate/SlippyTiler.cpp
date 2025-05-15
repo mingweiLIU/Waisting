@@ -256,7 +256,8 @@ namespace WT{
 		
 			// 将内存数据移动到vector中
 			fs::path file = fs::path(std::to_string(zoom)) / std::to_string(tile_x) / std::to_string(tile_y);
-			fileBatchOutputer->addFile({file.string(),pData,buffer_size});
+			IOFileInfo f = { file.string(),pData,buffer_size };
+			fileBatchOutputer->addFile(f);
 
 			return true;
 		}
