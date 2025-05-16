@@ -13,8 +13,8 @@ namespace WT {
 		return std::filesystem::exists(mBasePath);
 	}
 
-	bool FilesystemAdapter::output(const IOFileInfo file) {
-		const auto fullPath = std::filesystem::path(mBasePath) / file.filePath;
+	bool FilesystemAdapter::output(const IOFileInfo* file) {
+		const auto fullPath = std::filesystem::path(mBasePath) / file->filePath;
 		std::error_code ec; // 用于捕获文件系统错误而不抛出异常
 
 		// 1. 创建目录（如果需要）
@@ -35,7 +35,7 @@ namespace WT {
 		}
 
 		// 3. 写入数据
-		out.write(reinterpret_cast<const char*>(file.data), file.dataSize);
+		out.write(reinterpret_cast<const char*>(file->data), file->dataSize);
 
 		// 4. 确保所有操作成功
 		const bool success = out.good();
@@ -44,22 +44,22 @@ namespace WT {
 		return success;
 	}
 
-	bool FilesystemAdapter::outputBatch(const std::vector<IOFileInfo> files) {
+	bool FilesystemAdapter::outputBatch(const std::vector<IOFileInfo*> files) {
 		// 使用路径和原始数据指针+大小的pair
-		using FileData = std::pair<const void*, size_t>;
-		std::unordered_map<std::string, std::vector<std::pair<std::string, FileData>>> dirGroups;
+		using filedata = std::pair<const void*, size_t>;
+		std::unordered_map<std::string, std::vector<std::pair<std::string, filedata>>> dirgroups;
 
 		// 按目录分组
-		for (const auto& [path, data, size] : files) {  // 正确解包三元组
-			const auto fullPath = std::filesystem::path(mBasePath) / path;
-			dirGroups[fullPath.parent_path().string()].emplace_back(
-				fullPath.filename().string(),
-				FileData{ data, size }  // 存储原始指针和大小
+		for ( auto file : files) {  // 正确解包三元组
+			const auto fullpath = std::filesystem::path(mBasePath) / file->filePath;
+			dirgroups[fullpath.parent_path().string()].emplace_back(
+				fullpath.filename().string(),
+				filedata{ file->data, file->dataSize }  // 存储原始指针和大小
 			);
 		}
 
 		// 批量处理每个目录
-		for (const auto& [dir, fileList] : dirGroups) {
+		for (const auto& [dir, filelist] : dirgroups) {
 			if (mCreateDirs) {
 				std::error_code ec;
 				if (!std::filesystem::create_directories(dir, ec) && ec) {
@@ -67,8 +67,8 @@ namespace WT {
 				}
 			}
 
-			for (const auto& [filename, dataInfo] : fileList) {
-				const auto& [data, size] = dataInfo;
+			for (const auto& [filename, datainfo] : filelist) {
+				const auto& [data, size] = datainfo;
 				std::ofstream out(std::filesystem::path(dir) / filename, std::ios::binary);
 				if (!out) return false;
 

@@ -37,8 +37,8 @@ namespace WT {
 		return std::filesystem::exists(mBasePath);
 	}
 
-	bool ImageFileIOAdapter::output(const IOFileInfo fileInfo) {
-		const auto fullPath = std::filesystem::path(mBasePath) / fileInfo.filePath;
+	bool ImageFileIOAdapter::output(const IOFileInfo* fileInfo) {
+		const auto fullPath = std::filesystem::path(mBasePath) / fileInfo->filePath;
 		std::error_code ec; // 用于捕获文件系统错误而不抛出异常
 
 		// 1. 创建目录（如果需要）
@@ -50,36 +50,25 @@ namespace WT {
 				}
 			}
 		}
-
-		// 2. 打开文件
-		std::ofstream out(fullPath, std::ios::binary);
-		if (!out.is_open()) {
-			// 可以记录具体错误信息
-			return false;
-		}
-
-		// 3. 写入数据
-		out.write(reinterpret_cast<const char*> (fileInfo.data),fileInfo.dataSize);
-
-		// 4. 确保所有操作成功
-		const bool success = out.good();
-		out.close(); // 显式关闭（析构函数会自动调用，但显式调用可以立即检查错误）
+		bool success=dataToImage(const_cast<IOFileInfo*>(fileInfo));
+		delete fileInfo;
+		fileInfo = nullptr;
 
 		return success;
 	}
 
-	bool ImageFileIOAdapter::outputBatch(const std::vector<IOFileInfo> files) {
+	bool ImageFileIOAdapter::outputBatch(const std::vector<IOFileInfo*> files) {
 		// 使用路径和原始数据指针+大小的pair
-		std::unordered_map<std::string, std::vector<IOFileInfo>> dirGroups;
+		std::unordered_map<std::string, std::vector<IOFileInfo*>> dirGroups;
 
 		// 按目录分组
-		for (const auto& fileInfo : files) {  // 正确解包三元组
-			const auto fullPath = std::filesystem::path(mBasePath) / (fileInfo.filePath);
+		for (const auto fileInfo : files) {  // 正确解包三元组
+			const auto fullPath = std::filesystem::path(mBasePath) / (fileInfo->filePath);
 			dirGroups[fullPath.parent_path().string()].emplace_back(fileInfo);
 		}
 
 		// 批量处理每个目录
-		for (const auto& [dir, fileList] : dirGroups) {
+		for (auto& [dir, fileList] : dirGroups) {
 			if (mCreateDirs) {
 				std::error_code ec;
 				if (!std::filesystem::create_directories(dir, ec) && ec) {
@@ -89,6 +78,8 @@ namespace WT {
 
 			for (auto& oneFile : fileList) {
 				dataToImage(oneFile);
+				delete oneFile;
+				oneFile = nullptr;
 			}
 		}
 
@@ -99,30 +90,14 @@ namespace WT {
 		return true;
 	}
 
-	bool ImageFileIOAdapter::dataToImage(IOFileInfo ioFileInfo)
+	bool ImageFileIOAdapter::dataToImage(IOFileInfo* ioFileInfo)
 	{
 		switch (mFormat)
 		{
 		case IMAGEFORMAT::PNG: {
 			//做个波段数映射
-			int depth = ioFileInfo.dataSize / (mWidth * mHeight * mBandsNum) * 8;
+			int depth = ioFileInfo->dataSize / (mWidth * mHeight * mBandsNum) * 8;
 			return saveGDALDataAsPNG(ioFileInfo, mWidth, mHeight, mBandsNum, depth, mNoData);
-
-
-			//std::vector<int>colorTypeMap = {0,PNG_COLOR_TYPE_GRAY ,PNG_COLOR_TYPE_GA ,PNG_COLOR_TYPE_RGB,PNG_COLOR_TYPE_RGBA };			
-			//int depth=ioFileInfo.dataSize / (mWidth * mHeight * mBandsNum) * 8;
-
-			////要看看是否是需要添加透明图层
-			//unsigned char* tempNewData = nullptr;
-			//int tempNewDataSize = 0;
-			//if (nodataCheckAndTrans(ioFileInfo.data, ioFileInfo.dataSize, tempNewData, tempNewDataSize)) {
-			//	free(ioFileInfo.data);
-			//	ioFileInfo.data = tempNewData;
-			//	ioFileInfo.dataSize = tempNewDataSize;
-			//	return write_png(ioFileInfo, mWidth, mHeight, mBandsNum + 1, colorTypeMap[mBandsNum+1], depth);
-			//}
-
-			//return write_png(ioFileInfo, mWidth, mHeight, mBandsNum,colorTypeMap[mBandsNum],depth);
 			break;
 		}
 		case  IMAGEFORMAT::JPG: {
@@ -144,10 +119,10 @@ namespace WT {
 		return true;
 	}
 
-	bool ImageFileIOAdapter::writeJPEG(IOFileInfo fileInfo, int width, int height, const JPEGOptions& opts) {
-		const auto fullPath = std::filesystem::path(mBasePath) / fileInfo.filePath;
+	bool ImageFileIOAdapter::writeJPEG(IOFileInfo* fileInfo, int width, int height, const JPEGOptions& opts) {
+		const auto fullPath = std::filesystem::path(mBasePath) / fileInfo->filePath;
 		std::string filename = fullPath.string();
-		unsigned char* data = fileInfo.data;
+		unsigned char* data = fileInfo->data;
 
 		FILE* outfile = fopen((filename + ".jpg").c_str(), "wb");
 		if (!outfile) {
@@ -191,16 +166,16 @@ namespace WT {
 		return true;
 	}
 
-	bool ImageFileIOAdapter::writeRGBJPEG(IOFileInfo fileInfo, int width, int height,int quality/* = 85*/) {
-		if (fileInfo.dataSize != width * height * 3) {
+	bool ImageFileIOAdapter::writeRGBJPEG(IOFileInfo* fileInfo, int width, int height,int quality/* = 85*/) {
+		if (fileInfo->dataSize != width * height * 3) {
 			fprintf(stderr, "RGB数据大小不匹配\n");
 			return false;
 		}
 		return writeJPEG(fileInfo, width, height,{ quality, true, JCS_RGB });
 	}
 
-	bool ImageFileIOAdapter::writeGrayscaleJPEG(IOFileInfo fileInfo, int width, int height, int quality /*= 85*/) {
-		if (fileInfo.dataSize != width * height) {
+	bool ImageFileIOAdapter::writeGrayscaleJPEG(IOFileInfo* fileInfo, int width, int height, int quality /*= 85*/) {
+		if (fileInfo->dataSize != width * height) {
 			fprintf(stderr, "灰度数据大小不匹配\n");
 			return false;
 		}
@@ -337,10 +312,10 @@ namespace WT {
 		}
 	}
 
-	bool ImageFileIOAdapter::saveGDALDataAsPNG(IOFileInfo fileInfo,  int width, int height, int bandCount, int bitDepth, const std::vector<double>& nodata)
+	bool ImageFileIOAdapter::saveGDALDataAsPNG(IOFileInfo* fileInfo,  int width, int height, int bandCount, int bitDepth, const std::vector<double>& nodata)
 	{
-		const unsigned char* imageData = fileInfo.data;
-		const auto fullPath = std::filesystem::path(mBasePath) / fileInfo.filePath;
+		const unsigned char* imageData = fileInfo->data;
+		const auto fullPath = std::filesystem::path(mBasePath) / fileInfo->filePath;
 		std::string outputFilename = fullPath.string()+".png";
 		// 参数检查
 		if (!imageData || width <= 0 || height <= 0 ||
@@ -413,10 +388,6 @@ namespace WT {
 		// 清理
 		png_destroy_write_struct(&png_ptr, &info_ptr);
 		fclose(fp);
-
-		//delete  fileInfo.data;
-		free(fileInfo.data);
-		fileInfo.data = nullptr;
 
 		std::cout << "PNG文件创建成功: " << outputFilename
 			<< (requiresAlpha ? " (带透明通道)" : " (不带透明通道)") << std::endl;

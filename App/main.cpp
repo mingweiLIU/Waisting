@@ -4,23 +4,15 @@
 #include <QtQuick/QQuickView>
 #include <QIcon>
 #include<qsurfaceformat.h>
+#include <QtQuickControls2/QQuickStyle>  // 引入 Style 模块
+
 int main(int argc, char *argv[])
 {
+	// 方法1：禁用DPI缩放（强制1:1像素）
+	QGuiApplication::setAttribute(Qt::AA_DisableHighDpiScaling);
 	QGuiApplication app(argc, argv);
-
-	// QSurfaceFormat format = QSurfaceFormat::defaultFormat();
-	// format.setVersion(3, 2);
-	// format.setProfile(QSurfaceFormat::CoreProfile);
-	// format.setRenderableType(QSurfaceFormat::OpenGL);
-	// format.setOption(QSurfaceFormat::DebugContext);
-	// format.setDepthBufferSize(24);
-	// format.setSamples(8);
-	// format.setStencilBufferSize(8);
-	// format.setSwapBehavior(QSurfaceFormat::DoubleBuffer);
-	// QSurfaceFormat::setDefaultFormat(format);
-
-	// osgEarth::initialize();
-
+	// 设置全局 Style（推荐 Fusion 或 Material）
+	QQuickStyle::setStyle("Fusion");  // 或 "Material", "Basic"
 	app.setWindowIcon(QIcon(":/qt/qml/Waisting/icon/app.png"));//
 	QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
 
@@ -29,20 +21,7 @@ int main(int argc, char *argv[])
 	QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed,
 		&app, []() { QCoreApplication::exit(-1); },
 		Qt::QueuedConnection); 
-
-	//QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
-	//	&app, [&engine]() { 
-	//		QList<QObject*>rootOjects = engine.rootObjects();
-	//		QQuickItem* viewerObject = rootOjects.first()->findChild<QQuickItem*>("leftMenu");
-	//		//绑定Viewer和Tree
-	//		//QObject::connect(viewerObject, &WTOSGViewer::loadedFile, wLayerTree, &WT::WLayerTreeModel::addNode);
-	//	},
-	//	Qt::QueuedConnection); 
     engine.loadFromModule("Waisting", "Main");
-
-	//QObject* root = nullptr;
-
-	
 
 	return app.exec();
 }

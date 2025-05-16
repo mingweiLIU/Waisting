@@ -7,6 +7,7 @@
 #include <vector>
 #include <cassert>
 #include <functional>
+#include <map>
 
 namespace WT {
     /**
@@ -17,6 +18,27 @@ namespace WT {
      */
     class MemoryPool {
     public:
+        static MemoryPool* GetInstance(std::string poolName) {
+            auto it= namedMemoryPools.find(poolName);
+            if (it != namedMemoryPools.end()) {
+                return it->second;
+            }
+            else {
+                //新建一个
+                MemoryPool* oneMPool = new MemoryPool();
+                namedMemoryPools.insert(std::make_pair(poolName,oneMPool));
+                return oneMPool;
+            }
+        }
+        static void releaseInstance(std::string poolName) {
+            auto it = namedMemoryPools.find(poolName);
+            if (it != namedMemoryPools.end()) {
+                delete it->second;
+                namedMemoryPools.erase(it);
+            }
+        }
+
+    protected:
         /**
          * @brief 构造函数
          * @param minBlockSize 最小内存块大小
@@ -46,7 +68,7 @@ namespace WT {
                 }
             }
         }
-
+    public:
         /**
          * @brief 分配指定大小的内存块
          * @param size 请求的内存块大小
@@ -178,9 +200,11 @@ namespace WT {
 
         // 记录大内存块分配情况，用于析构时释放
         tbb::concurrent_unordered_map<void*, size_t> m_allocatedLargeBlocks;
+
+    private:
+        inline static std::map<std::string, MemoryPool*> namedMemoryPools;
     };
-
-
+   //std::map<std::string, MemoryPool*> MemoryPool::namedMemoryPools;
 
     ///**
     // * @brief 使用示例

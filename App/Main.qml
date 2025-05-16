@@ -4,7 +4,8 @@ import QtQuick.Window
 import QtQuick.Layouts
 
 import "./components"
-//import WTComponents
+import "./views"
+
 Window {
     width: 800
     height: 500
@@ -40,7 +41,8 @@ Window {
 
             let dataHandlerPanel = tab1Content.addPanel("数据轻量化处理");
             dataHandlerPanel.addButton("qrc:/qt/qml/Waisting/icon/shitujuzhen.png", "影像切片", function() {
-                console.log("影像切片");
+                let imageTilerUI =Qt.createComponent("./views/ImageTilingDialog.qml").createObject();
+                imageTilerUI.show();
             });
             dataHandlerPanel.addButton("qrc:/qt/qml/Waisting/icon/yingyongAPP.png", "STK地形切片", function() {
                 console.log("STK地形切片");

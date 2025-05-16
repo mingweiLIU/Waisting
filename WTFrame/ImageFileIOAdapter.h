@@ -26,21 +26,21 @@ namespace WT {
 			, int bands = 3, std::vector<double> noData = {});
 
 		bool initialize() override;
-		bool output(const IOFileInfo fileInfo) override;
-		bool outputBatch(const std::vector<IOFileInfo> files) override;
+		bool output(const IOFileInfo* fileInfo) override;
+		bool outputBatch(const std::vector<IOFileInfo*> files) override;
 		bool finalize() override;
 		std::string type() const override { return "ImageFileIOAdapter"; }
 	private:
-		bool dataToImage(IOFileInfo ioFileInfo);
+		bool dataToImage(IOFileInfo* ioFileInfo);
 
-		bool writeJPEG(IOFileInfo fileInfo, int width, int height, const JPEGOptions& opts = {});
+		bool writeJPEG(IOFileInfo* fileInfo, int width, int height, const JPEGOptions& opts = {});
 		// 从RGB缓冲区写入
-		bool writeRGBJPEG(IOFileInfo fileInfo, int width, int height, int quality = 85);
+		bool writeRGBJPEG(IOFileInfo* fileInfo, int width, int height, int quality = 85);
 		// 从灰度缓冲区写入
-		bool writeGrayscaleJPEG(IOFileInfo fileInfo, int width, int height, int quality = 85);
+		bool writeGrayscaleJPEG(IOFileInfo* fileInfo, int width, int height, int quality = 85);
 
 		//写出png
-		bool write_png(IOFileInfo fileInfo, int width, int height,int bands,int color_type = PNG_COLOR_TYPE_RGB,int bit_depth = 8);
+		bool write_png(IOFileInfo* fileInfo, int width, int height,int bands,int color_type = PNG_COLOR_TYPE_RGB,int bit_depth = 8);
 
 		//根据Nodata情况拼装透明图层 如果需要半透明 则返回为true 不需要则false
 		bool nodataCheckAndTrans(unsigned char* oriData, int oriDataSize, unsigned char* newData, int& newDataSize);
@@ -120,7 +120,7 @@ namespace WT {
 		 * @param outputFilename 输出PNG文件路径
 		 * @return 成功返回true，失败返回false
 		 */
-		bool saveGDALDataAsPNG(IOFileInfo fileInfo, 
+		bool saveGDALDataAsPNG(IOFileInfo* fileInfo, 
 			int width, int height,
 			int bandCount, int bitDepth,
 			const std::vector<double>& nodata);

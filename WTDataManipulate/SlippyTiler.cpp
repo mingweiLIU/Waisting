@@ -1,6 +1,7 @@
 #include "SlippyTiler.h"
 
 #include "ImageFileIOAdapter.h"
+#include "MemoryPool.h"
 
 namespace WT{
 	SlippyMapTiler::SlippyMapTiler(std::shared_ptr<SlippyMapTilerOptions> options) {
@@ -22,6 +23,8 @@ namespace WT{
 			dataset = nullptr;
 		}
 		GDALDestroyDriverManager();
+		//这里要清除内存池的内容
+		MemoryPool::releaseInstance(this->getName());
 	}
 
 	void SlippyMapTiler::setOptions(std::shared_ptr<IDataOptions> options) {
@@ -164,9 +167,6 @@ namespace WT{
 				return false;
 			}
 
-			// 获取有效波段数量
-			//int bands = std::min(band_count, 4); // 最多支持4个波段(RGBA)
-
 			// 分配内存为每个波段创建缓冲区
 			size_t pixel_size = GDALGetDataTypeSize(data_type) / 8;
 			//这里需要定义下 如果输出jpg 其只支持8位，如果是png 其只支持8或者16位，大于16位的我们用8位代替 那么像素位不管是多少 都应为1 然后gdal会自动将数值范围缩放
@@ -179,15 +179,10 @@ namespace WT{
 			}
 			size_t buffer_size = options->tileSize * options->tileSize * band_count * pixel_size;
 
-			// 使用jemalloc分配内存
-			//void* pData = memory_allocator->allocate(buffer_size);
-			//if (!pData) {
-			//	std::cerr << "内存分配失败!" << std::endl;
-			//	return false;
-			//}
-			
 			//这里得到的pData是rgb rgb这样的形式
-			unsigned char * pData = (unsigned char*) malloc(buffer_size);
+			//unsigned char * pData = (unsigned char*) malloc(buffer_size);
+			
+			unsigned char* pData = (unsigned char*)(MemoryPool::GetInstance(this->getName())->allocate(buffer_size));
 			//std::unique_ptr<unsigned char[]> pData(new unsigned char[buffer_size]);
 			//if (!pData) {
 			//	std::cerr << "内存分配失败!" << std::endl;
@@ -205,7 +200,6 @@ namespace WT{
 					pData, options->tileSize, options->tileSize,
 					data_type, band_count, nullptr,
 					band_count, options->tileSize* band_count, 1
-					//0,0,0
 				);
 			}
 
@@ -213,51 +207,11 @@ namespace WT{
 				free(pData);
 				return false;
 			}
-
-			//// 创建输出驱动和目标数据集
-			//GDALDriver* outputDriver = nullptr;
-			//GDALDatasetH poDstDS = nullptr;
-			//{
-			//	std::lock_guard<std::mutex> lock(gdal_mutex);
-			//	outputDriver = GetGDALDriverManager()->GetDriverByName("GTiff");
-			//	if (!outputDriver) {
-			//		return false;
-			//	}
-
-			//	poDstDS = outputDriver->Create(tile_path.c_str(), options->tileSize, options->tileSize, bands, data_type, nullptr);
-			//	if (!poDstDS) {
-			//		std::cerr << "错误: 文件创建失败 - " << CPLGetLastErrorMsg() << std::endl;
-
-			//		// 检查具体错误
-			//		if (CPLGetLastErrorType() == CE_Failure) {
-			//			std::cerr << "详细错误: " << CPLGetLastErrorMsg() << std::endl;
-			//		}
-			//		return false;
-			//	}
-
-			//	// 写入数据到数据集，需要重采样
-			//	err = GDALDatasetRasterIO(
-			//		poDstDS, GF_Write,
-			//		0, 0, options->tileSize, options->tileSize,
-			//		pData.get(), options->tileSize, options->tileSize,
-			//		data_type, bands, nullptr,
-			//		0, 0, 0
-			//	);
-			//}
-
-
-			//if (err != CE_None) {
-			//	GDALClose(poDstDS);
-			//	return false;
-			//}
-			//
-			//// 关闭数据集
-			//GDALClose(poDstDS);
 		
 			// 将内存数据移动到vector中
 			fs::path file = fs::path(std::to_string(zoom)) / std::to_string(tile_x) / std::to_string(tile_y);
-			IOFileInfo f = { file.string(),pData,buffer_size };
-			fileBatchOutputer->addFile(f);
+			IOFileInfo* oneFileInfo = new IOFileInfo{ file.string(),pData,buffer_size,this->getName()};
+			fileBatchOutputer->addFile(oneFileInfo);
 
 			return true;
 		}

@@ -7,8 +7,8 @@ namespace WT {
 		explicit FilesystemAdapter(const std::string& basePath, bool createDirs = true);
 
 		bool initialize() override;
-		bool output(const IOFileInfo file) override;
-		bool outputBatch(const std::vector<IOFileInfo> files) override;
+		bool output(const IOFileInfo* file) override;
+		bool outputBatch(const std::vector<IOFileInfo*> files) override;
 		bool finalize() override;
 		std::string type() const override { return "filesystem"; }
 		
