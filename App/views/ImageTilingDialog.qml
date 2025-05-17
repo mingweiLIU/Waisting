@@ -2,18 +2,55 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Dialogs
+import ImageTilingDialog 1.0
 
 Window {
     id: paramDialog
     title: "切片参数设置"
     width: 550 + (helpPanelVisible ? 300 : 0)  // 主窗口宽度固定，帮助面板宽度额外计算
-    height: advancedOptionsVisible ? 890 : 520
-    flags: Qt.Dialog  // 设置为对话框样式
+    height: advancedOptionsVisible ? 820 : 500    
+    flags: Qt.Dialog | Qt.WindowModal  // 添加WindowModal标志，确保它作为对话框显示
+    modality: Qt.ApplicationModal      // 设置为应用模态，阻止与其他窗口交互
     color: "#f5f5f5"  // 设置背景色
 
     // 只为高度添加动画
     Behavior on height {
         NumberAnimation { duration: 300; easing.type: Easing.OutQuad }
+    }
+
+     // 添加 TileProcessor 实例
+    ImageTilingDialog {
+        id: tileProcessor
+        onProgressChanged: progress = tileProcessor.progress
+        onProcessingFinished: {
+            progress = 0
+            // 可以添加成功提示
+        }
+        onProcessingError: {
+            //progress = 0
+            // 可以添加错误提示
+            showInfo("出错了","错误");
+        }
+    }
+
+    onVisibleChanged: {
+        visible? mainWindow.showModal() : mainWindow.hideModal();
+    }
+    // 添加打开方法
+    function open() {
+        // 设置窗口在父窗口中心
+        x = mainWindow && typeof mainWindow.width !== "undefined" ?
+            (mainWindow.width - width) / 2 : Screen.width / 2 - width / 2;
+        y = mainWindow && typeof mainWindow.height !== "undefined" ?
+            (mainWindow.height - height) / 2 : Screen.height / 2 - height / 2;
+
+        visible = true;
+    }
+
+    // 添加关闭方法
+    function close() {
+        visible = false;
+        rejected();  // 触发拒绝信号
     }
 
     // 参数属性
@@ -31,6 +68,8 @@ Window {
     property bool usePrj: false  // 控制使用PRJ
     property bool useCoordinateSystem: true  // 控制是否使用坐标系统
     property int coordinateSystemType: 0  // 0=影像自带坐标, 1=PRJ文件, 2=WKT字符串
+
+    property  var mainWindow//弹出该窗口的主窗口
 
     signal accepted()
     signal rejected()
@@ -471,7 +510,7 @@ Window {
                     Layout.fillWidth: true
                     implicitHeight: advancedOptions.implicitHeight // 预先计算高度
                     Layout.preferredHeight: advancedOptionsVisible ? advancedOptions.implicitHeight : 0
-                    visible: advancedOptionsVisible // 使用可见性代替裁剪，避免布局抖动
+                    clip: true // 使用可见性代替裁剪，避免布局抖动
 
                     // 添加高度动画
                     Behavior on Layout.preferredHeight {
@@ -483,7 +522,7 @@ Window {
                         anchors.left: parent.left
                         anchors.right: parent.right
                         spacing: 16
-                        opacity: advancedOptionsVisible ? 1.0 : 0
+                        //opacity: advancedOptionsVisible ? 1.0 : 0
 
                         // 添加不透明度动画
                         Behavior on opacity {
@@ -704,7 +743,7 @@ Window {
                                         }
                                         TextField {
                                             id: nodataFieldR
-                                            text: nodata[0]
+                                            text: nodata[0]===undefined ? "": nodata[0]
                                             validator: DoubleValidator {}
                                             onTextChanged: nodata[0] = parseFloat(text) || 0
                                             Layout.preferredWidth: 70
@@ -729,7 +768,7 @@ Window {
                                         }
                                         TextField {
                                             id: nodataFieldG
-                                            text: nodata[1]
+                                            text: nodata[1]===undefined ? "" :nodata[1]
                                             validator: DoubleValidator {}
                                             onTextChanged: nodata[1] = parseFloat(text) || 0
                                             Layout.preferredWidth: 70
@@ -754,7 +793,7 @@ Window {
                                         }
                                         TextField {
                                             id: nodataFieldB
-                                            text: nodata[2]
+                                            text: nodata[2]===undefined ? "" :nodata[2]
                                             validator: DoubleValidator {}
                                             onTextChanged: nodata[2] = parseFloat(text) || 0
                                             Layout.preferredWidth: 70
@@ -847,7 +886,7 @@ Window {
                     Button {
                         text: "取消"
                         onClicked: {
-                            rejected()
+                            tileProcessor.cancelProcessing()
                             close()
                         }
 
@@ -870,8 +909,27 @@ Window {
                         text: "确定"
                         highlighted: true
                         onClicked: {
+                            // 将参数传递给 C++ 处理器并开始处理
+                            tileProcessor.inputFile = inputFile
+                            tileProcessor.outputDir = outputDir
+                            tileProcessor.minLevel = minLevel
+                            tileProcessor.maxLevel = maxLevel
+                            tileProcessor.nodata = nodata
+                            tileProcessor.outputFormat = outputFormat
+                            tileProcessor.prjFilePath = prjFilePath
+                            tileProcessor.wktString = wktString
+                            tileProcessor.coordinateSystemType = coordinateSystemType
+                            
+                            // 启动处理
+                            if (tileProcessor.startProcessing()) {
+                                // 显示进度
+                                progress = 0.01 // 表示已开始
+                            } else {
+                                // 处理参数验证失败的情况
+                            }
+                            
                             accepted()
-                            close()
+                            // 注意：不再立即关闭窗口，等待处理完成
                         }
 
                         background: Rectangle {
@@ -1013,9 +1071,16 @@ Window {
         outputFormat = "png"
         prjFilePath = ""
         wktString = ""
-        progress = 0
+        progress = 10
         useCoordinateSystem = true
         usePrj = true
         helpPanelVisible = false
     }
+
+    //显示提示
+    function showInfo(info,title){
+        let infoPanel =Qt.createComponent("../components/WTMessageDialog.qml").createObject(paramDialog);
+        infoPanel.showConfirmation(info,title)
+    }
+
 }

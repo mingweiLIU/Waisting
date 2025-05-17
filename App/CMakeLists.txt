@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 project(Waisting VERSION 0.1 LANGUAGES CXX)
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Concurrent)
 
 qt_standard_project_setup(REQUIRES 6.5)
 
@@ -16,12 +16,12 @@ qt_policy(SET QTP0004 NEW)
 WTGetTypeFilesRelative(
     FileType "*.h"
     OutRelative HeaderFileNames
-    Recurse OFF
+    Recurse ON
 )
 WTGetTypeFilesRelative(
     FileType "*.cpp"
     OutRelative SourceFileNames
-    Recurse OFF
+    Recurse ON
 )
 
 WTGetTypeFilesRelative(
@@ -102,6 +102,7 @@ target_link_libraries(${PROJECT_NAME}
     Qt6::Qml
     Qt6::Quick
     Qt6::QuickControls2
+    Qt6::Concurrent
     ${SelfPlugins}
 )
 find_package(OpenSceneGraph REQUIRED osg osgDB osgViewer osgUtil osgGA )

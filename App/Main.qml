@@ -2,16 +2,79 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Window
 import QtQuick.Layouts
+import QtQuick.Dialogs
 
 import "./components"
 import "./views"
 
 Window {
+    id:mainAppWindow
     width: 800
     height: 500
-
-    visible: true
     title: "QDS"
+    visible: true
+    visibility: Window.Maximized
+
+     property var tileParamDialog: null
+
+    //定义一些事件
+    signal hideModal()   // 请求隐藏矩形的信号
+    signal showModal()   // 请求显示矩形的信号
+    // signal showInfo(string info,string title)    // 显示弹窗
+
+    Connections{
+        target:mainAppWindow
+        function onHideModal(){ mainOverlay.visible = false;}
+        function onShowModal(){ mainOverlay.visible = true;}
+        // function onShowInfo(info,title){
+        //     infoDialog.showConfirmation(info,title)
+        // }
+    }
+
+    // 半透明黑色遮罩（变暗背景） 给弹出框用的
+    Rectangle {
+        id: mainOverlay
+        anchors.fill: parent
+        color: Qt.rgba(0, 0, 0, 0.6) // 50%透明黑色
+        visible: false
+        z: 10 // 确保遮罩在最上层
+        // 点击遮罩不关闭弹窗（增强模态行为）
+        MouseArea {
+            anchors.fill: parent
+            onClicked: {}
+        }
+    }
+
+    //信息弹出窗
+    // WTMessageDialog {
+    //     id: infoDialog
+
+
+    //     // 处理确认事件
+    //     onConfirmed: {
+    //         console.log("用户点击了确定按钮")
+    //     }
+
+    //     // 处理取消事件
+    //     onCancelled: {
+    //         console.log("用户点击了取消按钮或关闭了对话框")
+    //     }
+    // }
+    // WTMessageDialog {
+    //     id: infoDialog
+    //     title: "确认操作"
+    //     showCancelButton: true
+    //     okText: "确认"
+    //     cancelText: "取消"
+
+    //     onConfirmed: {
+    //         statusLabel.text = "用户确认了操作"
+    //     }
+
+    //     onCancelled: {
+    //         statusLabel.text = "用户取消了操作"
+    //     }
+    // }
 
     Ribbon{
         id: mainRibbon
@@ -41,8 +104,33 @@ Window {
 
             let dataHandlerPanel = tab1Content.addPanel("数据轻量化处理");
             dataHandlerPanel.addButton("qrc:/qt/qml/Waisting/icon/shitujuzhen.png", "影像切片", function() {
-                let imageTilerUI =Qt.createComponent("./views/ImageTilingDialog.qml").createObject();
-                imageTilerUI.show();
+                // let imageTilerUI =Qt.createComponent("./views/ImageTilingDialog.qml").createObject(mainAppWindow,{"mainWindow":mainAppWindow});
+                // // mainOverlay.visible=true;
+                // imageTilerUI.show();
+                if (!tileParamDialog) {
+                    var component = Qt.createComponent("./views/ImageTilingDialog.qml");
+                    if (component.status === Component.Ready) {
+                        tileParamDialog = component.createObject(mainAppWindow, {
+                            "mainWindow": mainAppWindow,
+                            "x": (mainAppWindow.width - 550) / 2,
+                            "y": (mainAppWindow.height - 500) / 2
+                        });
+
+                        // 连接信号
+                        tileParamDialog.accepted.connect(function() {
+                            console.log("对话框已接受");
+                            // 这里可以处理对话框的返回值
+                        });
+
+                        tileParamDialog.rejected.connect(function() {
+                            console.log("对话框已取消");
+                        });
+                    }
+                }
+
+                if (tileParamDialog) {
+                    tileParamDialog.open();
+                }
             });
             dataHandlerPanel.addButton("qrc:/qt/qml/Waisting/icon/yingyongAPP.png", "STK地形切片", function() {
                 console.log("STK地形切片");
@@ -131,7 +219,7 @@ Window {
             let systemContent = Qt.createComponent("./components/RibbonTab.qml").createObject();
             let systemIndex = addTab("系统", systemContent);
 
-            
+
             let systemPanel = systemContent.addPanel("系统设置");
             systemPanel.addButton("qrc:/qt/qml/Waisting/icon/guanyu.png", "关于", function() {
                 console.log("关于系统");
@@ -170,7 +258,7 @@ Window {
                 SplitView.minimumWidth:350
                 SplitView.fillHeight:true
 
-                RowLayout{                    
+                RowLayout{
                     anchors.fill:parent
                     spacing:0
 
@@ -183,15 +271,15 @@ Window {
                         border.color:"#1e1f22"
                     }
                     //图层树等
-                
+
                     Rectangle{
-                        id:mostLeftMenuBarView 
+                        id:mostLeftMenuBarView
                         Layout.fillWidth:true
                         Layout.fillHeight:true
                         color:"#2b2d30"
                         border.color:"#1e1f22"
                     }
-                    }                
+                    }
             }
 
             //主视图
