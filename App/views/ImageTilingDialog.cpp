@@ -2,6 +2,8 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QDebug>
+#include "../../WTDataManipulate/SlippyTiler.h"
+#include "../../WTDataManipulate/IDataM.h"
 
 // 构造函数
 ImageTilingDialog::ImageTilingDialog(QObject *parent)
@@ -242,12 +244,6 @@ bool ImageTilingDialog::validateParameters()
         }
     }
     
-    // 检查切片级别
-    if (m_minLevel < 0 || m_maxLevel < m_minLevel) {
-        emit processingError("切片级别设置无效");
-        return false;
-    }
-    
     // 检查坐标系统设置
     if (m_coordinateSystemType == 1 && m_prjFilePath.isEmpty()) {
         emit processingError("选择使用PRJ文件时，必须指定PRJ文件路径");
@@ -266,6 +262,12 @@ bool ImageTilingDialog::validateParameters()
         emit processingError("选择使用WKT字符串时，必须输入有效的WKT字符串");
         return false;
     }
+
+    if (m_nodata.size()>0 && m_nodata.size()<3)
+	{
+		emit processingError("Nodata要么不设置，要么三个波段都需要设置，如果数据波段数为1，其他g/b分量随意设置即可");
+		return false;
+    }
     
     return true;
 }
@@ -273,23 +275,54 @@ bool ImageTilingDialog::validateParameters()
 // 切片处理实现
 bool ImageTilingDialog::processTiles()
 {
-    // 这里实现实际的切片处理逻辑
-    // 需要引入GDAL或其他GIS库来处理栅格数据
-    
+    // 这里实现实际的切片处理逻辑    
     // 模拟处理进度
-    for (int i = 1; i <= 100; i++) {
-        // 检查是否请求取消
-        if (m_cancelRequested) {
-            return false;
-        }
-        
-        // 更新进度
-        double progress = i / 100.0;
-        QMetaObject::invokeMethod(this, "updateProgress", Qt::QueuedConnection, Q_ARG(double, progress));
-        
-        // 模拟处理时间
-        QThread::msleep(50); // 每步延迟50毫秒
-    }
+    //for (int i = 1; i <= 100; i++) {
+    //    // 检查是否请求取消
+    //    if (m_cancelRequested) {
+    //        return false;
+    //    }
+    //    
+    //    // 更新进度
+    //    double progress = i / 100.0;
+    //    QMetaObject::invokeMethod(this, "updateProgress", Qt::QueuedConnection, Q_ARG(double, progress));
+    //    
+    //    // 模拟处理时间
+    //    QThread::msleep(50); // 每步延迟50毫秒
+    //}
+
+	std::shared_ptr< WT::SlippyMapTilerOptions> options = std::make_shared<WT::SlippyMapTilerOptions>();
+	options->inputFile = m_inputFile.toStdString();
+	options->outputDir = m_outputDir.toStdString();
+    options->minLevel = m_minLevel;
+    options->maxLevel = m_maxLevel;
+    options->outputFormat = m_outputFormat.toStdString();
+    options->prjFilePath = m_prjFilePath.toStdString();
+    options->wktString = m_wktString.toStdString();
+
+	std::transform(m_nodata.begin(), m_nodata.end(), std::back_inserter(options->nodata),
+		[](const QVariant& item) {
+			return item.toDouble(); // 无错误检查
+	});
+
+	std::shared_ptr<ImageTilingDialogProgress> p = std::make_shared<ImageTilingDialogProgress>(this);
+	WT::SlippyMapTiler cutter(options);
+
+	// 初始化
+	if (!cutter.initialize()) {
+		std::cerr << "cuowu" << std::endl;
+		return false;
+	}
+
+	// 处理切片
+	std::cout << "开始生成切片..." << std::endl;
+	auto start_time = std::chrono::high_resolution_clock::now();
+
+	bool success = cutter.process(p);
+
+	auto end_time = std::chrono::high_resolution_clock::now();
+	auto duration = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count();
+
     
     // TODO: 实际实现应该基于GDAL或其他GIS库进行栅格切片处理
     // 可能需要以下步骤:

@@ -10,6 +10,7 @@
 #include <QFutureWatcher>
 #include <QVector>
 #include <QtConcurrent/QtConcurrent>
+#include "../../WTFrame/IProgressInfo.h"
 
 /**
  * @brief 切片处理器类，处理栅格数据切片操作
@@ -78,7 +79,9 @@ public slots:
     bool startProcessing();
     
     // 取消当前处理
-    void cancelProcessing();
+	void cancelProcessing();
+	// 处理进度更新
+	void updateProgress(double progress);
     
 signals:
     // 属性变更信号
@@ -99,8 +102,6 @@ signals:
     void processingError(const QString &errorMessage);
     
 private slots:
-    // 处理进度更新
-    void updateProgress(double progress);
     
     // 处理完成
     void handleProcessingFinished();
@@ -128,6 +129,26 @@ private:
     
     // 内部切片处理方法
     bool processTiles();
+};
+
+//处理进度条的类
+class  ImageTilingDialogProgress final :public  WT::IProgressInfo  {
+private:
+    ImageTilingDialog* dialog = nullptr;
+public:
+    ImageTilingDialogProgress(ImageTilingDialog* dialog) :dialog(dialog){ }
+    /*****************************************************************************
+	* @brief : 显示处理进度
+	*****************************************************************************/
+    void showProgress(int currentIndex, std::string currentFileName, std::string operats = "数据转换") {
+        dialog->updateProgress(currentIndex / (totalNum * 1.0f));
+    }
+    /*****************************************************************************
+    * @brief : 完成进度
+    *****************************************************************************/
+    void finished(std::string label = "处理完成") const {
+        dialog->updateProgress(1.0);
+    }
 };
 
 #endif // TILEPROCESSOR_H

@@ -50,7 +50,7 @@ namespace WT {
 			mCurrentMemoryUsage = 0;
 		}		
 
-		bool result = mAdapter->outputBatch(filesToOutput);
+		bool result = mAdapter->outputBatchAsync(filesToOutput);
 
 		//手动清除vector降低内存驻留时间
 		filesToOutput.swap(std::vector<IOFileInfo*>());

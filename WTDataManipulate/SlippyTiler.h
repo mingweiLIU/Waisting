@@ -10,15 +10,10 @@
 #include "cpl_string.h"
 #include "cpl_vsi.h"
 
-// TBB库
-#include <tbb/parallel_for.h>
-#include <tbb/blocked_range2d.h>
-#include <tbb/global_control.h>
-#include <tbb/enumerable_thread_specific.h>
-
 #include "FileBatchOutput.h"
 #include "IDataM.h"
 #include "CoordinateSystemManager.h"
+#include "../WTFrame/IProgressInfo.h"
 
 namespace fs = std::filesystem;
 
@@ -30,11 +25,9 @@ namespace WT{
 		int minLevel = 15;//最小切片级数
 		int maxLevel = 20;//最大切片级数
 		int tileSize = 256;//瓦片大小
-		bool useVRT = false;//是否使用VRT
-		bool useMemoryMapping = false;//是否启用文件映射
 		std::vector<double> nodata = { 0.0,0.0,0.0 };//NoData设置 如果影像没有nodata就使用这个
 		std::string outputFormat = "png";//输出瓦片后缀
-		int numThreads = 1;//使用的线程数
+		int numThreads = std::thread::hardware_concurrency()-1;//使用的线程数
 		std::string prjFilePath = "";//外部prj文件路径 可以为空
 		std::string wktString = "";//外部wkt字符串 可以为空
 	};
@@ -58,6 +51,7 @@ namespace WT{
 		double MIN_LATITUDE = -85.0511;
 		double MAX_LONGITUDE = 180.0;
 		double MIN_LONGITUDE = -180.0;
+		double EARTH_RADIUS = 6378137;
 	private:
 		//处理所使用的Options
 		std::shared_ptr<SlippyMapTilerOptions> options;
@@ -175,11 +169,20 @@ namespace WT{
 		 * @return 纬度（单位：度，范围 -85.0511 到 85.0511）
 		 */
 		double tiley2lat(int y, int z);
+
+		//计算特定层级下 有多少像素
+		double mapSize(int level, int tileSize);
+
+		//计算指定纬度在指定层级下的地面分辨率 单位m
+		double groundResolution(double latitude, double level, int tileSize);
 	
+		//计算给定分辨率下 最佳切片层级
+		int getProperLevel(double groundResolution, int tileSize);
+
 		// 创建一个线程本地的GDAL数据集
 		GDALDatasetH create_local_dataset();
 
 		// 增加一个线程安全的进度更新函数
-		void SlippyMapTiler::update_progress(int zoom, int tile_x, int tile_y, int total_tiles, std::shared_ptr<IProgressInfo> progressInfo);
+		void update_progress(int zoom, int tile_x, int tile_y, int total_tiles, std::shared_ptr<IProgressInfo> progressInfo);
 	};
 };

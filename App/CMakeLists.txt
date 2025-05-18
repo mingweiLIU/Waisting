@@ -48,6 +48,7 @@ WTGetTypeFilesRelative(
     Recurse ON
 )
 
+
 qt_add_executable(${PROJECT_NAME}
     ${HeaderFileNames} ${SourceFileNames}
 )
@@ -102,7 +103,8 @@ target_link_libraries(${PROJECT_NAME}
     Qt6::Qml
     Qt6::Quick
     Qt6::QuickControls2
-    Qt6::Concurrent
+    Qt6::Concurrent    
+    WTDataManipulate
     ${SelfPlugins}
 )
 find_package(OpenSceneGraph REQUIRED osg osgDB osgViewer osgUtil osgGA )

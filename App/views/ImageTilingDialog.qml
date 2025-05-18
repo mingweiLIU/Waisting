@@ -8,7 +8,7 @@ Window {
     id: paramDialog
     title: "切片参数设置"
     width: 550 + (helpPanelVisible ? 300 : 0)  // 主窗口宽度固定，帮助面板宽度额外计算
-    height: advancedOptionsVisible ? 820 : 500    
+    height: advancedOptionsVisible ? 820 : 500
     flags: Qt.Dialog | Qt.WindowModal  // 添加WindowModal标志，确保它作为对话框显示
     modality: Qt.ApplicationModal      // 设置为应用模态，阻止与其他窗口交互
     color: "#f5f5f5"  // 设置背景色
@@ -18,18 +18,15 @@ Window {
         NumberAnimation { duration: 300; easing.type: Easing.OutQuad }
     }
 
-     // 添加 TileProcessor 实例
+    // 添加 TileProcessor 实例
     ImageTilingDialog {
         id: tileProcessor
-        onProgressChanged: progress = tileProcessor.progress
+        onProgressChanged: paramDialog.progress = tileProcessor.progress
         onProcessingFinished: {
-            progress = 0
-            // 可以添加成功提示
+            showInfo("处理完成！","信息提示");
         }
-        onProcessingError: {
-            //progress = 0
-            // 可以添加错误提示
-            showInfo("出错了","错误");
+        onProcessingError:function(info) {
+            showInfo(info,"错误提示");
         }
     }
 
@@ -40,9 +37,9 @@ Window {
     function open() {
         // 设置窗口在父窗口中心
         x = mainWindow && typeof mainWindow.width !== "undefined" ?
-            (mainWindow.width - width) / 2 : Screen.width / 2 - width / 2;
+                    (mainWindow.width - width) / 2 : Screen.width / 2 - width / 2;
         y = mainWindow && typeof mainWindow.height !== "undefined" ?
-            (mainWindow.height - height) / 2 : Screen.height / 2 - height / 2;
+                    (mainWindow.height - height) / 2 : Screen.height / 2 - height / 2;
 
         visible = true;
     }
@@ -192,186 +189,361 @@ Window {
                 }
 
                 // 切片级别设置
-               GroupBox {
-                   title: "切片级别设置"
-                   Layout.fillWidth: true
+                GroupBox {
+                    title: "切片级别设置"
+                    Layout.fillWidth: true
 
-                   // 自定义标题样式
-                   label: Label {
-                       text: parent.title
-                       font.bold: true  // 标题粗体
-                       font.pixelSize: 14
-                       padding: 6  // 增加标题上下padding
-                   }
+                    // 自定义标题样式
+                    label: Label {
+                        text: parent.title
+                        font.bold: true  // 标题粗体
+                        font.pixelSize: 14
+                        padding: 6  // 增加标题上下padding
+                    }
 
-                   background: Rectangle {
-                       color: "#ffffff"
-                       border.color: "#cccccc"
-                       radius: 6
-                   }
-                   topPadding: 30
-                   rightPadding: 16  // 增加内容padding
+                    background: Rectangle {
+                        color: "#ffffff"
+                        border.color: "#cccccc"
+                        radius: 6
+                    }
+                    topPadding: 30
+                    rightPadding: 16  // 增加内容padding
 
-                   RowLayout {
-                       spacing: 20
-                       width: parent.width
+                    RowLayout {
+                        spacing: 20
+                        width: parent.width
 
-                       Label {
-                           id:levellabel
-                           text: "级别范围:"
-                           Layout.alignment: Qt.AlignVCenter
-                           font.pixelSize: 14
-                       }
+                        Label {
+                            id:levellabel
+                            text: "级别范围:"
+                            Layout.alignment: Qt.AlignVCenter
+                            font.pixelSize: 14
+                        }
 
 
-                       RowLayout{
-                           width: parent.width-100
-                           // 修改SpinBox，增加宽度以显示数字，设置合理的步长
-                           SpinBox {
-                               id: minLevelBox
-                               value: minLevel
-                               from: 0
-                               to: maxLevel
-                               onValueChanged: minLevel = value
-                               Layout.preferredWidth: 120
-                               Layout.preferredHeight: 30  // 设置为30的高度
-                               editable: true
+                        RowLayout{
+                            width: parent.width-100
+                            // 修改SpinBox，增加宽度以显示数字，设置合理的步长
+                            SpinBox {
+                                id: minLevelBox
+                                value: minLevel
+                                from: 0
+                                to: maxLevel - 1  // 第一个的to就是第二个的from-1
+                                onValueChanged: {
+                                    minLevel = value
+                                }
+                                Layout.preferredWidth: 120
+                                Layout.preferredHeight: 30  // 设置为30的高度
+                                editable: true
+                                enabled: !autoLevelCheckBox.checked  // 根据CheckBox状态启用/禁用
 
-                               // 自定义显示
-                               contentItem: TextInput {
-                                   text: minLevelBox.textFromValue(minLevelBox.value, minLevelBox.locale)
-                                   font: minLevelBox.font
-                                   horizontalAlignment: Qt.AlignHCenter
-                                   verticalAlignment: Qt.AlignVCenter
-                                   readOnly: !minLevelBox.editable
-                                   validator: minLevelBox.validator
-                                   selectByMouse: true
-                                   color: "#333333"
-                               }
+                                // 添加焦点变化处理
+                                onActiveFocusChanged: {
+                                    if (!activeFocus && contentItem.focus) {
+                                        contentItem.validateInput()
+                                    }
+                                }
+                                // 自定义显示
+                                contentItem: TextInput {
+                                    text: minLevelBox.value
+                                    font: minLevelBox.font
+                                    horizontalAlignment: Qt.AlignHCenter
+                                    verticalAlignment: Qt.AlignVCenter
+                                    readOnly: !minLevelBox.editable
+                                    validator: minLevelBox.validator
+                                    selectByMouse: true
+                                    color: minLevelBox.enabled ? "#333333" : "#aaaaaa"  // 禁用时文字变灰
+                                    z:2
 
-                               // 美化样式
-                               background: Rectangle {
-                                   implicitWidth: 120
-                                   implicitHeight: 30  // 设置高度为30
-                                   border.color: "#cccccc"
-                                   border.width: 1
-                                   radius: 4
-                               }
+                                    // 处理文本输入
+                                    // 验证输入的函数
+                                    function validateInput() {
+                                        var newValue = parseInt(text)
+                                        if (!isNaN(newValue)) {
+                                            // 检查范围是否合法
+                                            if (newValue < 0 || newValue >= maxLevel) {
+                                                // 弹出警告信息
+                                                let info = "最小等级必须在0到" + (maxLevel-1) + "之间"
+                                                showInfo(info,"错误提示")
+                                                // 恢复原值
+                                                text = minLevelBox.textFromValue(minLevel, minLevelBox.locale)
+                                            } else {
+                                                minLevelBox.value = newValue
+                                                minLevel = newValue
+                                            }
+                                        } else {
+                                            // 输入无效，恢复原值
+                                            text = minLevelBox.textFromValue(minLevel, minLevelBox.locale)
+                                        }
+                                    }
 
-                               // 自定义按钮
-                               up.indicator: Rectangle {
-                                   anchors.right: parent.right
-                                   height: 30
-                                   width: 30  // 设置按钮宽度为30
-                                   implicitWidth: 30
-                                   color: minLevelBox.up.pressed ? "#d0d0d0" : "#f0f0f0"
-                                   border.color: "#cccccc"
-                                   border.width: 1
-                                   radius: 4
-                                   Text {
-                                       text: "+"
-                                       color: "#333333"
-                                       anchors.centerIn: parent
-                                       font.pixelSize: 14
-                                   }
-                               }
+                                    // 回车键处理
+                                    Keys.onReturnPressed: {
+                                        maxLevelBox.forceActiveFocus()
+                                    }
+                                    Keys.onEnterPressed: {
+                                        maxLevelBox.forceActiveFocus()
+                                    }
+                                    // 添加 Escape 键取消编辑
+                                    Keys.onEscapePressed: {
+                                        maxLevelBox.forceActiveFocus()
+                                    }
+                                }
 
-                               down.indicator: Rectangle {
-                                   anchors.left: parent.left
-                                   height: 30
-                                   width: 30  // 设置按钮宽度为30
-                                   implicitWidth: 30
-                                   color: minLevelBox.down.pressed ? "#d0d0d0" : "#f0f0f0"
-                                   border.color: "#cccccc"
-                                   border.width: 1
-                                   radius: 4
-                                   Text {
-                                       text: "-"
-                                       color: "#333333"
-                                       anchors.centerIn: parent
-                                       font.pixelSize: 14
-                                   }
-                               }
-                           }
+                                // 美化样式
+                                background: Rectangle {
+                                    implicitWidth: 120
+                                    implicitHeight: 30  // 设置高度为30
+                                    border.color: minLevelBox.enabled ? "#cccccc" : "#e0e0e0"
+                                    border.width: 1
+                                    radius: 4
+                                    color: minLevelBox.enabled ? "#ffffff" : "#f5f5f5"
+                                }
 
-                           Label {
-                               text: "到"
-                               font.pixelSize: 14
-                               Layout.alignment: Qt.AlignVCenter  // 垂直居中对齐
-                               Layout.fillWidth: true  // 关键：让Label填充剩余空间
-                               horizontalAlignment: Text.AlignHCenter  // 文字居中
-                           }
+                                // 自定义按钮
+                                up.indicator: Rectangle {
+                                    anchors.right: parent.right
+                                    height: 30
+                                    width: 30  // 设置按钮宽度为30
+                                    implicitWidth: 30
+                                    color: minLevelBox.up.pressed ? "#d0d0d0" : "#f0f0f0"
+                                    border.color: minLevelBox.enabled ? "#cccccc" : "#e0e0e0"
+                                    border.width: 1
+                                    radius: 4
 
-                           SpinBox {
-                               id: maxLevelBox
-                               value: maxLevel
-                               from: minLevel
-                               to: 25
-                               onValueChanged: maxLevel = value
-                               Layout.preferredWidth: 120
-                               Layout.preferredHeight: 30  // 设置为30的高度
-                               editable: true
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        enabled: minLevelBox.enabled && minLevel < maxLevel - 1
+                                        onClicked: {
+                                            if (minLevel < maxLevel - 1) {
+                                                minLevelBox.increase()
+                                            }
+                                        }
+                                    }
 
-                               // 自定义显示
-                               contentItem: TextInput {
-                                   text: maxLevelBox.textFromValue(maxLevelBox.value, maxLevelBox.locale)
-                                   font: maxLevelBox.font
-                                   horizontalAlignment: Qt.AlignHCenter
-                                   verticalAlignment: Qt.AlignVCenter
-                                   readOnly: !maxLevelBox.editable
-                                   validator: maxLevelBox.validator
-                                   selectByMouse: true
-                                   color: "#333333"
-                               }
+                                    Text {
+                                        text: "+"
+                                        color: minLevelBox.enabled && minLevel < maxLevel - 1 ? "#333333" : "#aaaaaa"
+                                        anchors.centerIn: parent
+                                        font.pixelSize: 14
+                                    }
+                                }
 
-                               // 美化样式
-                               background: Rectangle {
-                                   implicitWidth: 120
-                                   implicitHeight: 30  // 设置高度为30
-                                   border.color: "#cccccc"
-                                   border.width: 1
-                                   radius: 4
-                               }
+                                down.indicator: Rectangle {
+                                    anchors.left: parent.left
+                                    height: 30
+                                    width: 30  // 设置按钮宽度为30
+                                    implicitWidth: 30
+                                    color: minLevelBox.down.pressed ? "#d0d0d0" : "#f0f0f0"
+                                    border.color: minLevelBox.enabled ? "#cccccc" : "#e0e0e0"
+                                    border.width: 1
+                                    radius: 4
+                                    z:3
 
-                               // 自定义按钮
-                               up.indicator: Rectangle {
-                                   anchors.right: parent.right
-                                   height: 30
-                                   width: 30  // 设置按钮宽度为30
-                                   implicitWidth: 30
-                                   color: maxLevelBox.up.pressed ? "#d0d0d0" : "#f0f0f0"
-                                   border.color: "#cccccc"
-                                   border.width: 1
-                                   radius: 4
-                                   Text {
-                                       text: "+"
-                                       color: "#333333"
-                                       anchors.centerIn: parent
-                                       font.pixelSize: 14
-                                   }
-                               }
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        enabled: minLevelBox.enabled && minLevel > 0
+                                        onClicked: {
+                                            if (minLevel > 0) {
+                                                minLevelBox.decrease()
+                                            }
+                                        }
+                                    }
 
-                               down.indicator: Rectangle {
-                                   anchors.left: parent.left
-                                   height: 30
-                                   width: 30  // 设置按钮宽度为30
-                                   implicitWidth: 30
-                                   color: maxLevelBox.down.pressed ? "#d0d0d0" : "#f0f0f0"
-                                   border.color: "#cccccc"
-                                   border.width: 1
-                                   radius: 4
-                                   Text {
-                                       text: "-"
-                                       color: "#333333"
-                                       anchors.centerIn: parent
-                                       font.pixelSize: 14
-                                   }
-                               }
-                           }
+                                    Text {
+                                        text: "-"
+                                        color: minLevelBox.enabled && minLevel > 0 ? "#333333" : "#aaaaaa"
+                                        anchors.centerIn: parent
+                                        font.pixelSize: 14
+                                    }
+                                }
+                            }
 
-                       }
-                   }
-               }
+                            Label {
+                                text: "到"
+                                font.pixelSize: 14
+                                Layout.alignment: Qt.AlignVCenter  // 垂直居中对齐
+                                Layout.fillWidth: true  // 关键：让Label填充剩余空间
+                                horizontalAlignment: Text.AlignHCenter  // 文字居中
+                            }
+
+                            SpinBox {
+                                id: maxLevelBox
+                                value: maxLevel
+                                from: minLevel + 1  // 第二个的from就是第一个的to+1
+                                to: 28
+                                onValueChanged: {
+                                    maxLevel = value
+                                }
+                                Layout.preferredWidth: 120
+                                Layout.preferredHeight: 30  // 设置为30的高度
+                                editable: true
+                                enabled: !autoLevelCheckBox.checked  // 根据CheckBox状态启用/禁用
+                                // 添加焦点变化处理
+                                onActiveFocusChanged: {
+                                    if (!activeFocus && contentItem.focus) {
+                                        contentItem.validateInput()
+                                    }
+                                }
+
+                                // 自定义显示
+                                contentItem: TextInput {
+                                    text: maxLevelBox.textFromValue(maxLevelBox.value, maxLevelBox.locale)
+                                    font: maxLevelBox.font
+                                    horizontalAlignment: Qt.AlignHCenter
+                                    verticalAlignment: Qt.AlignVCenter
+                                    readOnly: !maxLevelBox.editable
+                                    validator: maxLevelBox.validator
+                                    selectByMouse: true
+                                    color: maxLevelBox.enabled ? "#333333" : "#aaaaaa"  // 禁用时文字变灰
+                                    z:2
+
+                                    // 处理文本输入
+                                    function validateInput() {
+                                        var newValue = parseInt(text)
+                                        if (!isNaN(newValue)) {
+                                            // 检查范围是否合法
+                                            if (newValue <= minLevel || newValue > 25) {
+                                                // 弹出警告信息
+                                                var info = "最大等级必须在" + (minLevel+1) + "到25之间"
+                                                showInfo(info,"错误提示")
+                                                // 恢复原值
+                                                text = maxLevelBox.textFromValue(maxLevel, maxLevelBox.locale)
+                                            } else {
+                                                maxLevelBox.value = newValue
+                                                maxLevel = newValue
+                                            }
+                                        } else {
+                                            // 输入无效，恢复原值
+                                            text = maxLevelBox.textFromValue(maxLevel, maxLevelBox.locale)
+                                        }
+                                    }
+
+                                    // 回车键处理
+                                    Keys.onReturnPressed: {
+                                        autoLevelCheckBox.forceActiveFocus()
+                                    }
+                                    Keys.onEnterPressed: {
+                                        autoLevelCheckBox.forceActiveFocus()
+                                    }
+                                    // 添加 Escape 键取消编辑
+                                    Keys.onEscapePressed: {
+                                        autoLevelCheckBox.forceActiveFocus()
+                                    }
+                                }
+
+                                // 美化样式
+                                background: Rectangle {
+                                    implicitWidth: 120
+                                    implicitHeight: 30  // 设置高度为30
+                                    border.color: maxLevelBox.enabled ? "#cccccc" : "#e0e0e0"
+                                    border.width: 1
+                                    radius: 4
+                                    color: maxLevelBox.enabled ? "#ffffff" : "#f5f5f5"
+                                }
+
+                                // 自定义按钮
+                                up.indicator: Rectangle {
+                                    anchors.right: parent.right
+                                    height: 30
+                                    width: 30  // 设置按钮宽度为30
+                                    implicitWidth: 30
+                                    color: maxLevelBox.up.pressed ? "#d0d0d0" : "#f0f0f0"
+                                    border.color: maxLevelBox.enabled ? "#cccccc" : "#e0e0e0"
+                                    border.width: 1
+                                    radius: 4
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        enabled: maxLevelBox.enabled && maxLevel < 25
+                                        onClicked: {
+                                            if (maxLevel < 25) {
+                                                maxLevelBox.increase()
+                                            }
+                                        }
+                                    }
+
+                                    Text {
+                                        text: "+"
+                                        color: maxLevelBox.enabled && maxLevel < 25 ? "#333333" : "#aaaaaa"
+                                        anchors.centerIn: parent
+                                        font.pixelSize: 14
+                                    }
+                                }
+
+                                down.indicator: Rectangle {
+                                    anchors.left: parent.left
+                                    height: 30
+                                    width: 30  // 设置按钮宽度为30
+                                    implicitWidth: 30
+                                    color: maxLevelBox.down.pressed ? "#d0d0d0" : "#f0f0f0"
+                                    border.color: maxLevelBox.enabled ? "#cccccc" : "#e0e0e0"
+                                    border.width: 1
+                                    radius: 4
+                                    z:3
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        enabled: maxLevelBox.enabled && maxLevel > minLevel + 1
+                                        onClicked: {
+                                            console.log("点击了-")
+                                            if (maxLevel > minLevel + 1) {
+                                                maxLevelBox.decrease()
+                                            }
+                                        }
+                                    }
+
+                                    Text {
+                                        text: "-"
+                                        color: maxLevelBox.enabled && maxLevel > minLevel + 1 ? "#333333" : "#aaaaaa"
+                                        anchors.centerIn: parent
+                                        font.pixelSize: 14
+                                    }
+                                }
+                            }
+
+                            CheckBox {
+                                id: autoLevelCheckBox
+                                text: "自动计算"
+                                checked: true  // 默认不勾选
+                                Layout.alignment: Qt.AlignVCenter
+                                font.pixelSize: 14
+
+                                // 自定义样式
+                                indicator: Rectangle {
+                                    implicitWidth: 20
+                                    implicitHeight: 20
+                                    x: autoLevelCheckBox.leftPadding
+                                    y: parent.height / 2 - height / 2
+                                    radius: 3
+                                    border.color: autoLevelCheckBox.down ? "#3a7df0" : "#5c95f5"
+                                    border.width: 1
+                                    // 未选中时的背景色
+                                    color: autoLevelCheckBox.hovered ? "#e6f0ff" : "#ffffff"
+
+                                    Rectangle {
+                                        width: 14
+                                        height: 14
+                                        x: 3
+                                        y: 3
+                                        radius: 2
+                                        color: autoLevelCheckBox.down ? "#3a7df0" : "#5c95f5"
+                                        visible: autoLevelCheckBox.checked
+                                    }
+                                }
+
+                                contentItem: Text {
+                                    text: autoLevelCheckBox.text
+                                    font: autoLevelCheckBox.font
+                                    opacity: enabled ? 1.0 : 0.3
+                                    color: "#333333"
+                                    verticalAlignment: Text.AlignVCenter
+                                    leftPadding: autoLevelCheckBox.indicator.width + autoLevelCheckBox.spacing
+                                }
+                            }
+                        }
+                    }
+                }
 
                 // 输出格式 - 优化排版
                 GroupBox {
@@ -631,8 +803,8 @@ Window {
                                                 background: Rectangle {
                                                     radius: 4
                                                     color: parent.down && coordinateSystemType === 1 ? "#3875d7" :
-                                                          parent.hovered && coordinateSystemType === 1 ? "#4285f4" :
-                                                          coordinateSystemType === 1 ? "#5c95f5" : "#aaaaaa"
+                                                                                                       parent.hovered && coordinateSystemType === 1 ? "#4285f4" :
+                                                                                                                                                      coordinateSystemType === 1 ? "#5c95f5" : "#aaaaaa"
                                                 }
                                                 contentItem: Text {
                                                     text: parent.text
@@ -815,25 +987,38 @@ Window {
 
                 // 进度条 - 美化
                 ProgressBar {
+                    id:progressBar
                     value: progress
                     from: 0
                     to: 1
                     Layout.fillWidth: true
                     visible: progress > 0
                     indeterminate: progress === -1
+                    padding: 2  // 为文字留出空间
 
                     background: Rectangle {
                         implicitWidth: 200
-                        implicitHeight: 6
+                        implicitHeight: 24  // 增加高度以容纳文字
                         color: "#e0e0e0"
                         radius: 3
                     }
 
-                    contentItem: Rectangle {
-                        width: parent.width * parent.value
-                        height: parent.height
-                        radius: 3
-                        color: "#4285f4"
+                    contentItem: Item {
+                        Rectangle {
+                            width: parent.width * parent.parent.value
+                            height: parent.height
+                            radius: 3
+                            color: "#4285f4"
+
+                            // 进度文字（前景层显示，白色文字在蓝色进度条上）
+                            Text {
+                                anchors.centerIn: parent
+                                text: Math.round(progressBar.value * 100) + "%"
+                                color: "white"
+                                font.pixelSize: 10
+                                visible: progressBar.value > 0
+                            }
+                        }
                     }
                 }
 
@@ -918,7 +1103,11 @@ Window {
                             tileProcessor.outputFormat = outputFormat
                             tileProcessor.prjFilePath = prjFilePath
                             tileProcessor.wktString = wktString
-                            tileProcessor.coordinateSystemType = coordinateSystemType
+                            tileProcessor.coordinateSystemType = coordinateSystemType  //0---影像自己的 1--prj文件 2--wkt
+
+                            //调整下 如果勾选了自动计算切片层级 那么把max和min都设置为一个负数 这样C++获取到数据时知道去处理
+                            tileProcessor.minLevel=-9999
+                            tileProcessor.maxLevel=-9999
                             
                             // 启动处理
                             if (tileProcessor.startProcessing()) {
@@ -1044,21 +1233,21 @@ Window {
     FileDialog {
         id: fileDialog
         title: "选择输入文件"
-        nameFilters: ["图像文件 (*.tif *.tiff *.png *.jpg)"]
-        onAccepted: inputFile = selectedFile.toString().replace("file://", "")
+        nameFilters: ["图像文件 (*.tif *.tiff *.img *.jpg)"]
+        onAccepted: inputFile = selectedFile.toString().replace("file:///", "")
     }
 
     FolderDialog {
         id: dirDialog
         title: "选择输出目录"
-        onAccepted: outputDir = selectedFolder.toString().replace("file://", "")
+        onAccepted: outputDir = selectedFolder.toString().replace("file:///", "")
     }
 
     FileDialog {
         id: prjFileDialog
         title: "选择PRJ文件"
         nameFilters: ["PRJ文件 (*.prj)"]
-        onAccepted: prjFilePath = selectedFile.toString().replace("file://", "")
+        onAccepted: prjFilePath = selectedFile.toString().replace("file:///", "")
     }
 
     // 重置参数
@@ -1067,7 +1256,7 @@ Window {
         outputDir = ""
         minLevel = 15
         maxLevel = 18
-        nodata = [0.0, 0.0, 0.0]
+        nodata = []
         outputFormat = "png"
         prjFilePath = ""
         wktString = ""

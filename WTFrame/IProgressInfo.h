@@ -1,4 +1,6 @@
 #pragma once
+#include <string>
+
 namespace WT {
 	class IProgressInfo
 	{
@@ -35,7 +37,7 @@ namespace WT {
 		* @author : lmw
 		* @date : 2020/9/3 9:55
 		*****************************************************************************/
-		virtual void finished(std::string label = "处理完成") const {
+		virtual void finished(std::string label = "completed!") const {
 			printf(label.c_str());
 		}
 	};

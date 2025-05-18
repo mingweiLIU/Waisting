@@ -45,36 +45,7 @@ Window {
         }
     }
 
-    //信息弹出窗
-    // WTMessageDialog {
-    //     id: infoDialog
-
-
-    //     // 处理确认事件
-    //     onConfirmed: {
-    //         console.log("用户点击了确定按钮")
-    //     }
-
-    //     // 处理取消事件
-    //     onCancelled: {
-    //         console.log("用户点击了取消按钮或关闭了对话框")
-    //     }
-    // }
-    // WTMessageDialog {
-    //     id: infoDialog
-    //     title: "确认操作"
-    //     showCancelButton: true
-    //     okText: "确认"
-    //     cancelText: "取消"
-
-    //     onConfirmed: {
-    //         statusLabel.text = "用户确认了操作"
-    //     }
-
-    //     onCancelled: {
-    //         statusLabel.text = "用户取消了操作"
-    //     }
-    // }
+    
 
     Ribbon{
         id: mainRibbon
@@ -104,16 +75,11 @@ Window {
 
             let dataHandlerPanel = tab1Content.addPanel("数据轻量化处理");
             dataHandlerPanel.addButton("qrc:/qt/qml/Waisting/icon/shitujuzhen.png", "影像切片", function() {
-                // let imageTilerUI =Qt.createComponent("./views/ImageTilingDialog.qml").createObject(mainAppWindow,{"mainWindow":mainAppWindow});
-                // // mainOverlay.visible=true;
-                // imageTilerUI.show();
                 if (!tileParamDialog) {
                     var component = Qt.createComponent("./views/ImageTilingDialog.qml");
                     if (component.status === Component.Ready) {
                         tileParamDialog = component.createObject(mainAppWindow, {
-                            "mainWindow": mainAppWindow,
-                            "x": (mainAppWindow.width - 550) / 2,
-                            "y": (mainAppWindow.height - 500) / 2
+                            "mainWindow": mainAppWindow
                         });
 
                         // 连接信号

@@ -3,6 +3,37 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
+//使用信息弹出窗
+    // WTMessageDialog {
+    //     id: infoDialog
+
+
+    //     // 处理确认事件
+    //     onConfirmed: {
+    //         console.log("用户点击了确定按钮")
+    //     }
+
+    //     // 处理取消事件
+    //     onCancelled: {
+    //         console.log("用户点击了取消按钮或关闭了对话框")
+    //     }
+    // }
+    // WTMessageDialog {
+    //     id: infoDialog
+    //     title: "确认操作"
+    //     showCancelButton: true
+    //     okText: "确认"
+    //     cancelText: "取消"
+
+    //     onConfirmed: {
+    //         statusLabel.text = "用户确认了操作"
+    //     }
+
+    //     onCancelled: {
+    //         statusLabel.text = "用户取消了操作"
+    //     }
+    // }
+
 Popup {
     id: root
 

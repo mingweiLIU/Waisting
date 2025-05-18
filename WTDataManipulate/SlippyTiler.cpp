@@ -1,6 +1,13 @@
 #include "SlippyTiler.h"
+#include <cmath>
+// TBB库
+#include <tbb/parallel_for.h>
+#include <tbb/blocked_range2d.h>
+#include <tbb/global_control.h>
+#include <tbb/enumerable_thread_specific.h>
 
-#include "ImageFileIOAdapter.h"
+//#include "ImageFileIOAdapter.h"
+#include "ImageFileParallelIOAdapter.h"
 #include "MemoryPool.h"
 
 namespace WT{
@@ -116,6 +123,32 @@ namespace WT{
 		return 180.0 / M_PI * atan(0.5 * (exp(n) - exp(-n)));  // 反双曲正切计算
 	}
 
+	double SlippyMapTiler::mapSize(int level, int tileSize)
+	{
+		return  std::ceil(tileSize * (double)(1<<level));
+	}
+
+	double SlippyMapTiler::groundResolution(double latitude, double level, int tileSize)
+	{
+		return cos(latitude * M_PI / 180) * 2 * M_PI * EARTH_RADIUS / mapSize(level, tileSize);
+	}
+
+	int SlippyMapTiler::getProperLevel(double groundResolution,int tileSize)
+	{
+		const double EARTH_CIRCUMFERENCE = 40075016.686;  // 地球赤道周长（米）
+
+		// OSM 在 zoom=0 时的分辨率（米/像素）
+		const double RESOLUTION_0 = EARTH_CIRCUMFERENCE / tileSize;
+
+		// 计算最佳 zoom（理论值可能是小数）
+		double zoom = std::log2(RESOLUTION_0 / groundResolution);
+
+		// 取整（向下取整，避免分辨率过高）
+		int bestZoom = static_cast<int>(std::floor(zoom));
+
+		return bestZoom;
+	}
+
 	// 创建一个线程本地的GDAL数据集
 	GDALDatasetH SlippyMapTiler::create_local_dataset() {
 		std::lock_guard<std::mutex> lock(gdal_mutex);
@@ -224,9 +257,10 @@ namespace WT{
 	// 增加一个线程安全的进度更新函数
 	void SlippyMapTiler::update_progress(int zoom, int tile_x, int tile_y, int total_tiles, std::shared_ptr<IProgressInfo> progressInfo) {
 		int current = ++total_tiles_processed;
-		if (current % 50 == 0 || current == total_tiles) {
+		int temp = std::max(1,total_tiles / 100);
+		if (current % temp == 0 || current == total_tiles) {
 			std::lock_guard<std::mutex> lock(progress_mutex);
-			progressInfo->showProgress(current, std::to_string(zoom) + "/" + std::to_string(tile_x) + "/" + std::to_string(tile_y), "数据切片");
+			progressInfo->showProgress(current, "", "");
 		}
 	}
 
@@ -251,7 +285,7 @@ namespace WT{
 			<< " (总计 " << total_tiles << " 个瓦片)" << std::endl;
 
 		// 重置计数器
-		total_tiles_processed = 0;
+		//total_tiles_processed = 0;
 
 		// 使用线程本地存储处理Dataset
 		struct ThreadLocalData {
@@ -264,12 +298,12 @@ namespace WT{
 			}
 		};
 
-		tbb::enumerable_thread_specific<ThreadLocalData> tls_data;
+		::tbb::enumerable_thread_specific<ThreadLocalData> tls_data;
 
 		// 使用TBB并行处理
-		tbb::parallel_for(
-			tbb::blocked_range2d<int, int>(min_tile_y, max_tile_y + 1, min_tile_x, max_tile_x + 1),
-			[this, zoom, total_tiles, &progressInfo, &tls_data](const tbb::blocked_range2d<int, int>& r) {
+		::tbb::parallel_for(
+			::tbb::blocked_range2d<int, int>(min_tile_y, max_tile_y + 1, min_tile_x, max_tile_x + 1),
+			[this, zoom, total_tiles, &progressInfo, &tls_data](const ::tbb::blocked_range2d<int, int>& r) {
 				// 获取线程本地存储
 				ThreadLocalData& local_data = tls_data.local();
 
@@ -306,7 +340,7 @@ namespace WT{
 		// 设置线程数量
 		if (options->numThreads > 0) {
 			std::cout << "设置线程数量: " << options->numThreads << std::endl;
-			tbb::global_control global_limit(tbb::global_control::max_allowed_parallelism, options->numThreads);
+			::tbb::global_control global_limit(::tbb::global_control::max_allowed_parallelism, options->numThreads);
 		}
 
 		// 打开数据集
@@ -319,20 +353,13 @@ namespace WT{
 			return false;
 		}
 
-		// 使用VSI文件系统
-		if (options->useMemoryMapping) {
-			
-		}
-		else {
-			// 直接打开文件
-			delete poOpenInfo;
-			dataset = GDALOpen(options->inputFile.c_str(), GA_ReadOnly);
-		}
+		dataset = GDALOpen(options->inputFile.c_str(), GA_ReadOnly);		
 
 		if (!dataset) {
 			std::cerr << "无法打开输入文件: " << options->inputFile << std::endl;
 			return false;
 		}
+
 
 		// 获取地理变换参数
 		if (GDALGetGeoTransform(dataset, geo_transform) != CE_None) {
@@ -393,7 +420,7 @@ namespace WT{
 		}
 
 		// 转换到WGS84坐标系
-		coord_system->transform_points(xBounds,yBounds, 4);
+		coord_system->transform_points(xBounds, yBounds, 4);
 
 		// 找出地理范围
 		min_x = std::numeric_limits<double>::max();
@@ -417,6 +444,25 @@ namespace WT{
 		std::cout << "地理范围: "
 			<< "经度=" << min_x << "至" << max_x
 			<< ", 纬度=" << min_y << "至" << max_y << std::endl;
+
+		//处理要切片的层级问题
+		if (options->minLevel < 0) options->minLevel = 0;
+		//获取影像分辨率最佳层级
+		double xResolutionM = 0, yResolutionM = 0; 
+		double xOriginResolution = geo_transform[1];
+		double yOriginResolution=std::abs(geo_transform[5]);
+
+		const char* proj_wkt = GDALGetProjectionRef(dataset);
+		bool has_projection = (proj_wkt && strlen(proj_wkt) > 0);
+		if (has_projection)
+		{
+			options->maxLevel = this->getProperLevel(std::min(xOriginResolution, yOriginResolution), options->tileSize);
+		}
+		else {
+			//就用转换为wgs84后的处理
+			coord_system->calculateGeographicResolution((min_y + max_y) / 2.0, xOriginResolution, yOriginResolution, xResolutionM = 0, yResolutionM);
+			options->maxLevel = this->getProperLevel(std::min(xResolutionM, yResolutionM), options->tileSize);
+		}
 
 		//下面要处理NoDataValue
 		if (options->outputFormat == "png") {
@@ -442,7 +488,7 @@ namespace WT{
 
 		// 创建内存管理器和文件缓冲管理器
 		fileBatchOutputer = std::make_shared<FileBatchOutput>();
-		std::unique_ptr<ImageFileIOAdapter> imageIOAdatper = std::make_unique<ImageFileIOAdapter>(options->outputDir, true
+		std::unique_ptr<ImageFileParallelIOAdapter> imageIOAdatper = std::make_unique<ImageFileParallelIOAdapter>(options->outputDir, true
 			, options->tileSize, options->tileSize, options->outputFormat
 			, band_count,options->nodata);
 		fileBatchOutputer->setAdapter(std::move(imageIOAdatper));
