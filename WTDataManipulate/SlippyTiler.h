@@ -25,13 +25,28 @@ namespace WT{
 		int minLevel = 0;//最小切片级数
 		int maxLevel = 5;//最大切片级数
 		int tileSize = 256;//瓦片大小
-		std::vector<double> nodata = { 0.0,0.0,0.0 };//NoData设置 如果影像没有nodata就使用这个
+		std::vector<double> nodata;// = { 0.0,0.0,0.0 };//NoData设置 如果影像没有nodata就使用这个
 		std::string outputFormat = "png";//输出瓦片后缀
 		int numThreads = std::thread::hardware_concurrency()-1;//使用的线程数
 		std::string prjFilePath = "";//外部prj文件路径 可以为空
 		std::string wktString = "";//外部wkt字符串 可以为空
 	};
 
+	// 检查瓦片边界信息结构
+	struct TileBounds {
+		int dst_min_x, dst_min_y, dst_max_x, dst_max_y;
+		int clipped_src_min_x, clipped_src_min_y, clipped_src_max_x, clipped_src_max_y;
+		int dst_width, dst_height;
+		int read_width, read_height;
+	};
+
+	// 影像信息结构
+	struct ImageInfo {
+		bool has_palette;
+		int output_band_count;
+		GDALColorTableH color_table;
+		size_t pixel_size;
+	};
 
 	class SlippyMapTiler :public IDataProcessor {
 	public:
@@ -61,6 +76,7 @@ namespace WT{
 		double min_x, min_y, max_x, max_y;
 		int band_count;
 		GDALDataType data_type;
+		ImageInfo image_info;
 
 		// 坐标系统和转换
 		std::unique_ptr<CoordinateSystem> coord_system;
@@ -184,5 +200,27 @@ namespace WT{
 
 		// 增加一个线程安全的进度更新函数
 		void update_progress(int zoom, int tile_x, int tile_y, int total_tiles, std::shared_ptr<IProgressInfo> progressInfo);
+
+		// 计算瓦片边界和映射关系
+		bool calculate_tile_bounds(int src_min_x, int src_min_y, int src_max_x, int src_max_y, TileBounds& bounds);
+		
+
+		// 获取影像信息（调色板、波段数等）
+		ImageInfo get_image_info(GDALDatasetH dataset);
+		
+
+		// 处理带调色板的单波段影像（TBB并行化）
+		bool process_palette_image(GDALDatasetH dataset, const TileBounds& bounds,
+			const ImageInfo& info, unsigned char* output_buffer);
+		
+
+		// 处理普通多波段或单波段影像（TBB并行化）
+		bool process_regular_image(GDALDatasetH dataset, const TileBounds& bounds,
+			const ImageInfo& info, unsigned char* output_buffer);
+		
+
+		// 确保输出目录存在（线程安全）
+		bool ensure_output_directory(const fs::path& x_dir);
+		
 	};
 };

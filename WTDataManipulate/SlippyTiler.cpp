@@ -5,6 +5,8 @@
 #include <tbb/blocked_range2d.h>
 #include <tbb/global_control.h>
 #include <tbb/enumerable_thread_specific.h>
+#include <tbb/parallel_for.h>
+#include <tbb/blocked_range.h>
 #include <nlohmann/json.hpp>
 #include <iostream>
 #include<fstream>
@@ -167,7 +169,6 @@ namespace WT{
 
 			// 创建瓦片路径
 			fs::path x_dir = fs::path(options->outputDir) / std::to_string(zoom) / std::to_string(tile_x);
-			std::string tile_path = (x_dir / (std::to_string(tile_y) + "." + options->outputFormat)).string();
 
 			// 计算瓦片在原始影像中的像素范围
 			int src_min_x, src_min_y, src_max_x, src_max_y;
@@ -176,126 +177,44 @@ namespace WT{
 				return false; // 坐标转换失败
 			}
 
-			// 检查瓦片是否完全在影像范围外
-			if (src_max_x < 0 || src_min_x >= img_width ||
-				src_max_y < 0 || src_min_y >= img_height) {
-				return false; // 瓦片完全在影像范围外
+			// 计算瓦片边界和映射关系
+			TileBounds bounds;
+			if (!calculate_tile_bounds(src_min_x, src_min_y, src_max_x, src_max_y, bounds)) {
+				return false; // 瓦片完全在影像范围外或无效
 			}
 
-			// 计算目标瓦片中需要填充数据的区域
-			int dst_min_x = 0, dst_min_y = 0;
-			int dst_max_x = options->tileSize - 1, dst_max_y = options->tileSize - 1;
-
-			// 如果源数据范围超出影像边界，计算目标区域的偏移
-			if (src_min_x < 0) {
-				// 左边超出，计算目标区域的左边界
-				double ratio = (double)(-src_min_x) / (src_max_x - src_min_x);
-				dst_min_x = (int)(ratio * options->tileSize);
-			}
-			if (src_min_y < 0) {
-				// 上边超出，计算目标区域的上边界
-				double ratio = (double)(-src_min_y) / (src_max_y - src_min_y);
-				dst_min_y = (int)(ratio * options->tileSize);
-			}
-			if (src_max_x >= img_width) {
-				// 右边超出，计算目标区域的右边界
-				double ratio = (double)(img_width - 1 - src_min_x) / (src_max_x - src_min_x);
-				dst_max_x = (int)(ratio * options->tileSize);
-			}
-			if (src_max_y >= img_height) {
-				// 下边超出，计算目标区域的下边界
-				double ratio = (double)(img_height - 1 - src_min_y) / (src_max_y - src_min_y);
-				dst_max_y = (int)(ratio * options->tileSize);
-			}
-
-			// 裁剪源数据范围到影像边界内
-			int clipped_src_min_x = std::max(0, src_min_x);
-			int clipped_src_min_y = std::max(0, src_min_y);
-			int clipped_src_max_x = std::min(img_width - 1, src_max_x);
-			int clipped_src_max_y = std::min(img_height - 1, src_max_y);
-
-			// 计算实际需要读取的数据大小
-			int read_width = clipped_src_max_x - clipped_src_min_x + 1;
-			int read_height = clipped_src_max_y - clipped_src_min_y + 1;
-
-			if (read_width <= 0 || read_height <= 0) {
+			// 确保输出目录存在
+			if (!ensure_output_directory(x_dir)) {
 				return false;
 			}
 
-			// 确保x目录存在
-			{
-				std::lock_guard lock(fs_mutex);
-				if (!fs::exists(x_dir)) {
-					fs::create_directories(x_dir);
-				}
-			}
-
-			// 计算像素大小
-			size_t pixel_size = GDALGetDataTypeSize(data_type) / 8;
-			if (options->outputFormat == "jpg") {
-				pixel_size = 1;
-			}
-			else if (options->outputFormat == "png") {
-				pixel_size = pixel_size > 2 ? 1 : pixel_size;
-			}
-
-			// 分配完整瓦片大小的缓冲区
-			size_t buffer_size = options->tileSize * options->tileSize * band_count * pixel_size;
+			// 分配完整瓦片大小的缓冲区（基于输出波段数）
+			size_t buffer_size = options->tileSize * options->tileSize * image_info.output_band_count * image_info.pixel_size;
 			unsigned char* pData = (unsigned char*)(MemoryPool::GetInstance(this->getName())->allocate(buffer_size));
 
-			// 初始化整个缓冲区为0（或其他背景值）
-			memset(pData, 0, buffer_size);
-
-			// 计算目标缓冲区中的有效数据区域大小
-			int dst_width = dst_max_x - dst_min_x + 1;
-			int dst_height = dst_max_y - dst_min_y + 1;
-
-			// 分配临时缓冲区用于读取实际数据
-			size_t temp_buffer_size = dst_width * dst_height * band_count * pixel_size;
-			unsigned char* temp_buffer = (unsigned char*)malloc(temp_buffer_size);
-			if (!temp_buffer) {
-				MemoryPool::GetInstance(this->getName())->deallocate(pData, buffer_size);
-				return false;
-			}
-
-			// 读取数据到临时缓冲区
-			CPLErr err;
-			{
-				std::lock_guard lock(gdal_mutex);
-				err = GDALDatasetRasterIO(
-					local_dataset, GF_Read,
-					clipped_src_min_x, clipped_src_min_y, read_width, read_height,
-					temp_buffer, dst_width, dst_height,
-					data_type, band_count, nullptr,
-					band_count, dst_width * band_count, 1
-				);
-			}
-
-			if (err != CE_None) {
-				free(temp_buffer);
-				MemoryPool::GetInstance(this->getName())->deallocate(pData, buffer_size);
-				return false;
-			}
-
-			// 将临时缓冲区的数据复制到目标缓冲区的正确位置
-			for (int y = 0; y < dst_height; y++) {
-				int dst_y = dst_min_y + y;
-				for (int x = 0; x < dst_width; x++) {
-					int dst_x = dst_min_x + x;
-
-					// 计算源和目标位置的索引
-					size_t src_idx = (y * dst_width + x) * band_count * pixel_size;
-					size_t dst_idx = (dst_y * options->tileSize + dst_x) * band_count * pixel_size;
-
-					// 复制像素数据
-					memcpy(pData + dst_idx, temp_buffer + src_idx, band_count * pixel_size);
+			// 使用TBB并行初始化整个缓冲区为0（黑色背景）
+			::tbb::parallel_for(
+				::tbb::blocked_range<size_t>(0, buffer_size),
+				[&](const ::tbb::blocked_range<size_t>& range) {
+					memset(pData + range.begin(), 0, range.size());
 				}
+			);
+
+			// 根据影像类型处理数据
+			bool success;
+			if (image_info.has_palette) {
+				success = process_palette_image(local_dataset, bounds, image_info, pData);
+			}
+			else {
+				success = process_regular_image(local_dataset, bounds, image_info, pData);
 			}
 
-			// 释放临时缓冲区
-			free(temp_buffer);
+			if (!success) {
+				MemoryPool::GetInstance(this->getName())->deallocate(pData, buffer_size);
+				return false;
+			}
 
-			// 将内存数据移动到vector中
+			// 将内存数据提交给输出器
 			fs::path file = fs::path(std::to_string(zoom)) / std::to_string(tile_x) / std::to_string(tile_y);
 			IOFileInfo* oneFileInfo = new IOFileInfo{ file.string(), pData, buffer_size, this->getName() };
 			fileBatchOutputer->addFile(oneFileInfo);
@@ -316,6 +235,288 @@ namespace WT{
 			std::lock_guard<std::mutex> lock(progress_mutex);
 			progressInfo->showProgress(current, "", "");
 		}
+	}
+
+	bool SlippyMapTiler::calculate_tile_bounds(int src_min_x, int src_min_y, int src_max_x, int src_max_y, TileBounds& bounds)
+	{
+		// 检查瓦片是否完全在影像范围外
+		if (src_max_x < 0 || src_min_x >= img_width ||
+			src_max_y < 0 || src_min_y >= img_height) {
+			return false;
+		}
+
+		// 初始化目标瓦片边界
+		bounds.dst_min_x = 0;
+		bounds.dst_min_y = 0;
+		bounds.dst_max_x = options->tileSize - 1;
+		bounds.dst_max_y = options->tileSize - 1;
+
+		// 计算目标瓦片中需要填充数据的区域
+		if (src_min_x < 0) {
+			// 左边超出，计算目标区域的左边界
+			double ratio = (double)(-src_min_x) / (src_max_x - src_min_x);
+			bounds.dst_min_x = (int)(ratio * options->tileSize);
+		}
+		if (src_min_y < 0) {
+			// 上边超出，计算目标区域的上边界
+			double ratio = (double)(-src_min_y) / (src_max_y - src_min_y);
+			bounds.dst_min_y = (int)(ratio * options->tileSize);
+		}
+		if (src_max_x >= img_width) {
+			// 右边超出，计算目标区域的右边界
+			double ratio = (double)(img_width - 1 - src_min_x) / (src_max_x - src_min_x);
+			bounds.dst_max_x = (int)(ratio * options->tileSize);
+		}
+		if (src_max_y >= img_height) {
+			// 下边超出，计算目标区域的下边界
+			double ratio = (double)(img_height - 1 - src_min_y) / (src_max_y - src_min_y);
+			bounds.dst_max_y = (int)(ratio * options->tileSize);
+		}
+
+		// 裁剪源数据范围到影像边界内
+		bounds.clipped_src_min_x = std::max(0, src_min_x);
+		bounds.clipped_src_min_y = std::max(0, src_min_y);
+		bounds.clipped_src_max_x = std::min(img_width - 1, src_max_x);
+		bounds.clipped_src_max_y = std::min(img_height - 1, src_max_y);
+
+		// 计算实际需要读取和目标的数据大小
+		bounds.read_width = bounds.clipped_src_max_x - bounds.clipped_src_min_x + 1;
+		bounds.read_height = bounds.clipped_src_max_y - bounds.clipped_src_min_y + 1;
+		bounds.dst_width = bounds.dst_max_x - bounds.dst_min_x + 1;
+		bounds.dst_height = bounds.dst_max_y - bounds.dst_min_y + 1;
+
+		return bounds.read_width > 0 && bounds.read_height > 0;
+	}
+
+	ImageInfo SlippyMapTiler::get_image_info(GDALDatasetH dataset)
+	{
+		ImageInfo info;
+
+		// 检查是否为带调色板的单波段影像
+		GDALRasterBandH first_band = GDALGetRasterBand(dataset, 1);
+		info.color_table = GDALGetRasterColorTable(first_band);
+		info.has_palette = (band_count == 1 && info.color_table != nullptr);
+
+		// 计算实际输出的波段数
+		info.output_band_count = info.has_palette ? 3 : band_count;
+
+		// 计算像素大小
+		info.pixel_size = GDALGetDataTypeSize(data_type) / 8;
+		if (options->outputFormat == "jpg") {
+			info.pixel_size = 1;
+		}
+		else if (options->outputFormat == "png") {
+			info.pixel_size = info.pixel_size > 2 ? 1 : info.pixel_size;
+		}
+
+		return info;
+	}
+
+	bool SlippyMapTiler::process_palette_image(GDALDatasetH dataset, const TileBounds& bounds, const ImageInfo& info, unsigned char* output_buffer)
+	{
+		// 分配临时缓冲区用于读取原始索引数据
+		size_t temp_buffer_size = bounds.dst_width * bounds.dst_height * info.pixel_size;
+		unsigned char* temp_buffer = (unsigned char*)malloc(temp_buffer_size);
+		if (!temp_buffer) {
+			return false;
+		}
+
+		// 读取索引数据
+		CPLErr err;
+		{
+			std::lock_guard lock(gdal_mutex);
+			err = GDALDatasetRasterIO(
+				dataset, GF_Read,
+				bounds.clipped_src_min_x, bounds.clipped_src_min_y, bounds.read_width, bounds.read_height,
+				temp_buffer, bounds.dst_width, bounds.dst_height,
+				data_type, 1, nullptr,  // 只读取一个波段
+				info.pixel_size, bounds.dst_width * info.pixel_size, 1
+			);
+		}
+
+		if (err != CE_None) {
+			free(temp_buffer);
+			return false;
+		}
+
+		// 获取调色板条目数
+		int palette_count = GDALGetColorEntryCount(info.color_table);
+
+		// 使用TBB并行处理像素转换
+		::tbb::parallel_for(
+			::tbb::blocked_range2d<int>(0, bounds.dst_height, 0, bounds.dst_width),
+			[&](const ::tbb::blocked_range2d<int>& range) {
+				for (int y = range.rows().begin(); y != range.rows().end(); ++y) {
+					int dst_y = bounds.dst_min_y + y;
+					for (int x = range.cols().begin(); x != range.cols().end(); ++x) {
+						int dst_x = bounds.dst_min_x + x;
+
+						// 获取索引值
+						int index;
+						if (info.pixel_size == 1) {
+							index = temp_buffer[y * bounds.dst_width + x];
+						}
+						else if (info.pixel_size == 2) {
+							index = ((unsigned short*)temp_buffer)[y * bounds.dst_width + x];
+						}
+						else {
+							index = ((unsigned int*)temp_buffer)[y * bounds.dst_width + x];
+						}
+
+						// 获取对应的RGB值
+						GDALColorEntry color_entry;
+						if (index >= 0 && index < palette_count) {
+							GDALGetColorEntryAsRGB(info.color_table, index, &color_entry);
+						}
+						else {
+							// 索引超出范围，使用透明
+							color_entry.c1 = 0; // Red
+							color_entry.c2 = 0; // Green
+							color_entry.c3 = 0; // Blue
+							color_entry.c4 = 0; // Alpha
+						}
+
+						// 计算目标位置的索引
+						size_t dst_idx = (dst_y * options->tileSize + dst_x) * 3 * info.pixel_size;
+
+						// 写入RGB值
+						if (info.pixel_size == 1) {
+							output_buffer[dst_idx] = (unsigned char)color_entry.c1;     // R
+							output_buffer[dst_idx + 1] = (unsigned char)color_entry.c2; // G
+							output_buffer[dst_idx + 2] = (unsigned char)color_entry.c3; // B
+						}
+						else if (info.pixel_size == 2) {
+							((unsigned short*)output_buffer)[dst_idx / 2] = (unsigned short)color_entry.c1;     // R
+							((unsigned short*)output_buffer)[dst_idx / 2 + 1] = (unsigned short)color_entry.c2; // G
+							((unsigned short*)output_buffer)[dst_idx / 2 + 2] = (unsigned short)color_entry.c3; // B
+						}
+					}
+				}
+			}
+		);
+
+		// 释放临时缓冲区
+		free(temp_buffer);
+		return true;
+	}
+
+	bool SlippyMapTiler::process_regular_image(GDALDatasetH dataset, const TileBounds& bounds, const ImageInfo& info, unsigned char* output_buffer)
+	{
+		// 分配临时缓冲区用于读取实际数据
+		size_t temp_buffer_size = bounds.dst_width * bounds.dst_height * band_count * info.pixel_size;
+		unsigned char* temp_buffer = (unsigned char*)malloc(temp_buffer_size);
+		if (!temp_buffer) {
+			return false;
+		} 
+
+		// 初始化临时缓冲区为nodata值
+		if (!options->nodata.empty()) {
+			::tbb::parallel_for(
+				::tbb::blocked_range<size_t>(0, bounds.dst_width * bounds.dst_height),
+				[&](const ::tbb::blocked_range<size_t>& range) {
+					for (size_t pixel_idx = range.begin(); pixel_idx != range.end(); ++pixel_idx) {
+						for (int band = 0; band < band_count; ++band) {
+							size_t byte_idx = pixel_idx * band_count * info.pixel_size + band * info.pixel_size;
+
+							// 根据数据类型设置nodata值
+							double nodata_val = (band < options->nodata.size()) ? options->nodata[band] : options->nodata[0];
+
+							switch (data_type) {
+							case GDT_Byte:
+								temp_buffer[byte_idx] = static_cast<unsigned char>(nodata_val);
+								break;
+							case GDT_UInt16:
+								*reinterpret_cast<uint16_t*>(temp_buffer + byte_idx) = static_cast<uint16_t>(nodata_val);
+								break;
+							case GDT_Int16:
+								*reinterpret_cast<int16_t*>(temp_buffer + byte_idx) = static_cast<int16_t>(nodata_val);
+								break;
+							case GDT_UInt32:
+								*reinterpret_cast<uint32_t*>(temp_buffer + byte_idx) = static_cast<uint32_t>(nodata_val);
+								break;
+							case GDT_Int32:
+								*reinterpret_cast<int32_t*>(temp_buffer + byte_idx) = static_cast<int32_t>(nodata_val);
+								break;
+							case GDT_Float32:
+								*reinterpret_cast<float*>(temp_buffer + byte_idx) = static_cast<float>(nodata_val);
+								break;
+							case GDT_Float64:
+								*reinterpret_cast<double*>(temp_buffer + byte_idx) = nodata_val;
+								break;
+							default:
+								// 对于未知类型，用0填充
+								memset(temp_buffer + byte_idx, 0, info.pixel_size);
+								break;
+							}
+						}
+					}
+				}
+			);
+		}
+		else {
+			// 如果没有nodata值，用0初始化
+			memset(temp_buffer, 0, temp_buffer_size);
+		}
+
+		// 只有当读取区域与影像区域有交集时才进行读取
+		if (bounds.read_width > 0 && bounds.read_height > 0) {
+			CPLErr err;
+			{
+				std::lock_guard lock(gdal_mutex);
+				err = GDALDatasetRasterIO(
+					dataset, GF_Read,
+					bounds.clipped_src_min_x, bounds.clipped_src_min_y, bounds.read_width, bounds.read_height,
+					temp_buffer, bounds.dst_width, bounds.dst_height,
+					data_type, band_count, nullptr,
+					band_count * info.pixel_size, bounds.dst_width * band_count * info.pixel_size, info.pixel_size
+				);
+			}
+
+			if (err != CE_None) {
+				free(temp_buffer);
+				return false;
+			}
+		}
+
+		// 使用TBB并行复制数据到输出缓冲区
+		::tbb::parallel_for(
+			::tbb::blocked_range2d<int>(0, bounds.dst_height, 0, bounds.dst_width),
+			[&](const ::tbb::blocked_range2d<int>& range) {
+				for (int y = range.rows().begin(); y != range.rows().end(); ++y) {
+					int dst_y = bounds.dst_min_y + y;
+					for (int x = range.cols().begin(); x != range.cols().end(); ++x) {
+						int dst_x = bounds.dst_min_x + x;
+
+						// 计算源和目标位置的索引
+						size_t src_idx = (y * bounds.dst_width + x) * band_count * info.pixel_size;
+						size_t dst_idx = (dst_y * options->tileSize + dst_x) * band_count * info.pixel_size;
+
+						// 复制像素数据
+						memcpy(output_buffer + dst_idx, temp_buffer + src_idx, band_count * info.pixel_size);
+					}
+				}
+			}
+		);
+
+		// 释放临时缓冲区
+		free(temp_buffer);
+		return true;
+	}
+
+	bool SlippyMapTiler::ensure_output_directory(const fs::path& x_dir)
+	{
+		std::lock_guard lock(fs_mutex);
+		if (!fs::exists(x_dir)) {
+			try {
+				fs::create_directories(x_dir);
+				return true;
+			}
+			catch (const std::exception& e) {
+				std::cerr << "创建目录失败: " << e.what() << std::endl;
+				return false;
+			}
+		}
+		return true;
 	}
 
 	void SlippyMapTiler::process_zoom_level(int zoom, std::shared_ptr<IProgressInfo> progressInfo)
@@ -516,9 +717,12 @@ namespace WT{
 			options->maxLevel = this->getProperLevel(std::min(xResolutionM, yResolutionM), options->tileSize);
 		}
 
+		// 获取影像信息
+		image_info = get_image_info(dataset);
+
 		//下面要处理NoDataValue
 		if (options->outputFormat == "png") {
-			for (size_t i = 0; i < band_count; i++)
+			for (size_t i = 0; i < image_info.output_band_count; i++)
 			{
 				GDALRasterBandH  hBand = GDALGetRasterBand(dataset, 1+i);
 				if (hBand == nullptr) {
@@ -531,7 +735,7 @@ namespace WT{
 				if (hasNoData) {
 					if (options->nodata.size() == 0)
 					{
-						options->nodata.resize(band_count);
+						options->nodata.resize(image_info.output_band_count);
 					}
 					options->nodata[i] = noDataValue;
 				}
@@ -542,7 +746,7 @@ namespace WT{
 		fileBatchOutputer = std::make_shared<FileBatchOutput>();
 		std::unique_ptr<ImageFileParallelIOAdapter> imageIOAdatper = std::make_unique<ImageFileParallelIOAdapter>(options->outputDir, true
 			, options->tileSize, options->tileSize, options->outputFormat
-			, band_count,options->nodata);
+			, image_info.output_band_count,options->nodata);
 		fileBatchOutputer->setAdapter(std::move(imageIOAdatper));
 
 		return true;
