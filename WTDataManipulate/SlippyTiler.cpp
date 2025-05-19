@@ -5,6 +5,9 @@
 #include <tbb/blocked_range2d.h>
 #include <tbb/global_control.h>
 #include <tbb/enumerable_thread_specific.h>
+#include <nlohmann/json.hpp>
+#include <iostream>
+#include<fstream>
 
 //#include "ImageFileIOAdapter.h"
 #include "ImageFileParallelIOAdapter.h"
@@ -50,12 +53,12 @@ namespace WT{
 	void SlippyMapTiler::get_tile_range(int zoom, int& min_tile_x, int& min_tile_y, int& max_tile_x, int& max_tile_y)
 	{
 		// 计算最小瓦片坐标
-		min_tile_x = long2tilex(min_x, zoom);// static_cast<int>(floor((min_x + 180.0) / 360.0 * (1 << zoom)));
-		min_tile_y = lat2tiley(min_y,zoom);// static_cast<int>(floor((1.0 - log(tan(min_y * M_PI / 180.0) + 1.0 / cos(min_y * M_PI / 180.0)) / M_PI) / 2.0 * (1 << zoom)));
+		min_tile_x = long2tilex(min_x, zoom);
+		min_tile_y = lat2tiley(min_y,zoom);
 
 		// 计算最大瓦片坐标
-		max_tile_x = long2tilex(max_x, zoom);//static_cast<int>(floor((max_x + 180.0) / 360.0 * (1 << zoom)));
-		max_tile_y = lat2tiley(max_y, zoom);//static_cast<int>(floor((1.0 - log(tan(max_y * M_PI / 180.0) + 1.0 / cos(max_y * M_PI / 180.0)) / M_PI) / 2.0 * (1 << zoom)));
+		max_tile_x = long2tilex(max_x, zoom);
+		max_tile_y = lat2tiley(max_y, zoom);
 
 		// 确保y坐标的大小关系正确（在切片坐标系中，y值从上到下增加）
 		if (min_tile_y > max_tile_y) {
@@ -164,14 +167,6 @@ namespace WT{
 
 			// 创建瓦片路径
 			fs::path x_dir = fs::path(options->outputDir) / std::to_string(zoom) / std::to_string(tile_x);
-
-			// 确保x目录存在
-			{
-				std::lock_guard<std::mutex> lock(fs_mutex);
-				if (!fs::exists(x_dir)) {
-					fs::create_directories(x_dir);
-				}
-			}
 			std::string tile_path = (x_dir / (std::to_string(tile_y) + "." + options->outputFormat)).string();
 
 			// 计算瓦片在原始影像中的像素范围
@@ -181,69 +176,128 @@ namespace WT{
 				return false; // 坐标转换失败
 			}
 
-			// 边界检查
-			if (src_max_x < 0 || src_min_x >= img_width || src_max_y < 0 || src_min_y >= img_height) {
-				return false; // 瓦片在影像范围外
+			// 检查瓦片是否完全在影像范围外
+			if (src_max_x < 0 || src_min_x >= img_width ||
+				src_max_y < 0 || src_min_y >= img_height) {
+				return false; // 瓦片完全在影像范围外
 			}
 
-			// 裁剪范围修正
-			src_min_x = std::max(0, src_min_x);
-			src_min_y = std::max(0, src_min_y);
-			src_max_x = std::min(img_width - 1, src_max_x);
-			src_max_y = std::min(img_height - 1, src_max_y);
+			// 计算目标瓦片中需要填充数据的区域
+			int dst_min_x = 0, dst_min_y = 0;
+			int dst_max_x = options->tileSize - 1, dst_max_y = options->tileSize - 1;
 
-			// 计算读取的数据大小
-			int width = src_max_x - src_min_x + 1;
-			int height = src_max_y - src_min_y + 1;
+			// 如果源数据范围超出影像边界，计算目标区域的偏移
+			if (src_min_x < 0) {
+				// 左边超出，计算目标区域的左边界
+				double ratio = (double)(-src_min_x) / (src_max_x - src_min_x);
+				dst_min_x = (int)(ratio * options->tileSize);
+			}
+			if (src_min_y < 0) {
+				// 上边超出，计算目标区域的上边界
+				double ratio = (double)(-src_min_y) / (src_max_y - src_min_y);
+				dst_min_y = (int)(ratio * options->tileSize);
+			}
+			if (src_max_x >= img_width) {
+				// 右边超出，计算目标区域的右边界
+				double ratio = (double)(img_width - 1 - src_min_x) / (src_max_x - src_min_x);
+				dst_max_x = (int)(ratio * options->tileSize);
+			}
+			if (src_max_y >= img_height) {
+				// 下边超出，计算目标区域的下边界
+				double ratio = (double)(img_height - 1 - src_min_y) / (src_max_y - src_min_y);
+				dst_max_y = (int)(ratio * options->tileSize);
+			}
 
-			if (width <= 0 || height <= 0) {
+			// 裁剪源数据范围到影像边界内
+			int clipped_src_min_x = std::max(0, src_min_x);
+			int clipped_src_min_y = std::max(0, src_min_y);
+			int clipped_src_max_x = std::min(img_width - 1, src_max_x);
+			int clipped_src_max_y = std::min(img_height - 1, src_max_y);
+
+			// 计算实际需要读取的数据大小
+			int read_width = clipped_src_max_x - clipped_src_min_x + 1;
+			int read_height = clipped_src_max_y - clipped_src_min_y + 1;
+
+			if (read_width <= 0 || read_height <= 0) {
 				return false;
 			}
 
-			// 分配内存为每个波段创建缓冲区
-			size_t pixel_size = GDALGetDataTypeSize(data_type) / 8;
-			//这里需要定义下 如果输出jpg 其只支持8位，如果是png 其只支持8或者16位，大于16位的我们用8位代替 那么像素位不管是多少 都应为1 然后gdal会自动将数值范围缩放
-			if (options->outputFormat=="jpg")
+			// 确保x目录存在
 			{
+				std::lock_guard lock(fs_mutex);
+				if (!fs::exists(x_dir)) {
+					fs::create_directories(x_dir);
+				}
+			}
+
+			// 计算像素大小
+			size_t pixel_size = GDALGetDataTypeSize(data_type) / 8;
+			if (options->outputFormat == "jpg") {
 				pixel_size = 1;
 			}
 			else if (options->outputFormat == "png") {
 				pixel_size = pixel_size > 2 ? 1 : pixel_size;
 			}
+
+			// 分配完整瓦片大小的缓冲区
 			size_t buffer_size = options->tileSize * options->tileSize * band_count * pixel_size;
-
-			//这里得到的pData是rgb rgb这样的形式
-			//unsigned char * pData = (unsigned char*) malloc(buffer_size);
-			
 			unsigned char* pData = (unsigned char*)(MemoryPool::GetInstance(this->getName())->allocate(buffer_size));
-			//std::unique_ptr<unsigned char[]> pData(new unsigned char[buffer_size]);
-			//if (!pData) {
-			//	std::cerr << "内存分配失败!" << std::endl;
-			//	return false;
-			//}
 
-			// 读取数据 - 使用线程本地的dataset
+			// 初始化整个缓冲区为0（或其他背景值）
+			memset(pData, 0, buffer_size);
+
+			// 计算目标缓冲区中的有效数据区域大小
+			int dst_width = dst_max_x - dst_min_x + 1;
+			int dst_height = dst_max_y - dst_min_y + 1;
+
+			// 分配临时缓冲区用于读取实际数据
+			size_t temp_buffer_size = dst_width * dst_height * band_count * pixel_size;
+			unsigned char* temp_buffer = (unsigned char*)malloc(temp_buffer_size);
+			if (!temp_buffer) {
+				MemoryPool::GetInstance(this->getName())->deallocate(pData, buffer_size);
+				return false;
+			}
+
+			// 读取数据到临时缓冲区
 			CPLErr err;
 			{
-				// 设置内存布局参数
-				std::lock_guard<std::mutex> lock(gdal_mutex);
+				std::lock_guard lock(gdal_mutex);
 				err = GDALDatasetRasterIO(
 					local_dataset, GF_Read,
-					src_min_x, src_min_y, width, height,
-					pData, options->tileSize, options->tileSize,
+					clipped_src_min_x, clipped_src_min_y, read_width, read_height,
+					temp_buffer, dst_width, dst_height,
 					data_type, band_count, nullptr,
-					band_count, options->tileSize* band_count, 1
+					band_count, dst_width * band_count, 1
 				);
 			}
 
 			if (err != CE_None) {
-				free(pData);
+				free(temp_buffer);
+				MemoryPool::GetInstance(this->getName())->deallocate(pData, buffer_size);
 				return false;
 			}
-		
+
+			// 将临时缓冲区的数据复制到目标缓冲区的正确位置
+			for (int y = 0; y < dst_height; y++) {
+				int dst_y = dst_min_y + y;
+				for (int x = 0; x < dst_width; x++) {
+					int dst_x = dst_min_x + x;
+
+					// 计算源和目标位置的索引
+					size_t src_idx = (y * dst_width + x) * band_count * pixel_size;
+					size_t dst_idx = (dst_y * options->tileSize + dst_x) * band_count * pixel_size;
+
+					// 复制像素数据
+					memcpy(pData + dst_idx, temp_buffer + src_idx, band_count * pixel_size);
+				}
+			}
+
+			// 释放临时缓冲区
+			free(temp_buffer);
+
 			// 将内存数据移动到vector中
 			fs::path file = fs::path(std::to_string(zoom)) / std::to_string(tile_x) / std::to_string(tile_y);
-			IOFileInfo* oneFileInfo = new IOFileInfo{ file.string(),pData,buffer_size,this->getName()};
+			IOFileInfo* oneFileInfo = new IOFileInfo{ file.string(), pData, buffer_size, this->getName() };
 			fileBatchOutputer->addFile(oneFileInfo);
 
 			return true;
@@ -327,8 +381,6 @@ namespace WT{
 				}
 			}
 		);
-
-
 		std::cout << std::endl;
 	}
 
@@ -533,6 +585,16 @@ namespace WT{
 
 		//所有处理完毕后 需要清空
 		fileBatchOutputer->output();
+
+		//输出元数据
+		nlohmann::json metaInfo;
+		metaInfo["extent"] = { min_x, min_y, max_x, max_y };
+		metaInfo["center"] = { (min_x + max_x) / 2,(min_y + max_y) / 2 };
+		metaInfo["levels"] = { options->minLevel,options->maxLevel };
+		std::ofstream fStream((fs::path(options->outputDir) / "meta.json").string().c_str());
+		fStream << std::setw(4) << metaInfo << std::endl;
+		fStream.close();
+
 		// 等待所有文件写入完成
 		std::cout << "等待文件写入完成..." << std::endl;
 

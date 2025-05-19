@@ -75,7 +75,7 @@ link_directories(${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
 foreach(oneDir ${SubDirs} )
     include_directories(${oneDir})
 endforeach( )
-include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${SPDLOG_Inc})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${SPDLOG_Inc} ${ThirdPartyPath})
 
 foreach(oneDir ${SubDirs} )
     add_subdirectory(${oneDir})

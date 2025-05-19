@@ -22,8 +22,8 @@ namespace WT{
 	public:
 		std::string inputFile="";//输入的文件
 		std::string outputDir="";//输出路径
-		int minLevel = 15;//最小切片级数
-		int maxLevel = 20;//最大切片级数
+		int minLevel = 0;//最小切片级数
+		int maxLevel = 5;//最大切片级数
 		int tileSize = 256;//瓦片大小
 		std::vector<double> nodata = { 0.0,0.0,0.0 };//NoData设置 如果影像没有nodata就使用这个
 		std::string outputFormat = "png";//输出瓦片后缀
