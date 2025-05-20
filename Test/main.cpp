@@ -8,8 +8,10 @@ void main() {
     std::shared_ptr< WT::SlippyMapTilerOptions> options = std::make_shared<WT::SlippyMapTilerOptions>();
 	//options->inputFile = "D:\\Data\\DOM1\\yangjiabaDOM.tif";
 	//options->outputDir = "D:\\Data\\DOM1\\test";
-	options->inputFile = "E:\\Data\\dq\\yangjiaba\\initial\\DOM1\\yangjiabaDOM.tif";
-	options->outputDir = "E:\\Data\\dq\\yangjiaba\\initial\\DOM1\\test";
+	//options->inputFile = "E:\\Data\\dq\\yangjiaba\\initial\\DOM1\\yangjiabaDOM.tif";
+	//options->outputDir = "E:\\Data\\dq\\yangjiaba\\initial\\DOM1\\test";
+    options->inputFile = "E:\\Data\\dq\\DEM\\DEM_1000h.img";
+    options->outputDir = "E:\\Data\\23";
     
     std::shared_ptr<WT::IProgressInfo> p = std::make_shared<WT::IProgressInfo>();
     WT::SlippyMapTiler cutter(options);

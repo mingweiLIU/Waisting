@@ -192,11 +192,20 @@ namespace WT{
 			size_t buffer_size = options->tileSize * options->tileSize * image_info.output_band_count * image_info.pixel_size;
 			unsigned char* pData = (unsigned char*)(MemoryPool::GetInstance(this->getName())->allocate(buffer_size));
 
-			// 使用TBB并行初始化整个缓冲区为0（黑色背景）
+			// 使用TBB并行初始化整个缓冲区 但是要注意 不应该使用某个颜色 而应该使用nodata颜色 以方便没有值的地方透明
 			::tbb::parallel_for(
 				::tbb::blocked_range<size_t>(0, buffer_size),
 				[&](const ::tbb::blocked_range<size_t>& range) {
-					memset(pData + range.begin(), 0, range.size());
+					if (options->outputFormat == "png") {
+						for (size_t i = range.begin(); i < range.end(); ++i)
+						{
+							int nodataIndex = i % image_info.output_band_count;
+							*(pData + i) = options->nodata[nodataIndex];
+						}
+					}
+					else if (options->outputFormat == "jpg") {
+						memset(pData + range.begin(), 0, range.size());
+					}
 				}
 			);
 
@@ -297,11 +306,56 @@ namespace WT{
 		info.color_table = GDALGetRasterColorTable(first_band);
 		info.has_palette = (band_count == 1 && info.color_table != nullptr);
 
-		// 计算实际输出的波段数
-		info.output_band_count = info.has_palette ? 3 : band_count;
+		//计算实际的波段数
+		if (info.has_palette) {
+			GDALPaletteInterp paleteInterp = GDALGetPaletteInterpretation(dataset);
+
+			switch (paleteInterp)
+			{
+				/*! Grayscale (in GDALColorEntry.c1) */ 
+				case GPI_Gray: {
+					info.output_band_count = 1;
+					break;
+				}
+				/*! Red, Green, Blue and Alpha in (in c1, c2, c3 and c4) */ 
+				case GPI_RGB: {
+					info.output_band_count = 3;
+					break;
+				}
+				/*! Cyan, Magenta, Yellow and Black (in c1, c2, c3 and c4)*/ 
+				case GPI_CMYK: {
+					info.output_band_count = 4;
+					break;
+				}
+				/*! Hue, Lightness and Saturation (in c1, c2, and c3) */ 
+				case GPI_HLS: {
+					info.output_band_count = 3;
+					break;
+
+				}
+				default: {
+					// 对于未知格式，可以通过检查调色板条目的alpha值来判断
+					// 如果所有条目的alpha都是255，则为RGB，否则为RGBA
+					int entry_count = GDALGetColorEntryCount(info.color_table);
+					bool has_alpha = false;
+					for (int i = 0; i < entry_count; i++) {
+						const GDALColorEntry* entry = GDALGetColorEntry(info.color_table, i);
+						if (entry && entry->c4 != 255) {  // c4是alpha通道
+							has_alpha = true;
+							break;
+						}
+					}
+					info.output_band_count = has_alpha ? 4 : 3;  // RGBA或RGB
+					break;
+				}
+			}
+		}
+		else {
+			info.output_band_count = band_count;
+		}
 
 		// 计算像素大小
-		info.pixel_size = GDALGetDataTypeSize(data_type) / 8;
+		info.pixel_size = GDALGetDataTypeSizeBytes(data_type);// / 8;
 		if (options->outputFormat == "jpg") {
 			info.pixel_size = 1;
 		}
@@ -369,11 +423,20 @@ namespace WT{
 							GDALGetColorEntryAsRGB(info.color_table, index, &color_entry);
 						}
 						else {
-							// 索引超出范围，使用透明
-							color_entry.c1 = 0; // Red
-							color_entry.c2 = 0; // Green
-							color_entry.c3 = 0; // Blue
-							color_entry.c4 = 0; // Alpha
+							// 索引超出范围 那么我直接设置为nodata的值
+							if (options->outputFormat == "png") {
+								color_entry.c1 = options->nodata[0];
+								if (image_info.output_band_count == 3) {
+									color_entry.c2 = options->nodata[1];
+									color_entry.c3 = options->nodata[2];
+								}
+							}
+							else if (options->outputFormat == "jpg") {
+								color_entry.c1 = 0; // Red
+								color_entry.c2 = 0; // Green
+								color_entry.c3 = 0; // Blue
+								color_entry.c4 = 0; // Alpha
+							}
 						}
 
 						// 计算目标位置的索引
@@ -384,6 +447,7 @@ namespace WT{
 							output_buffer[dst_idx] = (unsigned char)color_entry.c1;     // R
 							output_buffer[dst_idx + 1] = (unsigned char)color_entry.c2; // G
 							output_buffer[dst_idx + 2] = (unsigned char)color_entry.c3; // B
+							//std::cout <<index<<"===="<< color_entry.c1 << "----" << color_entry.c2 << "----" << color_entry.c3 << std::endl;
 						}
 						else if (info.pixel_size == 2) {
 							((unsigned short*)output_buffer)[dst_idx / 2] = (unsigned short)color_entry.c1;     // R
@@ -720,8 +784,20 @@ namespace WT{
 		// 获取影像信息
 		image_info = get_image_info(dataset);
 
-		//下面要处理NoDataValue
+		//下面要处理NoDataValue 就算没有nodata值 如果是png 我们也应该给它设置值 因为要处理非影像范围内的数据
 		if (options->outputFormat == "png") {
+			std::map<GDALDataType, double> nodataMax = {
+				{GDT_Byte,std::numeric_limits<BYTE>::max()},
+				{GDT_Int8,std::numeric_limits<int8_t>::max()},
+				{GDT_UInt16,std::numeric_limits<uint16_t>::max()},
+				{GDT_Int16,std::numeric_limits<int16_t>::max()},
+				{GDT_UInt32,std::numeric_limits<uint32_t>::max()},
+				{GDT_Int32,std::numeric_limits<int32_t>::max()},
+				{GDT_UInt64,std::numeric_limits<uint64_t>::max()},
+				{GDT_Int64,std::numeric_limits<int64_t>::max()},
+				{GDT_Float64,std::numeric_limits<float>::max()}
+			};
+
 			for (size_t i = 0; i < image_info.output_band_count; i++)
 			{
 				GDALRasterBandH  hBand = GDALGetRasterBand(dataset, 1+i);
@@ -738,6 +814,15 @@ namespace WT{
 						options->nodata.resize(image_info.output_band_count);
 					}
 					options->nodata[i] = noDataValue;
+				}
+			}
+
+			//如果依然没有nodata 我们要设置一个
+			if (options->nodata.size() == 0)
+			{
+				for (size_t i = 0; i < image_info.output_band_count; i++)
+				{
+					options->nodata.push_back(nodataMax[data_type]);
 				}
 			}
 		}
