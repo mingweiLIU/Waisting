@@ -50,12 +50,6 @@ namespace WT {
 		else if ("webp" == format) {
 			this->mFormat = IMAGEFORMAT::WEBP;
 		}
-
-		// 初始化TBB，限制线程数（可选）
-		// mTbbControl = std::make_unique<tbb::global_control>(
-		//     tbb::global_control::max_allowed_parallelism, 
-		//     std::thread::hardware_concurrency()
-		// );
 	}
 
 	bool ImageFileParallelIOAdapter::initialize() {

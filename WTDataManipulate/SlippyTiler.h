@@ -78,6 +78,9 @@ namespace WT{
 		GDALDataType data_type;
 		ImageInfo image_info;
 
+		std::vector<double> maxs;//每个波段的最大值
+		std::vector<double> mins;//每个波段的最小值
+
 		// 坐标系统和转换
 		std::unique_ptr<CoordinateSystem> coord_system;
 
@@ -221,6 +224,9 @@ namespace WT{
 
 		// 确保输出目录存在（线程安全）
 		bool ensure_output_directory(const fs::path& x_dir);
+
+		//将数据缩放到8位
+		bool scaleDataRange(unsigned char* pData,unsigned char* outData, std::vector<double>& nodata, std::vector<double>& statisticMax, std::vector<double>& statisticMin);
 		
 	};
 };

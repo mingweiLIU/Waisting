@@ -223,9 +223,14 @@ namespace WT{
 				return false;
 			}
 
+			//下面来缩放数据
+			unsigned char* scaledData = (unsigned char*)(MemoryPool::GetInstance(this->getName())->allocate(image_info.output_band_count * options->tileSize * options->tileSize));
+			scaleDataRange(pData, scaledData, options->nodata, maxs, mins);
+			MemoryPool::GetInstance(this->getName())->deallocate(pData, buffer_size);
+
 			// 将内存数据提交给输出器
 			fs::path file = fs::path(std::to_string(zoom)) / std::to_string(tile_x) / std::to_string(tile_y);
-			IOFileInfo* oneFileInfo = new IOFileInfo{ file.string(), pData, buffer_size, this->getName() };
+			IOFileInfo* oneFileInfo = new IOFileInfo{ file.string(), scaledData,(size_t) image_info.output_band_count * options->tileSize * options->tileSize, this->getName() };
 			fileBatchOutputer->addFile(oneFileInfo);
 
 			return true;
@@ -356,12 +361,14 @@ namespace WT{
 
 		// 计算像素大小
 		info.pixel_size = GDALGetDataTypeSizeBytes(data_type);// / 8;
-		if (options->outputFormat == "jpg") {
-			info.pixel_size = 1;
-		}
-		else if (options->outputFormat == "png") {
-			info.pixel_size = info.pixel_size > 2 ? 1 : info.pixel_size;
-		}
+
+		//没办法 需要自己的手动缩放
+		//if (options->outputFormat == "jpg") {
+		//	info.pixel_size = 1;
+		//}
+		//else if (options->outputFormat == "png") {
+		//	info.pixel_size = info.pixel_size > 2 ? 1 : info.pixel_size;
+		//}
 
 		return info;
 	}
@@ -785,6 +792,24 @@ namespace WT{
 		image_info = get_image_info(dataset);
 
 		//下面要处理NoDataValue 就算没有nodata值 如果是png 我们也应该给它设置值 因为要处理非影像范围内的数据
+		//先检查nodata的合法性 nodata一定要在datatype范围内
+		for (size_t i = 0; i < image_info.output_band_count; i++)
+		{
+			std::map<GDALDataType, std::function<bool(double)>> nodataRange = {
+					{GDT_Byte,std::numeric_limits<BYTE>::min()nodata std::numeric_limits<BYTE>::max()},
+					{GDT_Int8,std::numeric_limits<int8_t>::max()},
+					{GDT_UInt16,std::numeric_limits<uint16_t>::max()},
+					{GDT_Int16,std::numeric_limits<int16_t>::max()},
+					{GDT_UInt32,std::numeric_limits<uint32_t>::max()},
+					{GDT_Int32,std::numeric_limits<int32_t>::max()},
+					{GDT_UInt64,std::numeric_limits<uint64_t>::max()},
+					{GDT_Int64,std::numeric_limits<int64_t>::max()},
+					{GDT_Float32,std::numeric_limits<float>::max()},
+					{GDT_Float64,std::numeric_limits<double>::max()}
+			};
+		}
+
+
 		if (options->outputFormat == "png") {
 			std::map<GDALDataType, double> nodataMax = {
 				{GDT_Byte,std::numeric_limits<BYTE>::max()},
@@ -795,7 +820,8 @@ namespace WT{
 				{GDT_Int32,std::numeric_limits<int32_t>::max()},
 				{GDT_UInt64,std::numeric_limits<uint64_t>::max()},
 				{GDT_Int64,std::numeric_limits<int64_t>::max()},
-				{GDT_Float64,std::numeric_limits<float>::max()}
+				{GDT_Float32,std::numeric_limits<float>::max()},
+				{GDT_Float64,std::numeric_limits<double>::max()}
 			};
 
 			for (size_t i = 0; i < image_info.output_band_count; i++)
@@ -823,6 +849,24 @@ namespace WT{
 				for (size_t i = 0; i < image_info.output_band_count; i++)
 				{
 					options->nodata.push_back(nodataMax[data_type]);
+				}
+			}
+		}
+
+		//获取图层像素值统计信息 以方便对像素进行缩放
+		mins.swap(std::vector<double>()); maxs.swap(std::vector<double>());
+		if (data_type != GDT_Byte) {
+			for (int i = 1; i <= band_count; i++) {
+				GDALRasterBandH pBand = GDALGetRasterBand(dataset,i);
+
+				double minVal, maxVal;
+				CPLErr err = GDALComputeRasterStatistics(
+					pBand,FALSE,&minVal,&maxVal,NULL,NULL,NULL,NULL
+				);
+
+				if (err == CE_None) {
+					mins.push_back(minVal);
+					maxs.push_back(maxVal);
 				}
 			}
 		}
@@ -894,6 +938,179 @@ namespace WT{
 		// 输出统计信息
 		std::cout << "\n切片完成!" << std::endl;
 		std::cout << "总处理时间: " << duration << " 秒" << std::endl;
+
+		return true;
+	}
+
+
+	//outData大小由外部分配
+	bool SlippyMapTiler::scaleDataRange(unsigned char* pData, unsigned char* outData, std::vector<double>& nodata, std::vector<double>& statisticMax, std::vector<double>& statisticMin) {
+		// 确保参数有效性
+		if (!pData || !outData) {
+			return false;
+		}
+
+		// 获取波段数，确保统计值和nodata向量长度匹配
+		int bands = band_count;
+		if (statisticMax.size() < bands || statisticMin.size() < bands || nodata.size() < bands) {
+			return false;
+		}
+
+		// 计算像素总数
+		int pixelCount = options->tileSize * options->tileSize;
+
+		// 根据不同的数据类型进行处理
+		switch (data_type) {
+		case GDT_Byte: {
+			// 对于Byte类型，直接拷贝数据，不需要缩放
+			memcpy(outData, pData, pixelCount * bands);
+			break;
+		}
+		case GDT_UInt16: {
+			uint16_t* srcData = reinterpret_cast<uint16_t*>(pData);
+
+			// 对每个波段分别处理
+			for (int b = 0; b < bands; ++b) {
+				double range = statisticMax[b] - statisticMin[b];
+				double scale = (range > 0) ? 255.0 / range : 0.0;
+
+				for (int i = 0; i < pixelCount; ++i) {
+					uint16_t value = srcData[i + b * pixelCount];
+
+					// 处理nodata值
+					if (std::abs(value - nodata[b]) < 1e-6) {
+						outData[i + b * pixelCount] = 0; // 或设置为其他透明值
+					}
+					else {
+						// 线性缩放到0-255范围
+						double scaled = (value - statisticMin[b]) * scale;
+						// 限制在0-255范围内
+						outData[i + b * pixelCount] = static_cast<unsigned char>(
+							std::max(0.0, std::min(255.0, scaled)));
+					}
+				}
+			}
+			break;
+		}
+		case GDT_Int16: {
+			int16_t* srcData = reinterpret_cast<int16_t*>(pData);
+
+			for (int b = 0; b < bands; ++b) {
+				double range = statisticMax[b] - statisticMin[b];
+				double scale = (range > 0) ? 255.0 / range : 0.0;
+
+				for (int i = 0; i < pixelCount; ++i) {
+					int16_t value = srcData[i + b * pixelCount];
+
+					// 处理nodata值
+					if (std::abs(value - nodata[b]) < 1e-6) {
+						outData[i + b * pixelCount] = 0;
+					}
+					else {
+						double scaled = (value - statisticMin[b]) * scale;
+						outData[i + b * pixelCount] = static_cast<unsigned char>(
+							std::max(0.0, std::min(255.0, scaled)));
+					}
+				}
+			}
+			break;
+		}
+		case GDT_UInt32: {
+			uint32_t* srcData = reinterpret_cast<uint32_t*>(pData);
+
+			for (int b = 0; b < bands; ++b) {
+				double range = statisticMax[b] - statisticMin[b];
+				double scale = (range > 0) ? 255.0 / range : 0.0;
+
+				for (int i = 0; i < pixelCount; ++i) {
+					uint32_t value = srcData[i + b * pixelCount];
+
+					// 处理nodata值
+					if (std::abs(value - nodata[b]) < 1e-6) {
+						outData[i + b * pixelCount] = 0;
+					}
+					else {
+						double scaled = (value - statisticMin[b]) * scale;
+						outData[i + b * pixelCount] = static_cast<unsigned char>(
+							std::max(0.0, std::min(255.0, scaled)));
+					}
+				}
+			}
+			break;
+		}
+		case GDT_Int32: {
+			int32_t* srcData = reinterpret_cast<int32_t*>(pData);
+
+			for (int b = 0; b < bands; ++b) {
+				double range = statisticMax[b] - statisticMin[b];
+				double scale = (range > 0) ? 255.0 / range : 0.0;
+
+				for (int i = 0; i < pixelCount; ++i) {
+					int32_t value = srcData[i + b * pixelCount];
+
+					// 处理nodata值
+					if (std::abs(value - nodata[b]) < 1e-6) {
+						outData[i + b * pixelCount] = 0;
+					}
+					else {
+						double scaled = (value - statisticMin[b]) * scale;
+						outData[i + b * pixelCount] = static_cast<unsigned char>(
+							std::max(0.0, std::min(255.0, scaled)));
+					}
+				}
+			}
+			break;
+		}
+		case GDT_Float32: {
+			float* srcData = reinterpret_cast<float*>(pData);
+
+			for (int b = 0; b < bands; ++b) {
+				double range = statisticMax[b] - statisticMin[b];
+				double scale = (range > 0) ? 255.0 / range : 0.0;
+
+				for (int i = 0; i < pixelCount; ++i) {
+					float value = srcData[i + b * pixelCount];
+
+					// 处理NaN和nodata值
+					if (std::isnan(value) || std::abs(value - nodata[b]) < 1e-6) {
+						outData[i + b * pixelCount] = 0;
+					}
+					else {
+						double scaled = (value - statisticMin[b]) * scale;
+						outData[i + b * pixelCount] = static_cast<unsigned char>(
+							std::max(0.0, std::min(255.0, scaled)));
+					}
+				}
+			}
+			break;
+		}
+		case GDT_Float64: {
+			double* srcData = reinterpret_cast<double*>(pData);
+
+			for (int b = 0; b < bands; ++b) {
+				double range = statisticMax[b] - statisticMin[b];
+				double scale = (range > 0) ? 255.0 / range : 0.0;
+
+				for (int i = 0; i < pixelCount; ++i) {
+					double value = srcData[i + b * pixelCount];
+
+					// 处理NaN和nodata值
+					if (std::isnan(value) || std::abs(value - nodata[b]) < 1e-6) {
+						outData[i + b * pixelCount] = 0;
+					}
+					else {
+						double scaled = (value - statisticMin[b]) * scale;
+						outData[i + b * pixelCount] = static_cast<unsigned char>(
+							std::max(0.0, std::min(255.0, scaled)));
+					}
+				}
+			}
+			break;
+		}
+		default:
+			// 对于未支持的数据类型，返回失败
+			return false;
+		}
 
 		return true;
 	}
