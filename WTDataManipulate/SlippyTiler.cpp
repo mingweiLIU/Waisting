@@ -791,26 +791,34 @@ namespace WT{
 		// 获取影像信息
 		image_info = get_image_info(dataset);
 
-		//下面要处理NoDataValue 就算没有nodata值 如果是png 我们也应该给它设置值 因为要处理非影像范围内的数据
-		//先检查nodata的合法性 nodata一定要在datatype范围内
-		for (size_t i = 0; i < image_info.output_band_count; i++)
-		{
-			std::map<GDALDataType, std::function<bool(double)>> nodataRange = {
-					{GDT_Byte,std::numeric_limits<BYTE>::min()nodata std::numeric_limits<BYTE>::max()},
-					{GDT_Int8,std::numeric_limits<int8_t>::max()},
-					{GDT_UInt16,std::numeric_limits<uint16_t>::max()},
-					{GDT_Int16,std::numeric_limits<int16_t>::max()},
-					{GDT_UInt32,std::numeric_limits<uint32_t>::max()},
-					{GDT_Int32,std::numeric_limits<int32_t>::max()},
-					{GDT_UInt64,std::numeric_limits<uint64_t>::max()},
-					{GDT_Int64,std::numeric_limits<int64_t>::max()},
-					{GDT_Float32,std::numeric_limits<float>::max()},
-					{GDT_Float64,std::numeric_limits<double>::max()}
-			};
-		}
-
-
+		//下面要处理NoDataValue 
 		if (options->outputFormat == "png") {
+			//先检查nodata的合法性 nodata一定要在datatype范围内
+			if (options->nodata.size() > 0)
+			{
+				std::map<GDALDataType, std::function<bool(double)>> nodataRange = {
+					{GDT_Byte,[](double bandNoData) {return (bandNoData >= std::numeric_limits<BYTE>::min()) && (bandNoData <= std::numeric_limits<BYTE>::max()); }},
+					{GDT_Int8,[](double bandNoData) {return (bandNoData >= std::numeric_limits<int8_t>::min()) && (bandNoData <= std::numeric_limits<int8_t>::max()); }},
+					{GDT_UInt16,[](double bandNoData) {return (bandNoData >= std::numeric_limits<uint16_t>::min()) && (bandNoData <= std::numeric_limits<uint16_t>::max()); }},
+					{GDT_Int16,[](double bandNoData) {return (bandNoData >= std::numeric_limits<int16_t>::min()) && (bandNoData <= std::numeric_limits<int16_t>::max()); }},
+					{GDT_UInt32,[](double bandNoData) {return (bandNoData >= std::numeric_limits<uint32_t>::min()) && (bandNoData <= std::numeric_limits<uint32_t>::max()); }},
+					{GDT_Int32,[](double bandNoData) {return (bandNoData >= std::numeric_limits<int32_t>::min()) && (bandNoData <= std::numeric_limits<int32_t>::max()); }},
+					{GDT_UInt64,[](double bandNoData) {return (bandNoData >= std::numeric_limits<uint64_t>::min()) && (bandNoData <= std::numeric_limits<uint64_t>::max()); }},
+					{GDT_Int64,[](double bandNoData) {return (bandNoData >= std::numeric_limits<int64_t>::min()) && (bandNoData <= std::numeric_limits<int64_t>::max()); }},
+					{GDT_Float32,[](double bandNoData) {return (bandNoData >= std::numeric_limits<float>::min()) && (bandNoData <= std::numeric_limits<float>::max()); }},
+					{GDT_Float64,[](double bandNoData) {return (bandNoData >= std::numeric_limits<double>::min()) && (bandNoData <= std::numeric_limits<double>::max()); }}
+				};
+				for (size_t i = 0; i < image_info.output_band_count; i++)
+				{					
+					bool isNodataValide = nodataRange[data_type](options->nodata[i]);
+					if (!isNodataValide) {
+						std::cerr << "Nodata值设置应在影像位数的最小最大范围内！" << std::endl;
+						return false;
+					}
+				}
+			}
+
+			//就算没有nodata值 如果是png 也应该给它设置值 因为要处理非影像范围内的数据
 			std::map<GDALDataType, double> nodataMax = {
 				{GDT_Byte,std::numeric_limits<BYTE>::max()},
 				{GDT_Int8,std::numeric_limits<int8_t>::max()},
@@ -842,6 +850,9 @@ namespace WT{
 					options->nodata[i] = noDataValue;
 				}
 			}
+
+			//现在思考这样的问题 既然我知道哪些地方是非数据区 那么我是不是直接就可以把该地方的值赋予任意一个值 同时开启半透明波段
+			//然后对比nodata区域 也开启半透明波段 这样我就把png一开始就分类了 分为了有透明波段和待核实透明波段的（和之前的方法一样全局核实）
 
 			//如果依然没有nodata 我们要设置一个
 			if (options->nodata.size() == 0)
