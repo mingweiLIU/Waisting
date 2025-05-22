@@ -214,12 +214,12 @@ namespace WT{
 
 		// 处理带调色板的单波段影像（TBB并行化）
 		bool process_palette_image(GDALDatasetH dataset, const TileBounds& bounds,
-			const ImageInfo& info, unsigned char* output_buffer);
+			const ImageInfo& info, size_t dataBufferSize, unsigned char* dataBuffer,unsigned char* alphaBuffer);
 		
 
 		// 处理普通多波段或单波段影像（TBB并行化）
 		bool process_regular_image(GDALDatasetH dataset, const TileBounds& bounds,
-			const ImageInfo& info, unsigned char* output_buffer);
+			const ImageInfo& info, size_t dataBufferSize, unsigned char* output_buffer, unsigned char* alphaBuffer);
 		
 
 		// 确保输出目录存在（线程安全）
@@ -228,5 +228,16 @@ namespace WT{
 		//将数据缩放到8位
 		bool scaleDataRange(unsigned char* pData,unsigned char* outData, std::vector<double>& nodata, std::vector<double>& statisticMax, std::vector<double>& statisticMin);
 		
+		//判断给定的连续波段数的数值是否与nodata值对应相等 从而判断是否为nodata
+		bool checkNodata(unsigned char* pData, size_t pos, int bandNum);
+
+		// 比较浮点数是否相等的辅助函数
+		template<typename T>
+		bool isEqual(T a, T b, T epsilon = std::numeric_limits<T>::epsilon()) {
+			if (std::is_floating_point<T>::value) {
+				return std::abs(a - b) <= epsilon * std::max(std::abs(a), std::abs(b));
+			}
+			return a == b;
+		}
 	};
 };

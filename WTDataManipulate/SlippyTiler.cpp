@@ -189,33 +189,24 @@ namespace WT{
 			}
 
 			// 分配完整瓦片大小的缓冲区（基于输出波段数）
-			size_t buffer_size = options->tileSize * options->tileSize * image_info.output_band_count * image_info.pixel_size;
+			//采用这样的策略 如果是png 那么一开始就配套一个独立的透明波段 如果有透明值则为0 对应像素值不为非数据区或者nodata区 则为1 
+			//这样最后统计值是否和数据相等就能判断是否需要它 不需要则去掉
+			unsigned char* pData = nullptr;
+			size_t buffer_size=options->tileSize * options->tileSize * image_info.output_band_count * image_info.pixel_size;			
 			unsigned char* pData = (unsigned char*)(MemoryPool::GetInstance(this->getName())->allocate(buffer_size));
+			memset(pData , 0, buffer_size);
 
-			// 使用TBB并行初始化整个缓冲区 但是要注意 不应该使用某个颜色 而应该使用nodata颜色 以方便没有值的地方透明
-			::tbb::parallel_for(
-				::tbb::blocked_range<size_t>(0, buffer_size),
-				[&](const ::tbb::blocked_range<size_t>& range) {
-					if (options->outputFormat == "png") {
-						for (size_t i = range.begin(); i < range.end(); ++i)
-						{
-							int nodataIndex = i % image_info.output_band_count;
-							*(pData + i) = options->nodata[nodataIndex];
-						}
-					}
-					else if (options->outputFormat == "jpg") {
-						memset(pData + range.begin(), 0, range.size());
-					}
-				}
-			);
+			//透明波段直接设置为8位的
+			unsigned char* pAlphaData = (unsigned char*)(MemoryPool::GetInstance(this->getName())->allocate(options->tileSize * options->tileSize));
+			memset(pAlphaData, 1, options->tileSize * options->tileSize);//非透明区数据为主 所以选择初始为1 
 
 			// 根据影像类型处理数据
 			bool success;
 			if (image_info.has_palette) {
-				success = process_palette_image(local_dataset, bounds, image_info, pData);
+				success = process_palette_image(local_dataset, bounds, image_info, buffer_size,pData,pAlphaData);
 			}
 			else {
-				success = process_regular_image(local_dataset, bounds, image_info, pData);
+				success = process_regular_image(local_dataset, bounds, image_info, buffer_size,pData, pAlphaData);
 			}
 
 			if (!success) {
@@ -373,7 +364,8 @@ namespace WT{
 		return info;
 	}
 
-	bool SlippyMapTiler::process_palette_image(GDALDatasetH dataset, const TileBounds& bounds, const ImageInfo& info, unsigned char* output_buffer)
+	bool SlippyMapTiler::process_palette_image(GDALDatasetH dataset, const TileBounds& bounds, const ImageInfo& info
+		, size_t dataBufferSize, unsigned char* output_buffer, unsigned char* alphaBuffer)
 	{
 		// 分配临时缓冲区用于读取原始索引数据
 		size_t temp_buffer_size = bounds.dst_width * bounds.dst_height * info.pixel_size;
@@ -471,66 +463,77 @@ namespace WT{
 		return true;
 	}
 
-	bool SlippyMapTiler::process_regular_image(GDALDatasetH dataset, const TileBounds& bounds, const ImageInfo& info, unsigned char* output_buffer)
+	bool SlippyMapTiler::process_regular_image(GDALDatasetH dataset, const TileBounds& bounds, const ImageInfo& info
+		,size_t dataBufferSize, unsigned char* output_buffer, unsigned char* alphaBuffer)
 	{
-		// 分配临时缓冲区用于读取实际数据
-		size_t temp_buffer_size = bounds.dst_width * bounds.dst_height * band_count * info.pixel_size;
-		unsigned char* temp_buffer = (unsigned char*)malloc(temp_buffer_size);
-		if (!temp_buffer) {
-			return false;
-		} 
+		//这里分两种情况 一种是瓦片完全在影像范围内 直接读取就好了 一种不在范围内 需要读取一部分再放到原有的数据范围内 这里为了避免多余的拷贝 写到不同的选项分支中
+		if (bounds.dst_height==options->tileSize&&bounds.dst_width==options->tileSize)
+		{
+			//直接读取
+			CPLErr err;
+			{
+				std::lock_guard lock(gdal_mutex);
+				err = GDALDatasetRasterIO(
+					dataset, GF_Read,
+					bounds.clipped_src_min_x, bounds.clipped_src_min_y, bounds.read_width, bounds.read_height,
+					output_buffer, bounds.dst_width, bounds.dst_height,
+					data_type, band_count, nullptr,
+					band_count * info.pixel_size, bounds.dst_width * band_count * info.pixel_size, info.pixel_size
+				);
+			}
 
-		// 初始化临时缓冲区为nodata值
-		if (!options->nodata.empty()) {
+			if (err != CE_None) {
+				MemoryPool::GetInstance(this->getName())->deallocate(output_buffer, dataBufferSize);
+				return false;
+			}
+
+			//检查是否为透明
+			//读取后需要判断和nodata的值的关系 然后再缩放
 			::tbb::parallel_for(
-				::tbb::blocked_range<size_t>(0, bounds.dst_width * bounds.dst_height),
-				[&](const ::tbb::blocked_range<size_t>& range) {
-					for (size_t pixel_idx = range.begin(); pixel_idx != range.end(); ++pixel_idx) {
-						for (int band = 0; band < band_count; ++band) {
-							size_t byte_idx = pixel_idx * band_count * info.pixel_size + band * info.pixel_size;
-
-							// 根据数据类型设置nodata值
-							double nodata_val = (band < options->nodata.size()) ? options->nodata[band] : options->nodata[0];
-
-							switch (data_type) {
-							case GDT_Byte:
-								temp_buffer[byte_idx] = static_cast<unsigned char>(nodata_val);
-								break;
-							case GDT_UInt16:
-								*reinterpret_cast<uint16_t*>(temp_buffer + byte_idx) = static_cast<uint16_t>(nodata_val);
-								break;
-							case GDT_Int16:
-								*reinterpret_cast<int16_t*>(temp_buffer + byte_idx) = static_cast<int16_t>(nodata_val);
-								break;
-							case GDT_UInt32:
-								*reinterpret_cast<uint32_t*>(temp_buffer + byte_idx) = static_cast<uint32_t>(nodata_val);
-								break;
-							case GDT_Int32:
-								*reinterpret_cast<int32_t*>(temp_buffer + byte_idx) = static_cast<int32_t>(nodata_val);
-								break;
-							case GDT_Float32:
-								*reinterpret_cast<float*>(temp_buffer + byte_idx) = static_cast<float>(nodata_val);
-								break;
-							case GDT_Float64:
-								*reinterpret_cast<double*>(temp_buffer + byte_idx) = nodata_val;
-								break;
-							default:
-								// 对于未知类型，用0填充
-								memset(temp_buffer + byte_idx, 0, info.pixel_size);
-								break;
+				::tbb::blocked_range2d<int>(0, bounds.dst_height, 0, bounds.dst_width),
+				[&](const ::tbb::blocked_range2d<int>& range) {
+					for (int y = range.rows().begin(); y != range.rows().end(); ++y) {
+						int dst_y = bounds.dst_min_y + y;
+						for (int x = range.cols().begin(); x != range.cols().end(); ++x) {
+							int dst_x = bounds.dst_min_x + x;
+							size_t alpha_idx = (dst_y * options->tileSize + dst_x) * info.pixel_size;//1个波段
+							size_t dst_idx = alpha_idx * band_count;
+							//并设置值多个波段和nodata一致性的位置为0
+							if (options->outputFormat == "png" && checkNodata(output_buffer, dst_idx, band_count))
+							{
+								*(alphaBuffer + alpha_idx) = 0;
 							}
 						}
 					}
 				}
 			);
+
 		}
 		else {
-			// 如果没有nodata值，用0初始化
-			memset(temp_buffer, 0, temp_buffer_size);
-		}
+			//存在非数据范围区的 那么非数据范围区的透明度就为0 为了方便 直接将这个全部设置为0 再来各个转为1
+			memset(alphaBuffer, 0, dataBufferSize);
+			::tbb::parallel_for(
+				::tbb::blocked_range2d<int>(bounds.dst_min_y, bounds.dst_max_y, bounds.dst_min_x, bounds.dst_max_x),
+				[&](const ::tbb::blocked_range2d<int>& range) {
+					for (int y=range.rows().begin();y!=range.rows().end();++y)
+					{
+						for (int x=range.cols().begin();x!=range.cols().end();++x)
+						{
+							*(alphaBuffer + y * options->tileSize + x) = 1;
+						}
+					}
+				}
+			);
 
-		// 只有当读取区域与影像区域有交集时才进行读取
-		if (bounds.read_width > 0 && bounds.read_height > 0) {
+			// 分配临时缓冲区用于读取实际数据
+			size_t temp_buffer_size = bounds.dst_width * bounds.dst_height * band_count * info.pixel_size;
+			unsigned char* temp_buffer = (unsigned char*)(MemoryPool::GetInstance(this->getName())->allocate(temp_buffer_size));
+			if (!temp_buffer) {
+				return false;
+			}
+			// 初始化临时缓冲区
+			memset(temp_buffer, 0, temp_buffer_size);
+			
 			CPLErr err;
 			{
 				std::lock_guard lock(gdal_mutex);
@@ -547,30 +550,33 @@ namespace WT{
 				free(temp_buffer);
 				return false;
 			}
-		}
 
-		// 使用TBB并行复制数据到输出缓冲区
-		::tbb::parallel_for(
-			::tbb::blocked_range2d<int>(0, bounds.dst_height, 0, bounds.dst_width),
-			[&](const ::tbb::blocked_range2d<int>& range) {
-				for (int y = range.rows().begin(); y != range.rows().end(); ++y) {
-					int dst_y = bounds.dst_min_y + y;
-					for (int x = range.cols().begin(); x != range.cols().end(); ++x) {
-						int dst_x = bounds.dst_min_x + x;
-
-						// 计算源和目标位置的索引
-						size_t src_idx = (y * bounds.dst_width + x) * band_count * info.pixel_size;
-						size_t dst_idx = (dst_y * options->tileSize + dst_x) * band_count * info.pixel_size;
-
-						// 复制像素数据
-						memcpy(output_buffer + dst_idx, temp_buffer + src_idx, band_count * info.pixel_size);
+			//读取后需要判断和nodata的值的关系 然后再缩放
+			::tbb::parallel_for(
+				::tbb::blocked_range2d<int>(0, bounds.dst_height, 0, bounds.dst_width),
+				[&](const ::tbb::blocked_range2d<int>& range) {
+					for (int y = range.rows().begin(); y != range.rows().end(); ++y) {
+						int dst_y = bounds.dst_min_y + y;
+						for (int x = range.cols().begin(); x != range.cols().end(); ++x) {
+							int dst_x = bounds.dst_min_x + x;
+							// 计算源和目标位置的索引
+							size_t src_idx = (y * bounds.dst_width + x) * band_count * info.pixel_size;
+							size_t alpha_idx= (dst_y * options->tileSize + dst_x)  * info.pixel_size;//1个波段
+							size_t dst_idx = alpha_idx * band_count ;
+							// 复制像素数据
+							memcpy(output_buffer + dst_idx, temp_buffer + src_idx, band_count * info.pixel_size);
+							//并设置值多个波段和nodata一致性的位置为0
+							if (options->outputFormat == "png"&& checkNodata(output_buffer, dst_idx,band_count))
+							{
+								*(alphaBuffer + alpha_idx) = 0;
+							}
+						}
 					}
 				}
-			}
-		);
-
-		// 释放临时缓冲区
-		free(temp_buffer);
+			);	
+			// 释放临时缓冲区
+			free(temp_buffer);
+		}
 		return true;
 	}
 
@@ -853,15 +859,6 @@ namespace WT{
 
 			//现在思考这样的问题 既然我知道哪些地方是非数据区 那么我是不是直接就可以把该地方的值赋予任意一个值 同时开启半透明波段
 			//然后对比nodata区域 也开启半透明波段 这样我就把png一开始就分类了 分为了有透明波段和待核实透明波段的（和之前的方法一样全局核实）
-
-			//如果依然没有nodata 我们要设置一个
-			if (options->nodata.size() == 0)
-			{
-				for (size_t i = 0; i < image_info.output_band_count; i++)
-				{
-					options->nodata.push_back(nodataMax[data_type]);
-				}
-			}
 		}
 
 		//获取图层像素值统计信息 以方便对像素进行缩放
@@ -1125,4 +1122,131 @@ namespace WT{
 
 		return true;
 	}
+
+	bool SlippyMapTiler::checkNodata(unsigned char* pData, size_t pos, int bandNum)
+	{
+		if (options->nodata.empty()) {
+			return false;
+		}
+
+		// 遍历每个波段
+		for (int band = 0; band < bandNum; ++band) {
+			if (band >= options->nodata.size()) {
+				break; // 如果nodata值数量少于波段数，则只检查已有的
+			}
+
+			bool isNoData = false;
+			double noDataValue = options->nodata[band];
+
+			switch (data_type) {
+			case GDT_Byte: {
+				unsigned char value = *reinterpret_cast<const unsigned char*>(pData);
+				isNoData = isEqual(static_cast<double>(value), noDataValue);
+				break;
+			}
+
+			case GDT_UInt16: {
+				unsigned short value = *reinterpret_cast<const unsigned short*>(pData);
+				isNoData = isEqual(static_cast<double>(value), noDataValue);
+				break;
+			}
+
+			case GDT_Int16: {
+				short value = *reinterpret_cast<const short*>(pData);
+				isNoData = isEqual(static_cast<double>(value), noDataValue);
+				break;
+			}
+
+			case GDT_UInt32: {
+				unsigned int value = *reinterpret_cast<const unsigned int*>(pData);
+				isNoData = isEqual(static_cast<double>(value), noDataValue);
+				break;
+			}
+
+			case GDT_Int32: {
+				int value = *reinterpret_cast<const int*>(pData);
+				isNoData = isEqual(static_cast<double>(value), noDataValue);
+				break;
+			}
+
+			case GDT_Float32: {
+				float value = *reinterpret_cast<const float*>(pData);
+				// 对于浮点数，需要特别处理NaN的情况
+				if (std::isnan(value) && std::isnan(noDataValue)) {
+					isNoData = true;
+				}
+				else {
+					isNoData = isEqual(static_cast<double>(value), noDataValue, 1e-6);
+				}
+				break;
+			}
+
+			case GDT_Float64: {
+				double value = *reinterpret_cast<const double*>(pData);
+				// 对于浮点数，需要特别处理NaN的情况
+				if (std::isnan(value) && std::isnan(noDataValue)) {
+					isNoData = true;
+				}
+				else {
+					isNoData = isEqual(value, noDataValue, 1e-12);
+				}
+				break;
+			}
+
+			case GDT_CInt16: {
+				// 复数类型：实部和虚部都需要检查
+				short* complexValue = (short*)pData;
+				double realPart = static_cast<double>(complexValue[0]);
+				double imagPart = static_cast<double>(complexValue[1]);
+				// 对于复数，通常只检查实部，或者可以检查模
+				isNoData = isEqual(realPart, noDataValue);
+				break;
+			}
+
+			case GDT_CInt32: {
+				int* complexValue = (int*)pData;
+				double realPart = static_cast<double>(complexValue[0]);
+				isNoData = isEqual(realPart, noDataValue);
+				break;
+			}
+
+			case GDT_CFloat32: {
+				float* complexValue = (float*)pData;
+				double realPart = static_cast<double>(complexValue[0]);
+				if (std::isnan(complexValue[0]) && std::isnan(noDataValue)) {
+					isNoData = true;
+				}
+				else {
+					isNoData = isEqual(realPart, noDataValue, 1e-6);
+				}
+				break;
+			}
+
+			case GDT_CFloat64: {
+				double* complexValue = (double*)pData;
+				double realPart = complexValue[0];
+				if (std::isnan(realPart) && std::isnan(noDataValue)) {
+					isNoData = true;
+				}
+				else {
+					isNoData = isEqual(realPart, noDataValue, 1e-12);
+				}
+				break;
+			}
+
+			default:
+				// 未知数据类型，返回false
+				return false;
+			}
+
+			// 如果任何一个波段不是NoData，则整个像素不是NoData
+			if (!isNoData) {
+				return false;
+			}
+		}
+
+		// 所有波段都是NoData值
+		return true;
+	}
+
 }
