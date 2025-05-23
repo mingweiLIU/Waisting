@@ -245,8 +245,8 @@ namespace WT {
 	bool ImageFileParallelIOAdapter::dataToImage(IOFileInfo* ioFileInfo) {
 		switch (mFormat) {
 		case IMAGEFORMAT::PNG: {
-			int depth = ioFileInfo->dataSize / (mWidth * mHeight * mBandsNum) * 8;
-			return saveGDALDataAsPNG(ioFileInfo, mWidth, mHeight, mBandsNum, depth, mNoData);
+			int bandCount = ioFileInfo->dataSize / (mWidth * mHeight );
+			return saveGDALDataAsPNG(ioFileInfo, mWidth, mHeight, bandCount);
 		}
 		case IMAGEFORMAT::JPG: {
 			if (1 == mBandsNum) {
@@ -347,24 +347,17 @@ namespace WT {
 	}
 
 	// 修改saveGDALDataAsPNG函数以使用并行处理
-	bool ImageFileParallelIOAdapter::saveGDALDataAsPNG(IOFileInfo* fileInfo, int width, int height,
-		int bandCount, int bitDepth,
-		const std::vector<double>& nodata) {
-		const unsigned char* imageData = fileInfo->data;
+	bool ImageFileParallelIOAdapter::saveGDALDataAsPNG(IOFileInfo* fileInfo, int width, int height,int bandCount) {
+		unsigned char* imageData = fileInfo->data;
 		const auto fullPath = std::filesystem::path(mBasePath) / fileInfo->filePath;
 		std::string outputFilename = fullPath.string() + ".png";
 
 		// 参数检查
 		if (!imageData || width <= 0 || height <= 0 ||
-			(bandCount != 1 && bandCount != 3) ||
-			(bitDepth != 8 && bitDepth != 16) ||
-			nodata.size() != bandCount) {
+			bandCount<1||bandCount>4) {
 			std::cerr << "参数错误" << std::endl;
 			return false;
 		}
-
-		// 使用并行扫描检查是否存在nodata值
-		bool requiresAlpha = hasNodataPixelsParallel(imageData, width, height, bandCount, bitDepth, nodata);
 
 		// 打开输出文件
 		FILE* fp = fopen(outputFilename.c_str(), "wb");
@@ -384,13 +377,19 @@ namespace WT {
 		// 设置PNG头部信息
 		int png_color_type;
 		if (bandCount == 1) {
-			png_color_type = requiresAlpha ? PNG_COLOR_TYPE_GRAY_ALPHA : PNG_COLOR_TYPE_GRAY;
+			png_color_type = PNG_COLOR_TYPE_GRAY;
+		}
+		else if (2 == bandCount) {
+			png_color_type = PNG_COLOR_TYPE_GRAY_ALPHA;
+		}
+		else if (3 == bandCount) {
+			png_color_type =  PNG_COLOR_TYPE_RGB;
 		}
 		else {
-			png_color_type = requiresAlpha ? PNG_COLOR_TYPE_RGB_ALPHA : PNG_COLOR_TYPE_RGB;
+			png_color_type = PNG_COLOR_TYPE_RGB_ALPHA;
 		}
 
-		png_set_IHDR(png_ptr, info_ptr, width, height, bitDepth,
+		png_set_IHDR(png_ptr, info_ptr, width, height, 8,
 			png_color_type, PNG_INTERLACE_NONE,
 			PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
 
@@ -398,8 +397,7 @@ namespace WT {
 		png_write_info(png_ptr, info_ptr);
 
 		// 计算每行字节数和输出的波段数
-		int outBandCount = bandCount + (requiresAlpha ? 1 : 0);
-		size_t rowSize = width * outBandCount * (bitDepth / 8);
+		size_t rowSize = width * bandCount;
 
 		// 创建行指针数组
 		std::vector<png_bytep> rowPointers(height);
@@ -407,13 +405,9 @@ namespace WT {
 		// 申请输出图像数据内存
 		std::vector<unsigned char> outData(height * rowSize);
 
-		// 使用并行处理处理像素数据
-		processPixelDataParallel(imageData, outData, width, height, bandCount,
-			outBandCount, bitDepth, nodata, requiresAlpha);
-
 		// 设置行指针
 		for (int y = 0; y < height; y++) {
-			rowPointers[y] = &outData[y * rowSize];
+			rowPointers[y] = &imageData[y * rowSize];
 		}
 
 		// 写入图像数据
@@ -427,7 +421,7 @@ namespace WT {
 		fclose(fp);
 
 		std::cout << "PNG文件创建成功: " << outputFilename
-			<< (requiresAlpha ? " (带透明通道)" : " (不带透明通道)") << std::endl;
+			<< ((bandCount == 4 || bandCount == 2) ? " (带透明通道)" : " (不带透明通道)") << std::endl;
 
 		return true;
 	}

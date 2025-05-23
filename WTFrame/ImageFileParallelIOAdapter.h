@@ -89,8 +89,7 @@ namespace WT {
 		bool writeGrayscaleJPEG(IOFileInfo* fileInfo, int width, int height, int quality = 85);
 
 		// PNG相关方法
-		bool saveGDALDataAsPNG(IOFileInfo* fileInfo, int width, int height,
-			int bandCount, int bitDepth, const std::vector<double>& nodata);
+		bool saveGDALDataAsPNG(IOFileInfo* fileInfo, int width, int height,int bandCount);
 		bool initPNG(FILE* fp, png_structp& png_ptr, png_infop& info_ptr);
 
 		// 原有的像素处理方法

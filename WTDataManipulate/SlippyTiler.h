@@ -226,18 +226,38 @@ namespace WT{
 		bool ensure_output_directory(const fs::path& x_dir);
 
 		//将数据缩放到8位
-		bool scaleDataRange(unsigned char* pData,unsigned char* outData, std::vector<double>& nodata, std::vector<double>& statisticMax, std::vector<double>& statisticMin);
+		bool scaleDataRange(unsigned char* pData,unsigned char* outData,std::vector<double>& statisticMax, std::vector<double>& statisticMin);
 		
 		//判断给定的连续波段数的数值是否与nodata值对应相等 从而判断是否为nodata
-		bool checkNodata(unsigned char* pData, size_t pos, int bandNum);
+		bool checkNodata(unsigned char* pData, size_t pos, int pixelSize, int bandNum);
+
+		//合并主数据和透明图层数据 这里的finalData由内部分配 返回值代表是否合并 从而决定用false用pData还是ture用finalData
+		bool mergeDataAndAlpha(unsigned char* pData, unsigned char* alphaData,unsigned char*& finalData,int bandCount,int pixelCount);
 
 		// 比较浮点数是否相等的辅助函数
 		template<typename T>
-		bool isEqual(T a, T b, T epsilon = std::numeric_limits<T>::epsilon()) {
+		bool isEqual(T a, T b, T epsilon = 0.000001) {
 			if (std::is_floating_point<T>::value) {
-				return std::abs(a - b) <= epsilon * std::max(std::abs(a), std::abs(b));
+				return std::fabs(a - b) <= epsilon;
 			}
 			return a == b;
+		}
+		//缩放辅助函数
+		template<typename T>
+		void scaleValue(unsigned char* pData,unsigned char* outData,int pixelCount,int bands,std::vector<double>& statisticMin,std::vector<double>& statisticMax) {
+			T* srcData = reinterpret_cast<T*>(pData);
+
+			for (int b = 0; b < bands; ++b) {
+				double range = statisticMax[b] - statisticMin[b];
+				double scale = (range > 0) ? 255.0 / range : 0.0;
+
+				for (int i = 0; i < pixelCount; ++i) {
+					T value = srcData[i + b * pixelCount];
+					double scaled = (value - statisticMin[b]) * scale;
+					outData[i + b * pixelCount] = static_cast<unsigned char>(
+						std::max(0.0, std::min(255.0, scaled)));
+				}
+			}
 		}
 	};
 };

@@ -189,16 +189,15 @@ namespace WT{
 			}
 
 			// 分配完整瓦片大小的缓冲区（基于输出波段数）
-			//采用这样的策略 如果是png 那么一开始就配套一个独立的透明波段 如果有透明值则为0 对应像素值不为非数据区或者nodata区 则为1 
+			//采用这样的策略:如果是png 那么一开始就配套一个独立的透明波段 如果有透明值则为0 对应像素值不为非数据区或者nodata区 则为255 
 			//这样最后统计值是否和数据相等就能判断是否需要它 不需要则去掉
-			unsigned char* pData = nullptr;
 			size_t buffer_size=options->tileSize * options->tileSize * image_info.output_band_count * image_info.pixel_size;			
 			unsigned char* pData = (unsigned char*)(MemoryPool::GetInstance(this->getName())->allocate(buffer_size));
 			memset(pData , 0, buffer_size);
 
 			//透明波段直接设置为8位的
 			unsigned char* pAlphaData = (unsigned char*)(MemoryPool::GetInstance(this->getName())->allocate(options->tileSize * options->tileSize));
-			memset(pAlphaData, 1, options->tileSize * options->tileSize);//非透明区数据为主 所以选择初始为1 
+			memset(pAlphaData, 255, options->tileSize * options->tileSize);//非透明区数据为主 所以选择初始为255
 
 			// 根据影像类型处理数据
 			bool success;
@@ -216,12 +215,29 @@ namespace WT{
 
 			//下面来缩放数据
 			unsigned char* scaledData = (unsigned char*)(MemoryPool::GetInstance(this->getName())->allocate(image_info.output_band_count * options->tileSize * options->tileSize));
-			scaleDataRange(pData, scaledData, options->nodata, maxs, mins);
-			MemoryPool::GetInstance(this->getName())->deallocate(pData, buffer_size);
+			if (data_type == GDT_Byte) {
+				memcpy(scaledData, pData, image_info.output_band_count * options->tileSize * options->tileSize); 
+			}
+			else
+			{
+				unsigned char* scaledData = (unsigned char*)(MemoryPool::GetInstance(this->getName())->allocate(image_info.output_band_count * options->tileSize * options->tileSize));
+				scaleDataRange(pData, scaledData, maxs, mins);
+				MemoryPool::GetInstance(this->getName())->deallocate(pData, buffer_size);
+			}
 
-			// 将内存数据提交给输出器
+			unsigned char* pMergedData = nullptr;//在合并函数中来分配内存
+			bool merged=mergeDataAndAlpha(scaledData, pAlphaData, pMergedData, image_info.output_band_count, options->tileSize * options->tileSize);
+			
+			//将内存数据提交给输出器
 			fs::path file = fs::path(std::to_string(zoom)) / std::to_string(tile_x) / std::to_string(tile_y);
-			IOFileInfo* oneFileInfo = new IOFileInfo{ file.string(), scaledData,(size_t) image_info.output_band_count * options->tileSize * options->tileSize, this->getName() };
+			IOFileInfo* oneFileInfo = nullptr;//这个释放交给fileIO来
+			if (!merged)
+			{
+				oneFileInfo = new IOFileInfo{ file.string(), scaledData,(size_t)image_info.output_band_count * options->tileSize * options->tileSize, this->getName() };
+			}
+			else {
+				oneFileInfo = new IOFileInfo{ file.string(), pMergedData,(size_t)(image_info.output_band_count+1) * options->tileSize * options->tileSize, this->getName() };
+			}
 			fileBatchOutputer->addFile(oneFileInfo);
 
 			return true;
@@ -230,6 +246,44 @@ namespace WT{
 			std::cerr << "瓦片生成异常: " << e.what() << std::endl;
 			return false;
 		}
+	}
+
+	bool SlippyMapTiler::mergeDataAndAlpha(unsigned char* pData, unsigned char* alphaData, unsigned char*& finalData, int bandCount, int pixelCount) {
+		//先判断是alpha图层是否需要保留
+		bool needAlpha = false;
+		::tbb::task_group_context context;
+		::tbb::parallel_for(0, pixelCount, 1, [&](int i) {
+			if (*(alphaData+i)==0)
+			{
+				context.cancel_group_execution();
+				needAlpha = true;
+				return;
+			}
+		},context);
+		//如果需要透明通道 那么就合并
+		if (needAlpha)
+		{
+			finalData = (unsigned char*)(MemoryPool::GetInstance(this->getName())->allocate((bandCount+1)*pixelCount));
+			//memset(finalData, 255, (bandCount + 1) * pixelCount);
+			if (!finalData) {
+				return false;
+			}
+
+			::tbb::parallel_for(::tbb::blocked_range<int>(0,pixelCount),
+				[&](const ::tbb::blocked_range<int> range){
+					for (int i = range.begin(); i !=range.end(); ++i)
+					{
+						int disIndex = (bandCount + 1) * i;
+						int srcIndex = bandCount * i;
+						memcpy(finalData + disIndex, pData + srcIndex, bandCount);
+						memcpy(finalData + disIndex + bandCount, alphaData + i, 1);
+					}
+				}
+			);
+			return true;
+		}
+
+		return false;
 	}
 
 	// 增加一个线程安全的进度更新函数
@@ -488,7 +542,7 @@ namespace WT{
 			}
 
 			//检查是否为透明
-			//读取后需要判断和nodata的值的关系 然后再缩放
+			//读取后需要判断和nodata的值的关系
 			::tbb::parallel_for(
 				::tbb::blocked_range2d<int>(0, bounds.dst_height, 0, bounds.dst_width),
 				[&](const ::tbb::blocked_range2d<int>& range) {
@@ -496,10 +550,10 @@ namespace WT{
 						int dst_y = bounds.dst_min_y + y;
 						for (int x = range.cols().begin(); x != range.cols().end(); ++x) {
 							int dst_x = bounds.dst_min_x + x;
-							size_t alpha_idx = (dst_y * options->tileSize + dst_x) * info.pixel_size;//1个波段
-							size_t dst_idx = alpha_idx * band_count;
+							size_t alpha_idx = (dst_y * options->tileSize + dst_x) ;//1个波段
+							size_t dst_idx = alpha_idx * band_count * info.pixel_size;
 							//并设置值多个波段和nodata一致性的位置为0
-							if (options->outputFormat == "png" && checkNodata(output_buffer, dst_idx, band_count))
+							if (options->outputFormat == "png" && checkNodata(output_buffer, dst_idx, info.pixel_size, band_count))
 							{
 								*(alphaBuffer + alpha_idx) = 0;
 							}
@@ -510,16 +564,16 @@ namespace WT{
 
 		}
 		else {
-			//存在非数据范围区的 那么非数据范围区的透明度就为0 为了方便 直接将这个全部设置为0 再来各个转为1
-			memset(alphaBuffer, 0, dataBufferSize);
+			//存在非数据范围区的 那么非数据范围区的透明度就为0 为了方便 直接将这个全部设置为0 再来各个转为255
+			memset(alphaBuffer, 0, dataBufferSize/(image_info.output_band_count*image_info.pixel_size));
 			::tbb::parallel_for(
-				::tbb::blocked_range2d<int>(bounds.dst_min_y, bounds.dst_max_y, bounds.dst_min_x, bounds.dst_max_x),
+				::tbb::blocked_range2d<int>(bounds.dst_min_y, bounds.dst_max_y+1, bounds.dst_min_x, bounds.dst_max_x+1),
 				[&](const ::tbb::blocked_range2d<int>& range) {
 					for (int y=range.rows().begin();y!=range.rows().end();++y)
 					{
 						for (int x=range.cols().begin();x!=range.cols().end();++x)
 						{
-							*(alphaBuffer + y * options->tileSize + x) = 1;
+							*(alphaBuffer + y * options->tileSize + x) = 255;
 						}
 					}
 				}
@@ -547,11 +601,11 @@ namespace WT{
 			}
 
 			if (err != CE_None) {
-				free(temp_buffer);
+				MemoryPool::GetInstance(this->getName())->deallocate(temp_buffer,temp_buffer_size);
 				return false;
 			}
 
-			//读取后需要判断和nodata的值的关系 然后再缩放
+			//读取后需要判断和nodata的值的关系
 			::tbb::parallel_for(
 				::tbb::blocked_range2d<int>(0, bounds.dst_height, 0, bounds.dst_width),
 				[&](const ::tbb::blocked_range2d<int>& range) {
@@ -561,21 +615,21 @@ namespace WT{
 							int dst_x = bounds.dst_min_x + x;
 							// 计算源和目标位置的索引
 							size_t src_idx = (y * bounds.dst_width + x) * band_count * info.pixel_size;
-							size_t alpha_idx= (dst_y * options->tileSize + dst_x)  * info.pixel_size;//1个波段
-							size_t dst_idx = alpha_idx * band_count ;
+							size_t alpha_idx= (dst_y * options->tileSize + dst_x) ;//1个8位波段
+							size_t dst_idx = alpha_idx * band_count * info.pixel_size;
 							// 复制像素数据
 							memcpy(output_buffer + dst_idx, temp_buffer + src_idx, band_count * info.pixel_size);
 							//并设置值多个波段和nodata一致性的位置为0
-							if (options->outputFormat == "png"&& checkNodata(output_buffer, dst_idx,band_count))
+							if (options->outputFormat == "png"&& checkNodata(output_buffer, dst_idx, info.pixel_size,band_count))
 							{
 								*(alphaBuffer + alpha_idx) = 0;
 							}
 						}
 					}
 				}
-			);	
+			);
 			// 释放临时缓冲区
-			free(temp_buffer);
+			MemoryPool::GetInstance(this->getName())->deallocate(temp_buffer, temp_buffer_size);
 		}
 		return true;
 	}
@@ -952,167 +1006,66 @@ namespace WT{
 
 
 	//outData大小由外部分配
-	bool SlippyMapTiler::scaleDataRange(unsigned char* pData, unsigned char* outData, std::vector<double>& nodata, std::vector<double>& statisticMax, std::vector<double>& statisticMin) {
+	bool SlippyMapTiler::scaleDataRange(unsigned char* pData, unsigned char* outData, std::vector<double>& statisticMax, std::vector<double>& statisticMin) {
 		// 确保参数有效性
 		if (!pData || !outData) {
 			return false;
 		}
 
 		// 获取波段数，确保统计值和nodata向量长度匹配
-		int bands = band_count;
-		if (statisticMax.size() < bands || statisticMin.size() < bands || nodata.size() < bands) {
+		int bands = image_info.output_band_count;
+		if (statisticMax.size() < bands || statisticMin.size() < bands ) {
 			return false;
 		}
 
 		// 计算像素总数
 		int pixelCount = options->tileSize * options->tileSize;
 
-		// 根据不同的数据类型进行处理
+		// 根据不同的数据类型进行处理 缩放只针对非8位数据
 		switch (data_type) {
-		case GDT_Byte: {
-			// 对于Byte类型，直接拷贝数据，不需要缩放
-			memcpy(outData, pData, pixelCount * bands);
-			break;
-		}
+		//case GDT_Byte: {
+		//	// 对于Byte类型，直接拷贝数据，不需要缩放
+		//	memcpy(outData, pData, pixelCount * bands);
+		//	break;
+		//}
 		case GDT_UInt16: {
-			uint16_t* srcData = reinterpret_cast<uint16_t*>(pData);
+			scaleValue<uint16_t>(pData, outData, pixelCount, bands, statisticMin, statisticMax);
+			//uint16_t* srcData = reinterpret_cast<uint16_t*>(pData);
 
-			// 对每个波段分别处理
-			for (int b = 0; b < bands; ++b) {
-				double range = statisticMax[b] - statisticMin[b];
-				double scale = (range > 0) ? 255.0 / range : 0.0;
+			//// 对每个波段分别处理
+			//for (int b = 0; b < bands; ++b) {
+			//	double range = statisticMax[b] - statisticMin[b];
+			//	double scale = (range > 0) ? 255.0 / range : 0.0;
 
-				for (int i = 0; i < pixelCount; ++i) {
-					uint16_t value = srcData[i + b * pixelCount];
-
-					// 处理nodata值
-					if (std::abs(value - nodata[b]) < 1e-6) {
-						outData[i + b * pixelCount] = 0; // 或设置为其他透明值
-					}
-					else {
-						// 线性缩放到0-255范围
-						double scaled = (value - statisticMin[b]) * scale;
-						// 限制在0-255范围内
-						outData[i + b * pixelCount] = static_cast<unsigned char>(
-							std::max(0.0, std::min(255.0, scaled)));
-					}
-				}
-			}
+			//	for (int i = 0; i < pixelCount; ++i) {
+			//		uint16_t value = srcData[i + b * pixelCount];
+			//		// 线性缩放到0-255范围
+			//		double scaled = (value - statisticMin[b]) * scale;
+			//		// 限制在0-255范围内
+			//		outData[i + b * pixelCount] = static_cast<unsigned char>(
+			//			std::max(0.0, std::min(255.0, scaled)));				
+			//	}
+			//}
 			break;
 		}
 		case GDT_Int16: {
-			int16_t* srcData = reinterpret_cast<int16_t*>(pData);
-
-			for (int b = 0; b < bands; ++b) {
-				double range = statisticMax[b] - statisticMin[b];
-				double scale = (range > 0) ? 255.0 / range : 0.0;
-
-				for (int i = 0; i < pixelCount; ++i) {
-					int16_t value = srcData[i + b * pixelCount];
-
-					// 处理nodata值
-					if (std::abs(value - nodata[b]) < 1e-6) {
-						outData[i + b * pixelCount] = 0;
-					}
-					else {
-						double scaled = (value - statisticMin[b]) * scale;
-						outData[i + b * pixelCount] = static_cast<unsigned char>(
-							std::max(0.0, std::min(255.0, scaled)));
-					}
-				}
-			}
+			scaleValue<int16_t>(pData, outData, pixelCount, bands, statisticMin, statisticMax);
 			break;
 		}
 		case GDT_UInt32: {
-			uint32_t* srcData = reinterpret_cast<uint32_t*>(pData);
-
-			for (int b = 0; b < bands; ++b) {
-				double range = statisticMax[b] - statisticMin[b];
-				double scale = (range > 0) ? 255.0 / range : 0.0;
-
-				for (int i = 0; i < pixelCount; ++i) {
-					uint32_t value = srcData[i + b * pixelCount];
-
-					// 处理nodata值
-					if (std::abs(value - nodata[b]) < 1e-6) {
-						outData[i + b * pixelCount] = 0;
-					}
-					else {
-						double scaled = (value - statisticMin[b]) * scale;
-						outData[i + b * pixelCount] = static_cast<unsigned char>(
-							std::max(0.0, std::min(255.0, scaled)));
-					}
-				}
-			}
+			scaleValue<uint32_t>(pData, outData, pixelCount, bands, statisticMin, statisticMax);
 			break;
 		}
 		case GDT_Int32: {
-			int32_t* srcData = reinterpret_cast<int32_t*>(pData);
-
-			for (int b = 0; b < bands; ++b) {
-				double range = statisticMax[b] - statisticMin[b];
-				double scale = (range > 0) ? 255.0 / range : 0.0;
-
-				for (int i = 0; i < pixelCount; ++i) {
-					int32_t value = srcData[i + b * pixelCount];
-
-					// 处理nodata值
-					if (std::abs(value - nodata[b]) < 1e-6) {
-						outData[i + b * pixelCount] = 0;
-					}
-					else {
-						double scaled = (value - statisticMin[b]) * scale;
-						outData[i + b * pixelCount] = static_cast<unsigned char>(
-							std::max(0.0, std::min(255.0, scaled)));
-					}
-				}
-			}
+			scaleValue<int32_t>(pData, outData, pixelCount, bands, statisticMin, statisticMax);
 			break;
 		}
 		case GDT_Float32: {
-			float* srcData = reinterpret_cast<float*>(pData);
-
-			for (int b = 0; b < bands; ++b) {
-				double range = statisticMax[b] - statisticMin[b];
-				double scale = (range > 0) ? 255.0 / range : 0.0;
-
-				for (int i = 0; i < pixelCount; ++i) {
-					float value = srcData[i + b * pixelCount];
-
-					// 处理NaN和nodata值
-					if (std::isnan(value) || std::abs(value - nodata[b]) < 1e-6) {
-						outData[i + b * pixelCount] = 0;
-					}
-					else {
-						double scaled = (value - statisticMin[b]) * scale;
-						outData[i + b * pixelCount] = static_cast<unsigned char>(
-							std::max(0.0, std::min(255.0, scaled)));
-					}
-				}
-			}
+			scaleValue<float>(pData, outData, pixelCount, bands, statisticMin, statisticMax);
 			break;
 		}
 		case GDT_Float64: {
-			double* srcData = reinterpret_cast<double*>(pData);
-
-			for (int b = 0; b < bands; ++b) {
-				double range = statisticMax[b] - statisticMin[b];
-				double scale = (range > 0) ? 255.0 / range : 0.0;
-
-				for (int i = 0; i < pixelCount; ++i) {
-					double value = srcData[i + b * pixelCount];
-
-					// 处理NaN和nodata值
-					if (std::isnan(value) || std::abs(value - nodata[b]) < 1e-6) {
-						outData[i + b * pixelCount] = 0;
-					}
-					else {
-						double scaled = (value - statisticMin[b]) * scale;
-						outData[i + b * pixelCount] = static_cast<unsigned char>(
-							std::max(0.0, std::min(255.0, scaled)));
-					}
-				}
-			}
+			scaleValue<double>(pData, outData, pixelCount, bands, statisticMin, statisticMax);
 			break;
 		}
 		default:
@@ -1123,11 +1076,13 @@ namespace WT{
 		return true;
 	}
 
-	bool SlippyMapTiler::checkNodata(unsigned char* pData, size_t pos, int bandNum)
+	bool SlippyMapTiler::checkNodata(unsigned char* pData, size_t pos,int pixelSize,  int bandNum)
 	{
 		if (options->nodata.empty()) {
 			return false;
 		}
+		// 计算当前像素的起始位置
+		unsigned char* pixelStart = pData + pos ;
 
 		// 遍历每个波段
 		for (int band = 0; band < bandNum; ++band) {
@@ -1137,99 +1092,100 @@ namespace WT{
 
 			bool isNoData = false;
 			double noDataValue = options->nodata[band];
+			unsigned char* bandData = pixelStart + band * GDALGetDataTypeSizeBytes(data_type);
 
 			switch (data_type) {
 			case GDT_Byte: {
-				unsigned char value = *reinterpret_cast<const unsigned char*>(pData);
-				isNoData = isEqual(static_cast<double>(value), noDataValue);
+				unsigned char value = *reinterpret_cast<const unsigned char*>(bandData);
+				isNoData = isEqual<unsigned char>(value, static_cast<unsigned char>(noDataValue));
 				break;
 			}
 
 			case GDT_UInt16: {
-				unsigned short value = *reinterpret_cast<const unsigned short*>(pData);
-				isNoData = isEqual(static_cast<double>(value), noDataValue);
+				unsigned short value = *reinterpret_cast<const unsigned short*>(bandData);
+				isNoData = isEqual<unsigned short>(value, static_cast<unsigned short>(noDataValue));
 				break;
 			}
 
 			case GDT_Int16: {
-				short value = *reinterpret_cast<const short*>(pData);
-				isNoData = isEqual(static_cast<double>(value), noDataValue);
+				short value = *reinterpret_cast<const short*>(bandData);
+				isNoData = isEqual< short>(value, static_cast< short>(noDataValue));
 				break;
 			}
 
 			case GDT_UInt32: {
-				unsigned int value = *reinterpret_cast<const unsigned int*>(pData);
-				isNoData = isEqual(static_cast<double>(value), noDataValue);
+				unsigned int value = *reinterpret_cast<const unsigned int*>(bandData);
+				isNoData = isEqual< unsigned int>(value, static_cast<unsigned int>(noDataValue));
 				break;
 			}
 
 			case GDT_Int32: {
-				int value = *reinterpret_cast<const int*>(pData);
-				isNoData = isEqual(static_cast<double>(value), noDataValue);
+				int value = *reinterpret_cast<const int*>(bandData);
+				isNoData = isEqual< int>(value, static_cast<int>(noDataValue));
 				break;
 			}
 
 			case GDT_Float32: {
-				float value = *reinterpret_cast<const float*>(pData);
+				float value = *reinterpret_cast<const float*>(bandData);
 				// 对于浮点数，需要特别处理NaN的情况
 				if (std::isnan(value) && std::isnan(noDataValue)) {
 					isNoData = true;
 				}
 				else {
-					isNoData = isEqual(static_cast<double>(value), noDataValue, 1e-6);
+					isNoData = isEqual< float>(value, static_cast<float>(noDataValue), 1e-6);
 				}
 				break;
 			}
 
 			case GDT_Float64: {
-				double value = *reinterpret_cast<const double*>(pData);
+				double value = *reinterpret_cast<const double*>(bandData);
 				// 对于浮点数，需要特别处理NaN的情况
 				if (std::isnan(value) && std::isnan(noDataValue)) {
 					isNoData = true;
 				}
 				else {
-					isNoData = isEqual(value, noDataValue, 1e-12);
+					isNoData = isEqual< double>(value, static_cast<double>(noDataValue), 1e-6);
 				}
 				break;
 			}
 
 			case GDT_CInt16: {
 				// 复数类型：实部和虚部都需要检查
-				short* complexValue = (short*)pData;
+				short* complexValue = (short*)(bandData);
 				double realPart = static_cast<double>(complexValue[0]);
 				double imagPart = static_cast<double>(complexValue[1]);
 				// 对于复数，通常只检查实部，或者可以检查模
-				isNoData = isEqual(realPart, noDataValue);
+				isNoData = isEqual<double>(realPart, noDataValue);
 				break;
 			}
 
 			case GDT_CInt32: {
-				int* complexValue = (int*)pData;
+				int* complexValue = (int*)(bandData);
 				double realPart = static_cast<double>(complexValue[0]);
-				isNoData = isEqual(realPart, noDataValue);
+				isNoData = isEqual<double>(realPart, noDataValue);
 				break;
 			}
 
 			case GDT_CFloat32: {
-				float* complexValue = (float*)pData;
+				float* complexValue = (float*)(bandData);
 				double realPart = static_cast<double>(complexValue[0]);
 				if (std::isnan(complexValue[0]) && std::isnan(noDataValue)) {
 					isNoData = true;
 				}
 				else {
-					isNoData = isEqual(realPart, noDataValue, 1e-6);
+					isNoData = isEqual<double>(realPart, noDataValue, 1e-6);
 				}
 				break;
 			}
 
 			case GDT_CFloat64: {
-				double* complexValue = (double*)pData;
+				double* complexValue = (double*)(bandData);
 				double realPart = complexValue[0];
 				if (std::isnan(realPart) && std::isnan(noDataValue)) {
 					isNoData = true;
 				}
 				else {
-					isNoData = isEqual(realPart, noDataValue, 1e-12);
+					isNoData = isEqual<double>(realPart, noDataValue, 1e-6);
 				}
 				break;
 			}
