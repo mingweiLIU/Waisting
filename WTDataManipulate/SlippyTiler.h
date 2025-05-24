@@ -25,7 +25,7 @@ namespace WT{
 		int minLevel = 0;//最小切片级数
 		int maxLevel = 5;//最大切片级数
 		int tileSize = 256;//瓦片大小
-		std::vector<double> nodata;// = { 0.0,0.0,0.0 };//NoData设置 如果影像没有nodata就使用这个
+		std::vector<double> nodata = { 0.0,0.0,0.0 };//NoData设置 如果影像没有nodata就使用这个
 		std::string outputFormat = "png";//输出瓦片后缀
 		int numThreads = std::thread::hardware_concurrency()-1;//使用的线程数
 		std::string prjFilePath = "";//外部prj文件路径 可以为空
@@ -247,17 +247,30 @@ namespace WT{
 		void scaleValue(unsigned char* pData,unsigned char* outData,int pixelCount,int bands,std::vector<double>& statisticMin,std::vector<double>& statisticMax) {
 			T* srcData = reinterpret_cast<T*>(pData);
 
-			for (int b = 0; b < bands; ++b) {
-				double range = statisticMax[b] - statisticMin[b];
+			//// 对每个波段分别处理
+			std::vector<double> rangeEachBand;
+			std::vector<double> scaleEachBand;
+			for (int i = 0; i < bands; i++)
+			{
+				double range = statisticMax[i] - statisticMin[i];
 				double scale = (range > 0) ? 255.0 / range : 0.0;
+				scaleEachBand.push_back(scale);
+			}
 
-				for (int i = 0; i < pixelCount; ++i) {
-					T value = srcData[i + b * pixelCount];
-					double scaled = (value - statisticMin[b]) * scale;
-					outData[i + b * pixelCount] = static_cast<unsigned char>(
+			for (int i = 0; i < pixelCount; ++i) {
+				int pixelPos = bands * i;
+				for (int j = 0; j < bands; ++j)
+				{
+					int valuePos = pixelPos + j;
+					T value = srcData[valuePos];
+					// 线性缩放到0-255范围
+					double scaled = (value - statisticMin[j]) * scaleEachBand[j];
+					// 限制在0-255范围内
+					outData[valuePos] = static_cast<unsigned char>(
 						std::max(0.0, std::min(255.0, scaled)));
 				}
 			}
+
 		}
 	};
 };

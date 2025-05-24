@@ -28,9 +28,10 @@ namespace WT {
      */
     class CoordinateSystem {
     private:
-        OGRSpatialReferenceH src_srs;
-        OGRSpatialReferenceH dst_srs;
-        OGRCoordinateTransformationH coord_transform;
+        OGRSpatialReferenceH src_srs=nullptr;
+        OGRSpatialReferenceH dst_srs = nullptr;
+        OGRCoordinateTransformationH coord_transform = nullptr;
+        OGRCoordinateTransformationH inverse_transform = nullptr;
         bool needs_transform;
 
         void cleanup();

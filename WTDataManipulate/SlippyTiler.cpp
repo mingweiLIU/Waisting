@@ -220,14 +220,16 @@ namespace WT{
 			}
 			else
 			{
-				unsigned char* scaledData = (unsigned char*)(MemoryPool::GetInstance(this->getName())->allocate(image_info.output_band_count * options->tileSize * options->tileSize));
 				scaleDataRange(pData, scaledData, maxs, mins);
-				MemoryPool::GetInstance(this->getName())->deallocate(pData, buffer_size);
 			}
+			//这个时候就可以释放pData了
+			MemoryPool::GetInstance(this->getName())->deallocate(pData, buffer_size);
 
 			unsigned char* pMergedData = nullptr;//在合并函数中来分配内存
 			bool merged=mergeDataAndAlpha(scaledData, pAlphaData, pMergedData, image_info.output_band_count, options->tileSize * options->tileSize);
-			
+			//释放pAlphaData
+			MemoryPool::GetInstance(this->getName())->deallocate(pAlphaData, options->tileSize * options->tileSize);
+
 			//将内存数据提交给输出器
 			fs::path file = fs::path(std::to_string(zoom)) / std::to_string(tile_x) / std::to_string(tile_y);
 			IOFileInfo* oneFileInfo = nullptr;//这个释放交给fileIO来
@@ -236,6 +238,7 @@ namespace WT{
 				oneFileInfo = new IOFileInfo{ file.string(), scaledData,(size_t)image_info.output_band_count * options->tileSize * options->tileSize, this->getName() };
 			}
 			else {
+				MemoryPool::GetInstance(this->getName())->deallocate(scaledData, image_info.output_band_count * options->tileSize * options->tileSize);
 				oneFileInfo = new IOFileInfo{ file.string(), pMergedData,(size_t)(image_info.output_band_count+1) * options->tileSize * options->tileSize, this->getName() };
 			}
 			fileBatchOutputer->addFile(oneFileInfo);
@@ -830,22 +833,24 @@ namespace WT{
 			<< ", 纬度=" << min_y << "至" << max_y << std::endl;
 
 		//处理要切片的层级问题
-		if (options->minLevel < 0) options->minLevel = 0;
-		//获取影像分辨率最佳层级
-		double xResolutionM = 0, yResolutionM = 0; 
-		double xOriginResolution = geo_transform[1];
-		double yOriginResolution=std::abs(geo_transform[5]);
+		if (options->minLevel < 0) {
+			options->minLevel = 0;
+			//获取影像分辨率最佳层级
+			double xResolutionM = 0, yResolutionM = 0;
+			double xOriginResolution = geo_transform[1];
+			double yOriginResolution = std::abs(geo_transform[5]);
 
-		const char* proj_wkt = GDALGetProjectionRef(dataset);
-		bool has_projection = (proj_wkt && strlen(proj_wkt) > 0);
-		if (has_projection)
-		{
-			options->maxLevel = this->getProperLevel(std::min(xOriginResolution, yOriginResolution), options->tileSize);
-		}
-		else {
-			//就用转换为wgs84后的处理
-			coord_system->calculateGeographicResolution((min_y + max_y) / 2.0, xOriginResolution, yOriginResolution, xResolutionM = 0, yResolutionM);
-			options->maxLevel = this->getProperLevel(std::min(xResolutionM, yResolutionM), options->tileSize);
+			const char* proj_wkt = GDALGetProjectionRef(dataset);
+			bool has_projection = (proj_wkt && strlen(proj_wkt) > 0);
+			if (has_projection)
+			{
+				options->maxLevel = this->getProperLevel(std::min(xOriginResolution, yOriginResolution), options->tileSize);
+			}
+			else {
+				//就用转换为wgs84后的处理
+				coord_system->calculateGeographicResolution((min_y + max_y) / 2.0, xOriginResolution, yOriginResolution, xResolutionM = 0, yResolutionM);
+				options->maxLevel = this->getProperLevel(std::min(xResolutionM, yResolutionM), options->tileSize);
+			}
 		}
 
 		// 获取影像信息
@@ -910,28 +915,32 @@ namespace WT{
 					options->nodata[i] = noDataValue;
 				}
 			}
-
-			//现在思考这样的问题 既然我知道哪些地方是非数据区 那么我是不是直接就可以把该地方的值赋予任意一个值 同时开启半透明波段
-			//然后对比nodata区域 也开启半透明波段 这样我就把png一开始就分类了 分为了有透明波段和待核实透明波段的（和之前的方法一样全局核实）
 		}
 
-		//获取图层像素值统计信息 以方便对像素进行缩放
+		//获取图层像素值统计信息 以方便对像素进行缩放 这里要区分调色板影像和普通影像
 		mins.swap(std::vector<double>()); maxs.swap(std::vector<double>());
-		if (data_type != GDT_Byte) {
-			for (int i = 1; i <= band_count; i++) {
-				GDALRasterBandH pBand = GDALGetRasterBand(dataset,i);
+		if (!image_info.has_palette) {
+			if (data_type != GDT_Byte) {
+				for (int i = 1; i <= band_count; i++) {
+					GDALRasterBandH pBand = GDALGetRasterBand(dataset, i);
 
-				double minVal, maxVal;
-				CPLErr err = GDALComputeRasterStatistics(
-					pBand,FALSE,&minVal,&maxVal,NULL,NULL,NULL,NULL
-				);
+					double minVal, maxVal;
+					CPLErr err = GDALComputeRasterStatistics(
+						pBand, FALSE, &minVal, &maxVal, NULL, NULL, NULL, NULL
+					);
 
-				if (err == CE_None) {
-					mins.push_back(minVal);
-					maxs.push_back(maxVal);
+					if (err == CE_None) {
+						mins.push_back(minVal);
+						maxs.push_back(maxVal);
+					}
 				}
 			}
 		}
+		else {
+			//统计palette
+			calcuPaletteColorValueRange();
+		}
+		
 
 		// 创建内存管理器和文件缓冲管理器
 		fileBatchOutputer = std::make_shared<FileBatchOutput>();
@@ -1030,22 +1039,6 @@ namespace WT{
 		//}
 		case GDT_UInt16: {
 			scaleValue<uint16_t>(pData, outData, pixelCount, bands, statisticMin, statisticMax);
-			//uint16_t* srcData = reinterpret_cast<uint16_t*>(pData);
-
-			//// 对每个波段分别处理
-			//for (int b = 0; b < bands; ++b) {
-			//	double range = statisticMax[b] - statisticMin[b];
-			//	double scale = (range > 0) ? 255.0 / range : 0.0;
-
-			//	for (int i = 0; i < pixelCount; ++i) {
-			//		uint16_t value = srcData[i + b * pixelCount];
-			//		// 线性缩放到0-255范围
-			//		double scaled = (value - statisticMin[b]) * scale;
-			//		// 限制在0-255范围内
-			//		outData[i + b * pixelCount] = static_cast<unsigned char>(
-			//			std::max(0.0, std::min(255.0, scaled)));				
-			//	}
-			//}
 			break;
 		}
 		case GDT_Int16: {
@@ -1072,7 +1065,6 @@ namespace WT{
 			// 对于未支持的数据类型，返回失败
 			return false;
 		}
-
 		return true;
 	}
 
@@ -1205,4 +1197,39 @@ namespace WT{
 		return true;
 	}
 
+	void SlippyMapTiler::calcuPaletteColorValueRange() {
+		int entry_count = GDALGetColorEntryCount(image_info.color_table);
+		short maxR = std::numeric_limits<short>::max(), maxG = std::numeric_limits<short>::max(), maxB = std::numeric_limits<short>::max(), maxA = std::numeric_limits<short>::max();
+		short minR = std::numeric_limits<short>::min(), minG = std::numeric_limits<short>::min(), minB = std::numeric_limits<short>::min(), minA = std::numeric_limits<short>::min();
+
+		for (int i = 0; i < entry_count; i++) {
+			const GDALColorEntry* entry = GDALGetColorEntry(image_info.color_table, i);
+			if (entry) {
+				if (image_info.output_band_count == 1) {
+					maxR = std::max(maxR, entry->c1);
+
+					minR = std::min(minR, entry->c1);
+				}
+				else if (image_info.output_band_count == 3) {
+					maxR = std::max(maxR, entry->c1);
+					maxG = std::max(maxG, entry->c2);
+					maxB = std::max(maxB, entry->c3);
+
+					minR = std::min(minR, entry->c1);
+					minG = std::min(minG, entry->c2);
+					minB = std::min(minB, entry->c3);
+
+				}
+			}
+		}
+		//设置
+		if (image_info.output_band_count == 1) {
+			mins.push_back(minR);
+			maxs.push_back(maxR);
+		}
+		else if (image_info.output_band_count == 3) {
+			maxs.push_back(maxR); maxs.push_back(maxG); maxs.push_back(maxB);
+			mins.push_back(minR); mins.push_back(minG); mins.push_back(minB);
+		}
+	}
 }

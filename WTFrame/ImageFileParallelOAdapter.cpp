@@ -403,7 +403,7 @@ namespace WT {
 		std::vector<png_bytep> rowPointers(height);
 
 		// 申请输出图像数据内存
-		std::vector<unsigned char> outData(height * rowSize);
+		//std::vector<unsigned char> outData(height * rowSize);
 
 		// 设置行指针
 		for (int y = 0; y < height; y++) {

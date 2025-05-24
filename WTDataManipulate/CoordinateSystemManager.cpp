@@ -187,10 +187,15 @@ namespace WT {
 
 	OGRCoordinateTransformationH CoordinateSystem::create_inverse_transform() const
 	{
-		if (needs_transform && src_srs && dst_srs) {
-			return OCTNewCoordinateTransformation(dst_srs, src_srs);
+		if (inverse_transform!=nullptr) {
+			return inverse_transform;
 		}
-		return nullptr;
+		else {
+			if (needs_transform && src_srs && dst_srs) {
+				return OCTNewCoordinateTransformation(dst_srs, src_srs);
+			}
+			return nullptr;
+		}
 	}
 
 	void CoordinateSystem::calculateGeographicResolution(double lat, double& xResDeg, double& yResDeg, double& xResMeter, double& yResMeter)
