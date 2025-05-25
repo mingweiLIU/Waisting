@@ -35,22 +35,10 @@ namespace WT {
 
 	ImageFileParallelIOAdapter::ImageFileParallelIOAdapter(const std::string& basePath, bool createDirs
 		, int width /*= 256*/, int height /*= 256*/
-		, std::string format /*= "png"*/, int bands/*=3*/, std::vector<double> noData/*={}*/)
+		, IMAGEFORMAT format /*= "png"*/, int bands/*=3*/, std::vector<double> noData/*={}*/)
 		: mBasePath(basePath), mCreateDirs(createDirs)
 		, mWidth(width), mHeight(height), mBandsNum(bands)
-		, mNoData(noData) {
-
-		// 设置格式
-		if ("png" == format) {
-			this->mFormat = IMAGEFORMAT::PNG;
-		}
-		else if ("jpg" == format) {
-			this->mFormat = IMAGEFORMAT::JPG;
-		}
-		else if ("webp" == format) {
-			this->mFormat = IMAGEFORMAT::WEBP;
-		}
-	}
+		, mNoData(noData), mFormat(format){}
 
 	bool ImageFileParallelIOAdapter::initialize() {
 		if (mCreateDirs) {
@@ -95,6 +83,7 @@ namespace WT {
 		// 使用原子计数器跟踪成功/失败
 		std::atomic<int> successCount{0};
 		std::atomic<int> failureCount{0};
+		ticProgressNum = files.size() % 30;//预估一个值
 
 		// 按目录分组（保持原有逻辑）
 		std::unordered_map<std::string, std::vector<IOFileInfo*>> dirGroups;
@@ -133,6 +122,11 @@ namespace WT {
 							bool success = processImageTask(task);
 							if (success) {
 								successCount++;
+								if (successCount%ticProgressNum==0)
+								{
+									progressInfo->addProgress(successCount, "", "");
+									successCount = 0;
+								}
 							}
 							else {
 								failureCount++;
@@ -203,7 +197,12 @@ namespace WT {
 		int successCount = 0;
 		for (auto& future : futures) {
 			if (future.get()) {
-				successCount++;
+				successCount++; 
+				if (successCount % ticProgressNum == 0 )
+				{
+					progressInfo->addProgress(successCount,"","");
+					successCount = 0;
+				}
 			}
 			else {
 				allSuccess = false;

@@ -2,6 +2,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QDebug>
+#include <vector>
 #include "../../WTDataManipulate/SlippyTiler.h"
 #include "../../WTDataManipulate/IDataM.h"
 
@@ -268,6 +269,16 @@ bool ImageTilingDialog::validateParameters()
 		emit processingError("Nodata要么不设置，要么三个波段都需要设置，如果数据波段数为1，其他g/b分量随意设置即可");
 		return false;
     }
+
+    //在nodata某个值写入数字后 再删除 那么这个size会存在 但是null不存在
+    for (int i=0;i< m_nodata.size();++i)
+    {
+        if (m_nodata[i].isNull()) {
+			emit processingError("Nodata要么不设置，要么三个波段都需要设置，如果数据波段数为1，其他g/b分量随意设置即可");
+			return false;
+        }
+    }
+
     
     return true;
 }
@@ -296,21 +307,40 @@ bool ImageTilingDialog::processTiles()
 	options->outputDir = m_outputDir.toStdString();
     options->minLevel = m_minLevel;
     options->maxLevel = m_maxLevel;
-    options->outputFormat = m_outputFormat.toStdString();
+    
+    std::string formatStr = m_outputFormat.toStdString();
+    if ("png"==formatStr)
+	{
+		options->outputFormat = WT::IMAGEFORMAT::PNG;
+    }else if ("jpg" == formatStr)
+	{
+		options->outputFormat = WT::IMAGEFORMAT::JPG;
+    }
+    else {
+		emit processingError("设置的输出格式暂时未支持！");
+		return false;
+    }
+
+
     options->prjFilePath = m_prjFilePath.toStdString();
     options->wktString = m_wktString.toStdString();
 
+    std::vector<double>().swap(options->nodata);
 	std::transform(m_nodata.begin(), m_nodata.end(), std::back_inserter(options->nodata),
 		[](const QVariant& item) {
-			return item.toDouble(); // 无错误检查
+            if (item.isValid())
+			{
+				return item.toDouble(); // 无错误检查
+            }
 	});
 
-	std::shared_ptr<ImageTilingDialogProgress> p = std::make_shared<ImageTilingDialogProgress>(this);
+	std::shared_ptr<ImageTilingDialogProgress> imageTilingDialogProgress = std::make_shared<ImageTilingDialogProgress>(this);
 	WT::SlippyMapTiler cutter(options);
 
 	// 初始化
 	if (!cutter.initialize()) {
-		std::cerr << "cuowu" << std::endl;
+		std::cerr << "初始化错误" << std::endl;
+		emit processingError("初始化失败！");
 		return false;
 	}
 
@@ -318,19 +348,10 @@ bool ImageTilingDialog::processTiles()
 	std::cout << "开始生成切片..." << std::endl;
 	auto start_time = std::chrono::high_resolution_clock::now();
 
-	bool success = cutter.process(p);
+	bool success = cutter.process(imageTilingDialogProgress);
 
 	auto end_time = std::chrono::high_resolution_clock::now();
 	auto duration = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count();
 
-    
-    // TODO: 实际实现应该基于GDAL或其他GIS库进行栅格切片处理
-    // 可能需要以下步骤:
-    // 1. 打开输入栅格文件
-    // 2. 设置坐标系统
-    // 3. 为每个缩放级别生成瓦片
-    // 4. 保存瓦片到输出目录
-    // 5. 根据需要处理透明度和nodata值
-    
     return true; // 返回处理结果
 }

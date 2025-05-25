@@ -13,7 +13,8 @@
 #include "FileBatchOutput.h"
 #include "IDataM.h"
 #include "CoordinateSystemManager.h"
-#include "../WTFrame/IProgressInfo.h"
+#include "IProgressInfo.h"
+#include "ImageFileParallelIOAdapter.h"
 
 namespace fs = std::filesystem;
 
@@ -22,11 +23,11 @@ namespace WT{
 	public:
 		std::string inputFile="";//输入的文件
 		std::string outputDir="";//输出路径
-		int minLevel = 0;//最小切片级数
-		int maxLevel = 5;//最大切片级数
+		int minLevel = -9999;//最小切片级数
+		int maxLevel = -9999;//最大切片级数
 		int tileSize = 256;//瓦片大小
-		std::vector<double> nodata = { 0.0,0.0,0.0 };//NoData设置 如果影像没有nodata就使用这个
-		std::string outputFormat = "png";//输出瓦片后缀
+		std::vector<double> nodata;// = { 255,255,255 };//NoData设置 如果影像没有nodata就使用这个
+		IMAGEFORMAT outputFormat = IMAGEFORMAT::JPG;//输出瓦片后缀
 		int numThreads = std::thread::hardware_concurrency()-1;//使用的线程数
 		std::string prjFilePath = "";//外部prj文件路径 可以为空
 		std::string wktString = "";//外部wkt字符串 可以为空
@@ -46,6 +47,7 @@ namespace WT{
 		int output_band_count;
 		GDALColorTableH color_table;
 		size_t pixel_size;
+		GDALDataType data_type;
 	};
 
 	class SlippyMapTiler :public IDataProcessor {
@@ -97,10 +99,6 @@ namespace WT{
 		std::mutex progress_mutex;
 		std::mutex fs_mutex;
 
-		//// 使用非锁定的缓存来存储常用的变量
-		//struct {
-		//	int tile_size = 256;
-		//} config;
 
 		// 创建输出目录
 		void create_directories(int zoom);
@@ -234,6 +232,8 @@ namespace WT{
 		//合并主数据和透明图层数据 这里的finalData由内部分配 返回值代表是否合并 从而决定用false用pData还是ture用finalData
 		bool mergeDataAndAlpha(unsigned char* pData, unsigned char* alphaData,unsigned char*& finalData,int bandCount,int pixelCount);
 
+		//计算调色板中的颜色最大最小值
+		void calcuPaletteColorValueRange();
 		// 比较浮点数是否相等的辅助函数
 		template<typename T>
 		bool isEqual(T a, T b, T epsilon = 0.000001) {

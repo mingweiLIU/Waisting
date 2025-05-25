@@ -15,8 +15,10 @@ void main() {
     //options->inputFile = "E:\\Data\\dq\\DEM\\DEM_1000h.img";
     //options->outputDir = "E:\\Data\\23";
     //带调色板的八位影像 nodata 255 255 255
-    options->inputFile = "C:\\Users\\ROG\\Desktop\\11.tif";
-    options->outputDir = "C:\\Users\\ROG\\Desktop\\12";
+    //options->inputFile = "C:\\Users\\ROG\\Desktop\\11.tif";
+    //options->outputDir = "C:\\Users\\ROG\\Desktop\\12";
+	options->inputFile = "C:\\Users\\MW\\Desktop\\11.tif";
+	options->outputDir = "D:\\Data\\DOM1\\palete";
     
     std::shared_ptr<WT::IProgressInfo> p = std::make_shared<WT::IProgressInfo>();
     WT::SlippyMapTiler cutter(options);

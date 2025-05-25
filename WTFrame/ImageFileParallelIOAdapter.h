@@ -38,7 +38,7 @@ namespace WT {
 		// 构造函数
 		ImageFileParallelIOAdapter(const std::string& basePath, bool createDirs = true,
 			int width = 256, int height = 256,
-			std::string format = "png", int bands = 3,
+			IMAGEFORMAT format = IMAGEFORMAT::PNG, int bands = 3,
 			std::vector<double> noData = {});
 
 		// 析构函数
@@ -69,6 +69,7 @@ namespace WT {
 		int mWidth;
 		int mHeight;
 		int mBandsNum;
+		int ticProgressNum = 0;//每处理多少个文件就执行一次progressCallback
 		std::vector<double> mNoData;
 		IMAGEFORMAT mFormat;
 

@@ -11,8 +11,6 @@
 #include <iostream>
 #include<fstream>
 
-//#include "ImageFileIOAdapter.h"
-#include "ImageFileParallelIOAdapter.h"
 #include "MemoryPool.h"
 
 namespace WT{
@@ -191,7 +189,8 @@ namespace WT{
 			// 分配完整瓦片大小的缓冲区（基于输出波段数）
 			//采用这样的策略:如果是png 那么一开始就配套一个独立的透明波段 如果有透明值则为0 对应像素值不为非数据区或者nodata区 则为255 
 			//这样最后统计值是否和数据相等就能判断是否需要它 不需要则去掉
-			size_t buffer_size=options->tileSize * options->tileSize * image_info.output_band_count * image_info.pixel_size;			
+			//这里最后将pixelsize和是否有调色板绑定 以为有调色板 那么直接为short 就为2 其他的就是按照真实的影像位数记录来
+			size_t buffer_size=options->tileSize * options->tileSize * image_info.output_band_count * (image_info.has_palette ? 2: image_info.pixel_size);			
 			unsigned char* pData = (unsigned char*)(MemoryPool::GetInstance(this->getName())->allocate(buffer_size));
 			memset(pData , 0, buffer_size);
 
@@ -210,12 +209,13 @@ namespace WT{
 
 			if (!success) {
 				MemoryPool::GetInstance(this->getName())->deallocate(pData, buffer_size);
+				MemoryPool::GetInstance(this->getName())->deallocate(pAlphaData, options->tileSize * options->tileSize);
 				return false;
 			}
 
 			//下面来缩放数据
 			unsigned char* scaledData = (unsigned char*)(MemoryPool::GetInstance(this->getName())->allocate(image_info.output_band_count * options->tileSize * options->tileSize));
-			if (data_type == GDT_Byte) {
+			if (image_info.data_type == GDT_Byte) {
 				memcpy(scaledData, pData, image_info.output_band_count * options->tileSize * options->tileSize); 
 			}
 			else
@@ -252,6 +252,11 @@ namespace WT{
 	}
 
 	bool SlippyMapTiler::mergeDataAndAlpha(unsigned char* pData, unsigned char* alphaData, unsigned char*& finalData, int bandCount, int pixelCount) {
+		if (options->outputFormat==IMAGEFORMAT::JPG)
+		{//如果是jpg直接返回
+			return false;
+		}
+		
 		//先判断是alpha图层是否需要保留
 		bool needAlpha = false;
 		::tbb::task_group_context context;
@@ -408,16 +413,8 @@ namespace WT{
 		}
 
 		// 计算像素大小
-		info.pixel_size = GDALGetDataTypeSizeBytes(data_type);// / 8;
-
-		//没办法 需要自己的手动缩放
-		//if (options->outputFormat == "jpg") {
-		//	info.pixel_size = 1;
-		//}
-		//else if (options->outputFormat == "png") {
-		//	info.pixel_size = info.pixel_size > 2 ? 1 : info.pixel_size;
-		//}
-
+		info.data_type = info.has_palette ? GDALDataType::GDT_Int16 : data_type;
+		info.pixel_size = GDALGetDataTypeSizeBytes(data_type);
 		return info;
 	}
 
@@ -449,6 +446,23 @@ namespace WT{
 			return false;
 		}
 
+		//先修改nodata值
+		if (options->outputFormat==IMAGEFORMAT::PNG&&(bounds.dst_height != options->tileSize || bounds.dst_width != options->tileSize)) {
+			memset(alphaBuffer, 0, options->tileSize * options->tileSize);
+			::tbb::parallel_for(
+				::tbb::blocked_range2d<int>(bounds.dst_min_y, bounds.dst_max_y + 1, bounds.dst_min_x, bounds.dst_max_x + 1),
+				[&](const ::tbb::blocked_range2d<int>& range) {
+					for (int y = range.rows().begin(); y != range.rows().end(); ++y)
+					{
+						for (int x = range.cols().begin(); x != range.cols().end(); ++x)
+						{
+							*(alphaBuffer + y * options->tileSize + x) = 255;
+						}
+					}
+				}
+			);
+		}			
+
 		// 获取调色板条目数
 		int palette_count = GDALGetColorEntryCount(info.color_table);
 
@@ -474,42 +488,39 @@ namespace WT{
 						}
 
 						// 获取对应的RGB值
-						GDALColorEntry color_entry;
+						GDALColorEntry color_entry { 0.0,0.0,0.0,0.0 };
 						if (index >= 0 && index < palette_count) {
 							GDALGetColorEntryAsRGB(info.color_table, index, &color_entry);
 						}
-						else {
-							// 索引超出范围 那么我直接设置为nodata的值
-							if (options->outputFormat == "png") {
-								color_entry.c1 = options->nodata[0];
-								if (image_info.output_band_count == 3) {
-									color_entry.c2 = options->nodata[1];
-									color_entry.c3 = options->nodata[2];
-								}
-							}
-							else if (options->outputFormat == "jpg") {
-								color_entry.c1 = 0; // Red
-								color_entry.c2 = 0; // Green
-								color_entry.c3 = 0; // Blue
-								color_entry.c4 = 0; // Alpha
-							}
-						}
 
 						// 计算目标位置的索引
-						size_t dst_idx = (dst_y * options->tileSize + dst_x) * 3 * info.pixel_size;
+						size_t dst_idx = (dst_y * options->tileSize + dst_x) * image_info.output_band_count * 2;//这里直接设置为2 因为为short
 
-						// 写入RGB值
-						if (info.pixel_size == 1) {
-							output_buffer[dst_idx] = (unsigned char)color_entry.c1;     // R
-							output_buffer[dst_idx + 1] = (unsigned char)color_entry.c2; // G
-							output_buffer[dst_idx + 2] = (unsigned char)color_entry.c3; // B
-							//std::cout <<index<<"===="<< color_entry.c1 << "----" << color_entry.c2 << "----" << color_entry.c3 << std::endl;
+						// 写入RGB值 这里我们暂时认为没有透明色
+						output_buffer[dst_idx] = color_entry.c1+1;     // R 不知道为何需要多加1才能和arcgis中看到的一致
+						if (image_info.output_band_count==3)
+						{
+							output_buffer[dst_idx + 2] = color_entry.c2 + 1; // G
+							output_buffer[dst_idx + 4] = color_entry.c3 + 1; // B
 						}
-						else if (info.pixel_size == 2) {
-							((unsigned short*)output_buffer)[dst_idx / 2] = (unsigned short)color_entry.c1;     // R
-							((unsigned short*)output_buffer)[dst_idx / 2 + 1] = (unsigned short)color_entry.c2; // G
-							((unsigned short*)output_buffer)[dst_idx / 2 + 2] = (unsigned short)color_entry.c3; // B
+						//设置透明度问题
+						if (!options->nodata.empty()&&options->outputFormat==IMAGEFORMAT::PNG)
+						{
+							bool noData = true;
+							for (int i = 0; i < image_info.output_band_count; ++i)
+							{
+								//如果有一个数字不相等 就不是nodata
+								if (options->nodata[i] != output_buffer[dst_idx+i*2]) {
+									noData = false;
+									break;
+								}
+							}
+							if (noData)
+							{
+								alphaBuffer[dst_y * options->tileSize + dst_x] = 0;
+							}
 						}
+						
 					}
 				}
 			}
@@ -534,7 +545,7 @@ namespace WT{
 					dataset, GF_Read,
 					bounds.clipped_src_min_x, bounds.clipped_src_min_y, bounds.read_width, bounds.read_height,
 					output_buffer, bounds.dst_width, bounds.dst_height,
-					data_type, band_count, nullptr,
+					image_info.data_type, band_count, nullptr,
 					band_count * info.pixel_size, bounds.dst_width * band_count * info.pixel_size, info.pixel_size
 				);
 			}
@@ -546,25 +557,27 @@ namespace WT{
 
 			//检查是否为透明
 			//读取后需要判断和nodata的值的关系
-			::tbb::parallel_for(
-				::tbb::blocked_range2d<int>(0, bounds.dst_height, 0, bounds.dst_width),
-				[&](const ::tbb::blocked_range2d<int>& range) {
-					for (int y = range.rows().begin(); y != range.rows().end(); ++y) {
-						int dst_y = bounds.dst_min_y + y;
-						for (int x = range.cols().begin(); x != range.cols().end(); ++x) {
-							int dst_x = bounds.dst_min_x + x;
-							size_t alpha_idx = (dst_y * options->tileSize + dst_x) ;//1个波段
-							size_t dst_idx = alpha_idx * band_count * info.pixel_size;
-							//并设置值多个波段和nodata一致性的位置为0
-							if (options->outputFormat == "png" && checkNodata(output_buffer, dst_idx, info.pixel_size, band_count))
-							{
-								*(alphaBuffer + alpha_idx) = 0;
+			if (options->outputFormat==IMAGEFORMAT::PNG&&!options->nodata.empty())
+			{
+				::tbb::parallel_for(
+					::tbb::blocked_range2d<int>(0, bounds.dst_height, 0, bounds.dst_width),
+					[&](const ::tbb::blocked_range2d<int>& range) {
+						for (int y = range.rows().begin(); y != range.rows().end(); ++y) {
+							int dst_y = bounds.dst_min_y + y;
+							for (int x = range.cols().begin(); x != range.cols().end(); ++x) {
+								int dst_x = bounds.dst_min_x + x;
+								size_t alpha_idx = (dst_y * options->tileSize + dst_x);//1个波段
+								size_t dst_idx = alpha_idx * band_count * info.pixel_size;
+								//并设置值多个波段和nodata一致性的位置为0
+								if (checkNodata(output_buffer, dst_idx, info.pixel_size, band_count))
+								{
+									*(alphaBuffer + alpha_idx) = 0;
+								}
 							}
 						}
 					}
-				}
-			);
-
+				);
+			}
 		}
 		else {
 			//存在非数据范围区的 那么非数据范围区的透明度就为0 为了方便 直接将这个全部设置为0 再来各个转为255
@@ -598,7 +611,7 @@ namespace WT{
 					dataset, GF_Read,
 					bounds.clipped_src_min_x, bounds.clipped_src_min_y, bounds.read_width, bounds.read_height,
 					temp_buffer, bounds.dst_width, bounds.dst_height,
-					data_type, band_count, nullptr,
+					image_info.data_type, band_count, nullptr,
 					band_count * info.pixel_size, bounds.dst_width * band_count * info.pixel_size, info.pixel_size
 				);
 			}
@@ -623,7 +636,7 @@ namespace WT{
 							// 复制像素数据
 							memcpy(output_buffer + dst_idx, temp_buffer + src_idx, band_count * info.pixel_size);
 							//并设置值多个波段和nodata一致性的位置为0
-							if (options->outputFormat == "png"&& checkNodata(output_buffer, dst_idx, info.pixel_size,band_count))
+							if (options->outputFormat == IMAGEFORMAT::PNG&&!options->nodata.empty() && checkNodata(output_buffer, dst_idx, info.pixel_size, band_count))
 							{
 								*(alphaBuffer + alpha_idx) = 0;
 							}
@@ -857,7 +870,7 @@ namespace WT{
 		image_info = get_image_info(dataset);
 
 		//下面要处理NoDataValue 
-		if (options->outputFormat == "png") {
+		if (options->outputFormat == IMAGEFORMAT::PNG) {
 			//先检查nodata的合法性 nodata一定要在datatype范围内
 			if (options->nodata.size() > 0)
 			{
@@ -939,15 +952,7 @@ namespace WT{
 		else {
 			//统计palette
 			calcuPaletteColorValueRange();
-		}
-		
-
-		// 创建内存管理器和文件缓冲管理器
-		fileBatchOutputer = std::make_shared<FileBatchOutput>();
-		std::unique_ptr<ImageFileParallelIOAdapter> imageIOAdatper = std::make_unique<ImageFileParallelIOAdapter>(options->outputDir, true
-			, options->tileSize, options->tileSize, options->outputFormat
-			, image_info.output_band_count,options->nodata);
-		fileBatchOutputer->setAdapter(std::move(imageIOAdatper));
+		}		
 
 		return true;
 	}
@@ -967,6 +972,14 @@ namespace WT{
 			}
 		}
 
+		// 创建内存管理器和文件缓冲管理器
+		fileBatchOutputer = std::make_shared<FileBatchOutput>();
+		std::unique_ptr<ImageFileParallelIOAdapter> imageIOAdatper = std::make_unique<ImageFileParallelIOAdapter>(options->outputDir, true
+			, options->tileSize, options->tileSize, options->outputFormat
+			, image_info.output_band_count, options->nodata);
+		imageIOAdatper->setProgressCallback(progressInfo);
+		fileBatchOutputer->setAdapter(std::move(imageIOAdatper));
+
 		// 计算所有的瓦片数 方便进度条的处理
 		int total_tiles = 0;
 		for (int zoom = options->minLevel; zoom <= options->maxLevel; zoom++) {
@@ -977,7 +990,7 @@ namespace WT{
 			// 计算总瓦片数量
 			total_tiles += (max_tile_x - min_tile_x + 1) * (max_tile_y - min_tile_y + 1);
 		}
-		progressInfo->setTotalNum(total_tiles);
+		progressInfo->setTotalNum(2*total_tiles);//这里设置2倍是因为数据处理和数据输出两个流程都要计算进度
 
 		// 记录开始时间
 		start_time = std::chrono::high_resolution_clock::now();
@@ -1031,7 +1044,7 @@ namespace WT{
 		int pixelCount = options->tileSize * options->tileSize;
 
 		// 根据不同的数据类型进行处理 缩放只针对非8位数据
-		switch (data_type) {
+		switch (image_info.data_type) {
 		//case GDT_Byte: {
 		//	// 对于Byte类型，直接拷贝数据，不需要缩放
 		//	memcpy(outData, pData, pixelCount * bands);
@@ -1084,9 +1097,9 @@ namespace WT{
 
 			bool isNoData = false;
 			double noDataValue = options->nodata[band];
-			unsigned char* bandData = pixelStart + band * GDALGetDataTypeSizeBytes(data_type);
+			unsigned char* bandData = pixelStart + band * GDALGetDataTypeSizeBytes(image_info.data_type);
 
-			switch (data_type) {
+			switch (image_info.data_type) {
 			case GDT_Byte: {
 				unsigned char value = *reinterpret_cast<const unsigned char*>(bandData);
 				isNoData = isEqual<unsigned char>(value, static_cast<unsigned char>(noDataValue));
@@ -1199,8 +1212,8 @@ namespace WT{
 
 	void SlippyMapTiler::calcuPaletteColorValueRange() {
 		int entry_count = GDALGetColorEntryCount(image_info.color_table);
-		short maxR = std::numeric_limits<short>::max(), maxG = std::numeric_limits<short>::max(), maxB = std::numeric_limits<short>::max(), maxA = std::numeric_limits<short>::max();
-		short minR = std::numeric_limits<short>::min(), minG = std::numeric_limits<short>::min(), minB = std::numeric_limits<short>::min(), minA = std::numeric_limits<short>::min();
+		short minR = std::numeric_limits<short>::max(), minG = std::numeric_limits<short>::max(), minB = std::numeric_limits<short>::max();// , maxA = std::numeric_limits<short>::max();
+		short maxR = std::numeric_limits<short>::min(), maxG = std::numeric_limits<short>::min(), maxB = std::numeric_limits<short>::min();// , minA = std::numeric_limits<short>::min();
 
 		for (int i = 0; i < entry_count; i++) {
 			const GDALColorEntry* entry = GDALGetColorEntry(image_info.color_table, i);
@@ -1222,7 +1235,7 @@ namespace WT{
 				}
 			}
 		}
-		//设置
+		//设置 这里只处理gray和rgb
 		if (image_info.output_band_count == 1) {
 			mins.push_back(minR);
 			maxs.push_back(maxR);

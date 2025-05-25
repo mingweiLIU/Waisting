@@ -6,6 +6,7 @@ namespace WT {
 	{
 	protected:
 		int totalNum;//总任务数
+		int processedNum;//已经处理的数
 	public:
 		/*****************************************************************************
 		* @brief : 设置总任务数
@@ -21,7 +22,18 @@ namespace WT {
 		* @date : 2020/9/3 9:55
 		*****************************************************************************/
 		virtual void showProgress(int currentIndex, std::string currentFileName, std::string operats = "数据转换") {
-			printf("%s:%f\t正在处理:%s", operats.c_str(), currentIndex / (totalNum * 1.0f) * 100, currentFileName.c_str());
+			processedNum = currentIndex;
+			printf("%s:%f\t正在处理:%s", operats.c_str(), processedNum / (totalNum * 1.0f) * 100, currentFileName.c_str());
+		}
+
+		/*****************************************************************************
+		* @brief : 显示处理进度 添加一个数值
+		* @author : lmw
+		* @date : 2020/9/3 9:55
+		*****************************************************************************/
+		virtual void addProgress(int addedIndex, std::string currentFileName, std::string operats = "数据转换") {
+			processedNum += addedIndex;
+			printf("%s:%f\t正在处理:%s", operats.c_str(), processedNum / (totalNum * 1.0f) * 100, currentFileName.c_str());
 		}
 		/*****************************************************************************
 		* @brief : 显示处理的文件

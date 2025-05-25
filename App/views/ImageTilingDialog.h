@@ -141,8 +141,14 @@ public:
 	* @brief : 显示处理进度
 	*****************************************************************************/
     void showProgress(int currentIndex, std::string currentFileName, std::string operats = "数据转换") {
-        dialog->updateProgress(currentIndex / (totalNum * 1.0f));
+        this->processedNum = currentIndex;
+        dialog->updateProgress(this->processedNum / (totalNum * 1.0f));
     }
+    //增加数据
+	void addProgress(int addedIndex, std::string currentFileName, std::string operats = "数据转换") {
+		processedNum += addedIndex;
+		dialog->updateProgress(this->processedNum / (totalNum * 1.0f));
+	}
     /*****************************************************************************
     * @brief : 完成进度
     *****************************************************************************/

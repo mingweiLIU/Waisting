@@ -917,7 +917,12 @@ Window {
                                             id: nodataFieldR
                                             text: nodata[0]===undefined ? "": nodata[0]
                                             validator: DoubleValidator {}
-                                            onTextChanged: nodata[0] = parseFloat(text) || 0
+                                            onTextChanged: {
+                                                if(text!==undefined&&text!=="")
+                                                    nodata[0] = parseFloat(text)
+                                                else
+                                                    nodata[0]=undefined
+                                            }
                                             Layout.preferredWidth: 70
                                             horizontalAlignment: TextInput.AlignHCenter
                                             selectByMouse: true
@@ -942,7 +947,12 @@ Window {
                                             id: nodataFieldG
                                             text: nodata[1]===undefined ? "" :nodata[1]
                                             validator: DoubleValidator {}
-                                            onTextChanged: nodata[1] = parseFloat(text) || 0
+                                            onTextChanged: {
+                                                if(text!==undefined&&text!=="")
+                                                    nodata[1] = parseFloat(text)
+                                                else
+                                                    nodata[1]=undefined
+                                            }
                                             Layout.preferredWidth: 70
                                             horizontalAlignment: TextInput.AlignHCenter
                                             selectByMouse: true
@@ -967,7 +977,12 @@ Window {
                                             id: nodataFieldB
                                             text: nodata[2]===undefined ? "" :nodata[2]
                                             validator: DoubleValidator {}
-                                            onTextChanged: nodata[2] = parseFloat(text) || 0
+                                            onTextChanged: {
+                                                if(text!==undefined&&text!=="")
+                                                    nodata[2] = parseFloat(text)
+                                                else
+                                                    nodata[2]=undefined
+                                            }
                                             Layout.preferredWidth: 70
                                             horizontalAlignment: TextInput.AlignHCenter
                                             selectByMouse: true
@@ -1097,17 +1112,14 @@ Window {
                             // 将参数传递给 C++ 处理器并开始处理
                             tileProcessor.inputFile = inputFile
                             tileProcessor.outputDir = outputDir
-                            tileProcessor.minLevel = minLevel
-                            tileProcessor.maxLevel = maxLevel
+                            //调整下 如果勾选了自动计算切片层级 那么把max和min都设置为一个负数 这样C++获取到数据时知道去处理
+                            tileProcessor.minLevel = autoLevelCheckBox.checked ? -9999 : minLevel
+                            tileProcessor.maxLevel = autoLevelCheckBox.checked ? -9999 : maxLevel
                             tileProcessor.nodata = nodata
                             tileProcessor.outputFormat = outputFormat
                             tileProcessor.prjFilePath = prjFilePath
                             tileProcessor.wktString = wktString
                             tileProcessor.coordinateSystemType = coordinateSystemType  //0---影像自己的 1--prj文件 2--wkt
-
-                            //调整下 如果勾选了自动计算切片层级 那么把max和min都设置为一个负数 这样C++获取到数据时知道去处理
-                            tileProcessor.minLevel=-9999
-                            tileProcessor.maxLevel=-9999
                             
                             // 启动处理
                             if (tileProcessor.startProcessing()) {
@@ -1252,8 +1264,6 @@ Window {
 
     // 重置参数
     function resetParameters() {
-        inputFile = ""
-        outputDir = ""
         minLevel = 15
         maxLevel = 18
         nodata = []
