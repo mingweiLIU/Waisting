@@ -167,7 +167,7 @@ void ImageTilingDialog::cancelProcessing()
         
         // 等待线程完成
         m_futureWatcher->waitForFinished();
-        
+
         // 重置状态
         m_isProcessing = false;
         emit isProcessingChanged();
@@ -349,10 +349,15 @@ bool ImageTilingDialog::processTiles()
 	std::cout << "开始生成切片..." << std::endl;
 	auto start_time = std::chrono::high_resolution_clock::now();
 
-	bool success = mapTiler->process(imageTilingDialogProgress);
-
-	auto end_time = std::chrono::high_resolution_clock::now();
-	auto duration = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count();
-
-    return true; // 返回处理结果
+    try
+	{
+		bool success = mapTiler->process(imageTilingDialogProgress);
+		auto end_time = std::chrono::high_resolution_clock::now();
+		auto duration = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count();
+		return true; // 返回处理结果
+    }
+    catch (...)
+    {
+        return false;
+    }    
 }

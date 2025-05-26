@@ -50,7 +50,7 @@ namespace WT {
 
             // 初始化内存块池
             for (size_t size = m_minBlockSize; size <= m_maxBlockSize; size += m_blockSizeStep) {
-                m_pools[size] = ::tbb::concurrent_queue<void*>();
+                m_pools[size] = ::oneapi::tbb::concurrent_queue<void*>();
             }
         }
 
@@ -196,10 +196,10 @@ namespace WT {
         size_t m_blockSizeStep;
 
         // 内存池，key为内存块大小，value为内存块队列
-        ::tbb::concurrent_unordered_map<size_t, ::tbb::concurrent_queue<void*>> m_pools;
+        ::oneapi::tbb::concurrent_unordered_map<size_t, ::oneapi::tbb::concurrent_queue<void*>> m_pools;
 
         // 记录大内存块分配情况，用于析构时释放
-        ::tbb::concurrent_unordered_map<void*, size_t> m_allocatedLargeBlocks;
+        ::oneapi::tbb::concurrent_unordered_map<void*, size_t> m_allocatedLargeBlocks;
 
     private:
         inline static std::map<std::string, MemoryPool*> namedMemoryPools;

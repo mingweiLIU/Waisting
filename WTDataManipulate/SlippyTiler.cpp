@@ -1,12 +1,13 @@
 ﻿#include "SlippyTiler.h"
 #include <cmath>
 // TBB??
-#include <oneapi/tbb/parallel_for.h>
-#include <oneapi/tbb/blocked_range2d.h>
-#include <oneapi/tbb/global_control.h>
-#include <oneapi/tbb/enumerable_thread_specific.h>
-#include <oneapi/tbb/parallel_for.h>
-#include <oneapi/tbb/blocked_range.h>
+//#include <oneapi/tbb/parallel_for.h>
+//#include <oneapi/tbb/blocked_range2d.h>
+//#include <oneapi/tbb/global_control.h>
+//#include <oneapi/tbb/enumerable_thread_specific.h>
+//#include <oneapi/tbb/parallel_for.h>
+//#include <oneapi/tbb/blocked_range.h>
+#include <oneapi/tbb.h>
 #include <nlohmann/json.hpp>
 #include <iostream>
 #include<fstream>
@@ -259,8 +260,8 @@ namespace WT {
 
 		//先判断是alpha图层是否需要保留
 		bool needAlpha = false;
-		::tbb::task_group_context context;
-		::tbb::parallel_for(0, pixelCount, 1, [&](int i) {
+		::oneapi::tbb::task_group_context context;
+		::oneapi::tbb::parallel_for(0, pixelCount, 1, [&](int i) {
 			if (*(alphaData + i) == 0)
 			{
 				context.cancel_group_execution();
@@ -277,8 +278,8 @@ namespace WT {
 				return false;
 			}
 
-			::tbb::parallel_for(::tbb::blocked_range<int>(0, pixelCount),
-				[&](const ::tbb::blocked_range<int> range) {
+			::oneapi::tbb::parallel_for(::oneapi::tbb::blocked_range<int>(0, pixelCount),
+				[&](const ::oneapi::tbb::blocked_range<int> range) {
 					for (int i = range.begin(); i != range.end(); ++i)
 					{
 						int disIndex = (bandCount + 1) * i;
@@ -440,9 +441,9 @@ namespace WT {
 		//先修改nodata值
 		if (options->outputFormat == IMAGEFORMAT::PNG && (bounds.dst_height != options->tileSize || bounds.dst_width != options->tileSize)) {
 			memset(alphaBuffer, 0, options->tileSize * options->tileSize);
-			::tbb::parallel_for(
-				::tbb::blocked_range2d<int>(bounds.dst_min_y, bounds.dst_max_y + 1, bounds.dst_min_x, bounds.dst_max_x + 1),
-				[&](const ::tbb::blocked_range2d<int>& range) {
+			::oneapi::tbb::parallel_for(
+				::oneapi::tbb::blocked_range2d<int>(bounds.dst_min_y, bounds.dst_max_y + 1, bounds.dst_min_x, bounds.dst_max_x + 1),
+				[&](const ::oneapi::tbb::blocked_range2d<int>& range) {
 					for (int y = range.rows().begin(); y != range.rows().end(); ++y)
 					{
 						for (int x = range.cols().begin(); x != range.cols().end(); ++x)
@@ -458,9 +459,9 @@ namespace WT {
 		int palette_count = GDALGetColorEntryCount(info.color_table);
 
 		// 使用TBB并行处理像素转换
-		::tbb::parallel_for(
-			::tbb::blocked_range2d<int>(0, bounds.dst_height, 0, bounds.dst_width),
-			[&](const ::tbb::blocked_range2d<int>& range) {
+		::oneapi::tbb::parallel_for(
+			::oneapi::tbb::blocked_range2d<int>(0, bounds.dst_height, 0, bounds.dst_width),
+			[&](const ::oneapi::tbb::blocked_range2d<int>& range) {
 				for (int y = range.rows().begin(); y != range.rows().end(); ++y) {
 					int dst_y = bounds.dst_min_y + y;
 					for (int x = range.cols().begin(); x != range.cols().end(); ++x) {
@@ -550,9 +551,9 @@ namespace WT {
 			//读取后需要判断和nodata的值的关系
 			if (options->outputFormat == IMAGEFORMAT::PNG && !options->nodata.empty())
 			{
-				::tbb::parallel_for(
-					::tbb::blocked_range2d<int>(0, bounds.dst_height, 0, bounds.dst_width),
-					[&](const ::tbb::blocked_range2d<int>& range) {
+				::oneapi::tbb::parallel_for(
+					::oneapi::tbb::blocked_range2d<int>(0, bounds.dst_height, 0, bounds.dst_width),
+					[&](const ::oneapi::tbb::blocked_range2d<int>& range) {
 						for (int y = range.rows().begin(); y != range.rows().end(); ++y) {
 							int dst_y = bounds.dst_min_y + y;
 							for (int x = range.cols().begin(); x != range.cols().end(); ++x) {
@@ -573,9 +574,9 @@ namespace WT {
 		else {
 			//存在非数据范围区的 那么非数据范围区的透明度就为0 为了方便 直接将这个全部设置为0 再来各个转为255
 			memset(alphaBuffer, 0, dataBufferSize / (image_info.output_band_count * image_info.pixel_size));
-			::tbb::parallel_for(
-				::tbb::blocked_range2d<int>(bounds.dst_min_y, bounds.dst_max_y + 1, bounds.dst_min_x, bounds.dst_max_x + 1),
-				[&](const ::tbb::blocked_range2d<int>& range) {
+			::oneapi::tbb::parallel_for(
+				::oneapi::tbb::blocked_range2d<int>(bounds.dst_min_y, bounds.dst_max_y + 1, bounds.dst_min_x, bounds.dst_max_x + 1),
+				[&](const ::oneapi::tbb::blocked_range2d<int>& range) {
 					for (int y = range.rows().begin(); y != range.rows().end(); ++y)
 					{
 						for (int x = range.cols().begin(); x != range.cols().end(); ++x)
@@ -613,9 +614,9 @@ namespace WT {
 			}
 
 			//读取后需要判断和nodata的值的关系
-			::tbb::parallel_for(
-				::tbb::blocked_range2d<int>(0, bounds.dst_height, 0, bounds.dst_width),
-				[&](const ::tbb::blocked_range2d<int>& range) {
+			::oneapi::tbb::parallel_for(
+				::oneapi::tbb::blocked_range2d<int>(0, bounds.dst_height, 0, bounds.dst_width),
+				[&](const ::oneapi::tbb::blocked_range2d<int>& range) {
 					for (int y = range.rows().begin(); y != range.rows().end(); ++y) {
 						int dst_y = bounds.dst_min_y + y;
 						for (int x = range.cols().begin(); x != range.cols().end(); ++x) {
@@ -689,45 +690,42 @@ namespace WT {
 			}
 		};
 
-		::tbb::enumerable_thread_specific<ThreadLocalData> tls_data;
+		::oneapi::tbb::enumerable_thread_specific<ThreadLocalData> tls_data;
+		::oneapi::tbb::task_group_context ctx;
 
 		// 使用TBB并行处理
-		try
-		{
-			::tbb::parallel_for(
-				::tbb::blocked_range2d<int, int>(min_tile_y, max_tile_y + 1, min_tile_x, max_tile_x + 1),
-				[this, zoom, total_tiles, &progressInfo, &tls_data](const ::tbb::blocked_range2d<int, int>& r) {
-					// 获取线程本地存储
-					ThreadLocalData& local_data = tls_data.local();
 
-					// 懒初始化本地数据集
+		::oneapi::tbb::parallel_for(
+			::oneapi::tbb::blocked_range2d<int, int>(min_tile_y, max_tile_y + 1, min_tile_x, max_tile_x + 1),
+			[this, zoom, total_tiles, &progressInfo, &tls_data,&ctx](const ::oneapi::tbb::blocked_range2d<int, int>& r) {
+				// 获取线程本地存储
+				ThreadLocalData& local_data = tls_data.local();
+
+				// 懒初始化本地数据集
+				if (!local_data.local_dataset) {
+					local_data.local_dataset = this->create_local_dataset();
 					if (!local_data.local_dataset) {
-						local_data.local_dataset = this->create_local_dataset();
-						if (!local_data.local_dataset) {
-							std::cerr << "无法创建线程本地数据集" << std::endl;
+						std::cerr << "无法创建线程本地数据集" << std::endl;
+						return;
+					}
+				}
+
+				for (int tile_y = r.rows().begin(); tile_y != r.rows().end(); ++tile_y) {
+					for (int tile_x = r.cols().begin(); tile_x != r.cols().end(); ++tile_x) {
+						if (progressInfo->isCanceled()) {
+							ctx.cancel_group_execution();
+							std::cout << "瓦片生成线程已结束，不处理..." << std::endl;
 							return;
 						}
-					}
 
-					for (int tile_y = r.rows().begin(); tile_y != r.rows().end(); ++tile_y) {
-						for (int tile_x = r.cols().begin(); tile_x != r.cols().end(); ++tile_x) {
-							if (progressInfo->isCanceled()) {
-								return;
-							}
-
-							// 使用线程本地数据集生成瓦片
-							if (generate_tile(zoom, tile_x, tile_y, local_data.local_dataset)) {
-								progressInfo->addProgress(1, "", "");
-							}
+						// 使用线程本地数据集生成瓦片
+						if (generate_tile(zoom, tile_x, tile_y, local_data.local_dataset)) {
+							progressInfo->addProgress(1, "", "");
 						}
 					}
-				},progressInfo->getContext()
-			);
-		}
-		catch (const std::exception&)
-		{
-			std::cout << "瓦片生成线程结束..." << std::endl;
-		}
+				}
+			},ctx
+		);		
 
 		std::cout << std::endl;
 	}
@@ -740,7 +738,7 @@ namespace WT {
 		// 设置线程数量
 		if (options->numThreads > 0) {
 			std::cout << "设置线程数量: " << options->numThreads << std::endl;
-			::tbb::global_control global_limit(::tbb::global_control::max_allowed_parallelism, options->numThreads);
+			::oneapi::tbb::global_control global_limit(::oneapi::tbb::global_control::max_allowed_parallelism, options->numThreads);
 		}
 
 		// 打开数据集

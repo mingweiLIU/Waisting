@@ -144,7 +144,7 @@ public:
     /*****************************************************************************
 	* @brief : 显示处理进度
 	*****************************************************************************/
-    bool showProgress(int currentIndex, std::string currentFileName, std::string operats = "数据转换") override {
+    void showProgress(int currentIndex, std::string currentFileName, std::string operats = "数据转换") override {
         std::lock_guard<std::mutex> lock(mMutex);
         processedNum = currentIndex;
         if (processedNum %ticNum==0)
@@ -154,10 +154,9 @@ public:
         if (processedNum == totalNum) {
             finished();
         }
-        return canceled;
     }
     //增加数据
-	bool addProgress(int addedIndex, std::string currentFileName, std::string operats = "数据转换")override {
+	void addProgress(int addedIndex, std::string currentFileName, std::string operats = "数据转换")override {
         std::lock_guard<std::mutex> lock(mMutex); 
         processedNum += addedIndex;
         if (processedNum % ticNum == 0)
@@ -167,7 +166,6 @@ public:
         if (processedNum == totalNum) {
             finished();
         }
-        return canceled;
 	}
 
     /*****************************************************************************

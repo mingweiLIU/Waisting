@@ -55,7 +55,7 @@ namespace WT {
 		auto task = std::make_shared<ImageTask>(const_cast<IOFileInfo*>(fileInfo), fullPath.string());
 
 		// 使用task_group进行异步处理
-		::tbb::task_group tg;
+		::oneapi::tbb::task_group tg;
 
 		tg.run([this, task]() {
 			try {
@@ -83,6 +83,7 @@ namespace WT {
 		// 使用原子计数器跟踪成功/失败
 		std::atomic<int> successCount{0};
 		std::atomic<int> failureCount{0};
+		::oneapi::tbb::task_group_context ctx;
 
 		// 按目录分组（保持原有逻辑）
 		std::unordered_map<std::string, std::vector<IOFileInfo*>> dirGroups;
@@ -92,8 +93,9 @@ namespace WT {
 		}
 
 		// 并行处理每个目录组
-		::tbb::parallel_for_each(dirGroups.begin(), dirGroups.end(),
-			[this, &successCount, &failureCount](auto& dirGroup) {
+		try {
+		::oneapi::tbb::parallel_for_each(dirGroups.begin(), dirGroups.end(),
+			[this, &successCount, &failureCount, &ctx](auto& dirGroup) {
 				const auto& [dir, fileList] = dirGroup;
 				if (progressInfo->isCanceled()) {
 					return;
@@ -115,38 +117,36 @@ namespace WT {
 				}
 
 				// 并行处理目录内的文件
-				::tbb::parallel_for_each(fileList.begin(), fileList.end(),
-					[this, &successCount, &failureCount](IOFileInfo* fileInfo) {
-						try {
-							if (progressInfo->isCanceled()) {
-								return;
-							}
-							const auto fullPath = std::filesystem::path(mBasePath) / fileInfo->filePath;
-							ImageTask task(fileInfo, fullPath.string());
-
-							bool success = processImageTask(task);
-							if (success) {
-								successCount++;								
-								progressInfo->addProgress(1, "", "");
-							}
-							else {
-								failureCount++;
-							}
+				
+				::oneapi::tbb::parallel_for_each(fileList.begin(), fileList.end(),
+					[this, &successCount, &failureCount,&ctx](IOFileInfo* fileInfo) {
+						
+						if (progressInfo->isCanceled()) {
+							ctx.cancel_group_execution();
+							return;
 						}
-						catch (const std::exception& e) {
-							std::cerr << "处理文件时发生异常: " << e.what() << std::endl;
+						const auto fullPath = std::filesystem::path(mBasePath) / fileInfo->filePath;
+						ImageTask task(fileInfo, fullPath.string());
+
+						bool success = processImageTask(task);
+						if (success) {
+							successCount++;
+							progressInfo->addProgress(1, "", "");
+						}
+						else {
 							failureCount++;
 						}
-
 						// 清理内存
 						delete fileInfo;
-					}, progressInfo->getContext());
-			}, progressInfo->getContext());
-
+					}, ctx);
+			}, ctx);
+		}
+		catch (const std::exception& e) {
+			std::cerr << "处理文件时发生异常: " << e.what() << std::endl;
+			failureCount++;
+		}
 		std::cout << "批量处理完成 - 成功: " << successCount.load()
 			<< ", 失败: " << failureCount.load() << std::endl;
-
-
 		return failureCount.load() == 0;
 	}
 
@@ -155,9 +155,8 @@ namespace WT {
 			return true;
 		}
 
-
 		// 创建任务队列
-		::tbb::concurrent_queue<std::shared_ptr<ImageTask>> taskQueue;
+		::oneapi::tbb::concurrent_queue<std::shared_ptr<ImageTask>> taskQueue;
 		std::vector<std::future<bool>> futures;
 		futures.reserve(files.size());
 
@@ -170,30 +169,34 @@ namespace WT {
 		}
 
 		// 使用task_group异步处理所有任务
-		::tbb::task_group tg(progressInfo->getContext());
+		::oneapi::tbb::task_group_context ctx;
+		::oneapi::tbb::task_group tg(ctx);
 
 		// 创建工作线程
 		const int numWorkers = std::min(static_cast<int>(files.size()),
 			static_cast<int>(std::thread::hardware_concurrency()));
+		
+		try {
+			for (int i = 0; i < numWorkers; ++i) {
+				tg.run([this, &taskQueue, &ctx]() {
+					std::shared_ptr<ImageTask> task;
+					while (taskQueue.try_pop(task)) {
 
-		for (int i = 0; i < numWorkers; ++i) {
-			tg.run([this, &taskQueue]() {
-				std::shared_ptr<ImageTask> task;
-				while (taskQueue.try_pop(task)) {
-					try {
 						if (progressInfo->isCanceled()) {
+							ctx.cancel_group_execution();
+							std::cout << "********瓦片输出线程结束，不输出文件..." << std::endl;
 							return;
 						}
 						bool success = processImageTask(*task);
 						task->promise.set_value(success);
 						progressInfo->addProgress(1, "", "");
 					}
-					catch (const std::exception& e) {
-						std::cerr << "异步处理图像时发生异常: " << e.what() << std::endl;
-						task->promise.set_value(false);
-					}
-				}
+
 				});
+			}
+		}
+		catch (const std::exception& e) {
+			std::cerr << "异步处理图像时发生异常: " << e.what() << std::endl;
 		}
 
 		// 等待所有任务完成
@@ -278,8 +281,8 @@ namespace WT {
 		const size_t rowSize = width * outBandCount * (bitDepth / 8);
 
 		// 并行处理每一行
-		::tbb::parallel_for(::tbb::blocked_range<int>(0, height),
-			[&](const ::tbb::blocked_range<int>& range) {
+		::oneapi::tbb::parallel_for(::oneapi::tbb::blocked_range<int>(0, height),
+			[&](const ::oneapi::tbb::blocked_range<int>& range) {
 				for (int y = range.begin(); y != range.end(); ++y) {
 					for (int x = 0; x < width; x++) {
 						int inPixelPos = (y * width + x) * bandCount;
@@ -328,8 +331,8 @@ namespace WT {
 		int bitDepth, const std::vector<double>& nodata) {
 		std::atomic<bool> foundNodata{false};
 
-		::tbb::parallel_for(::tbb::blocked_range<int>(0, height),
-			[&](const ::tbb::blocked_range<int>& range) {
+		::oneapi::tbb::parallel_for(::oneapi::tbb::blocked_range<int>(0, height),
+			[&](const ::oneapi::tbb::blocked_range<int>& range) {
 				if (foundNodata.load()) return; // 早期退出
 
 				for (int y = range.begin(); y != range.end() && !foundNodata.load(); ++y) {
