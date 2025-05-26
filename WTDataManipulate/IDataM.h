@@ -17,6 +17,8 @@ namespace WT {
 	public:
 		//处理数据
 		virtual bool process(std::shared_ptr<IProgressInfo> progressInfo) = 0;
+		//停止处理
+		virtual void cancle() = 0;
 		//获取处理器名称
 		virtual std::string getName()const = 0;
 	};

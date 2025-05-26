@@ -1,8 +1,8 @@
 #pragma once
 #include <iostream>
 #include <jemalloc/jemalloc.h>
-#include <tbb/concurrent_queue.h>
-#include <tbb/concurrent_unordered_map.h>
+#include <oneapi/tbb/concurrent_queue.h>
+#include <oneapi/tbb/concurrent_unordered_map.h>
 #include <mutex>
 #include <vector>
 #include <cassert>
@@ -11,22 +11,22 @@
 
 namespace WT {
     /**
-     * @brief »ùÓÚjemallocºÍTBBµÄÄÚ´æ³ØÊµÏÖ
+     * @brief åŸºäºjemallocå’ŒTBBçš„å†…å­˜æ± å®ç°
      *
-     * Õâ¸öÄÚ´æ³ØÊ¹ÓÃjemalloc×÷Îªµ×²ãÄÚ´æ·ÖÅäÆ÷£¬²¢Ê¹ÓÃTBBµÄ²¢·¢ÈİÆ÷À´¹ÜÀíÄÚ´æ¿é¡£
-     * ËüÖ§³Ö²»Í¬´óĞ¡µÄÄÚ´æ¿é·ÖÅä£¬²¢Í¨¹ıÄÚ´æ¿é¸´ÓÃÀ´Ìá¸ßĞÔÄÜ¡£
+     * è¿™ä¸ªå†…å­˜æ± ä½¿ç”¨jemallocä½œä¸ºåº•å±‚å†…å­˜åˆ†é…å™¨ï¼Œå¹¶ä½¿ç”¨TBBçš„å¹¶å‘å®¹å™¨æ¥ç®¡ç†å†…å­˜å—ã€‚
+     * å®ƒæ”¯æŒä¸åŒå¤§å°çš„å†…å­˜å—åˆ†é…ï¼Œå¹¶é€šè¿‡å†…å­˜å—å¤ç”¨æ¥æé«˜æ€§èƒ½ã€‚
      */
     class MemoryPool {
     public:
         static MemoryPool* GetInstance(std::string poolName) {
-            auto it= namedMemoryPools.find(poolName);
+            auto it = namedMemoryPools.find(poolName);
             if (it != namedMemoryPools.end()) {
                 return it->second;
             }
             else {
-                //ĞÂ½¨Ò»¸ö
+                //æ–°å»ºä¸€ä¸ª
                 MemoryPool* oneMPool = new MemoryPool();
-                namedMemoryPools.insert(std::make_pair(poolName,oneMPool));
+                namedMemoryPools.insert(std::make_pair(poolName, oneMPool));
                 return oneMPool;
             }
         }
@@ -40,25 +40,25 @@ namespace WT {
 
     protected:
         /**
-         * @brief ¹¹Ôìº¯Êı
-         * @param minBlockSize ×îĞ¡ÄÚ´æ¿é´óĞ¡
-         * @param maxBlockSize ×î´óÄÚ´æ¿é´óĞ¡£¨³¬¹ı´Ë´óĞ¡µÄÄÚ´æ¿é½«Ö±½Ó·ÖÅä²»½øĞĞ³Ø»¯£©
-         * @param blockSizeStep ÄÚ´æ¿é´óĞ¡µÄ²½½øÖµ
+         * @brief æ„é€ å‡½æ•°
+         * @param minBlockSize æœ€å°å†…å­˜å—å¤§å°
+         * @param maxBlockSize æœ€å¤§å†…å­˜å—å¤§å°ï¼ˆè¶…è¿‡æ­¤å¤§å°çš„å†…å­˜å—å°†ç›´æ¥åˆ†é…ä¸è¿›è¡Œæ± åŒ–ï¼‰
+         * @param blockSizeStep å†…å­˜å—å¤§å°çš„æ­¥è¿›å€¼
          */
         MemoryPool(size_t minBlockSize = 8, size_t maxBlockSize = 4096, size_t blockSizeStep = 8)
             : m_minBlockSize(minBlockSize), m_maxBlockSize(maxBlockSize), m_blockSizeStep(blockSizeStep) {
 
-            // ³õÊ¼»¯ÄÚ´æ¿é³Ø
+            // åˆå§‹åŒ–å†…å­˜å—æ± 
             for (size_t size = m_minBlockSize; size <= m_maxBlockSize; size += m_blockSizeStep) {
                 m_pools[size] = ::tbb::concurrent_queue<void*>();
             }
         }
 
         /**
-         * @brief Îö¹¹º¯Êı£¬ÊÍ·ÅËùÓĞÎ´¹é»¹µÄÄÚ´æ¿é
+         * @brief ææ„å‡½æ•°ï¼Œé‡Šæ”¾æ‰€æœ‰æœªå½’è¿˜çš„å†…å­˜å—
          */
         ~MemoryPool() {
-            // ÊÍ·ÅËùÓĞÄÚ´æ³ØÖĞµÄÄÚ´æ¿é
+            // é‡Šæ”¾æ‰€æœ‰å†…å­˜æ± ä¸­çš„å†…å­˜å—
             for (auto& pair : m_pools) {
                 void* ptr = nullptr;
                 while (pair.second.try_pop(ptr)) {
@@ -70,15 +70,15 @@ namespace WT {
         }
     public:
         /**
-         * @brief ·ÖÅäÖ¸¶¨´óĞ¡µÄÄÚ´æ¿é
-         * @param size ÇëÇóµÄÄÚ´æ¿é´óĞ¡
-         * @return ·ÖÅäµÄÄÚ´æ¿éÖ¸Õë
+         * @brief åˆ†é…æŒ‡å®šå¤§å°çš„å†…å­˜å—
+         * @param size è¯·æ±‚çš„å†…å­˜å—å¤§å°
+         * @return åˆ†é…çš„å†…å­˜å—æŒ‡é’ˆ
          */
         void* allocate(size_t size) {
-            // ½«ÇëÇóµÄ´óĞ¡¶ÔÆëµ½ºÏÊÊµÄÄÚ´æ¿é´óĞ¡
+            // å°†è¯·æ±‚çš„å¤§å°å¯¹é½åˆ°åˆé€‚çš„å†…å­˜å—å¤§å°
             size_t alignedSize = alignSize(size);
 
-            // Èç¹ûÇëÇóµÄÄÚ´æ¿é´óĞ¡³¬¹ı×î´ó³Ø»¯ÄÚ´æ¿é´óĞ¡£¬ÔòÖ±½ÓÊ¹ÓÃjemalloc·ÖÅä
+            // å¦‚æœè¯·æ±‚çš„å†…å­˜å—å¤§å°è¶…è¿‡æœ€å¤§æ± åŒ–å†…å­˜å—å¤§å°ï¼Œåˆ™ç›´æ¥ä½¿ç”¨jemallocåˆ†é…
             if (alignedSize > m_maxBlockSize) {
                 void* ptr = je_malloc(size);
                 if (ptr) {
@@ -87,27 +87,27 @@ namespace WT {
                 return ptr;
             }
 
-            // ³¢ÊÔ´Ó¶ÔÓ¦´óĞ¡µÄÄÚ´æ³ØÖĞ»ñÈ¡ÄÚ´æ¿é
+            // å°è¯•ä»å¯¹åº”å¤§å°çš„å†…å­˜æ± ä¸­è·å–å†…å­˜å—
             void* ptr = nullptr;
             auto it = m_pools.find(alignedSize);
             if (it != m_pools.end() && it->second.try_pop(ptr)) {
-                // ÕÒµ½¿É¸´ÓÃµÄÄÚ´æ¿é
+                // æ‰¾åˆ°å¯å¤ç”¨çš„å†…å­˜å—
                 return ptr;
             }
 
-            // ÄÚ´æ³ØÖĞÃ»ÓĞ¿ÉÓÃµÄÄÚ´æ¿é£¬Ê¹ÓÃjemallocÖ±½Ó·ÖÅä
+            // å†…å­˜æ± ä¸­æ²¡æœ‰å¯ç”¨çš„å†…å­˜å—ï¼Œä½¿ç”¨jemallocç›´æ¥åˆ†é…
             return je_malloc(size);
         }
 
         /**
-         * @brief ÊÍ·ÅÄÚ´æ¿é
-         * @param ptr ÒªÊÍ·ÅµÄÄÚ´æ¿éÖ¸Õë
-         * @param size ÄÚ´æ¿éµÄ´óĞ¡
+         * @brief é‡Šæ”¾å†…å­˜å—
+         * @param ptr è¦é‡Šæ”¾çš„å†…å­˜å—æŒ‡é’ˆ
+         * @param size å†…å­˜å—çš„å¤§å°
          */
         void deallocate(void* ptr, size_t size) {
             if (!ptr) return;
 
-            // ¼ì²éÊÇ·ñÊÇ´óÄÚ´æ¿é
+            // æ£€æŸ¥æ˜¯å¦æ˜¯å¤§å†…å­˜å—
             auto largeIt = m_allocatedLargeBlocks.find(ptr);
             if (largeIt != m_allocatedLargeBlocks.end()) {
                 je_free(ptr);
@@ -115,7 +115,7 @@ namespace WT {
                 return;
             }
 
-            // Ğ¡ÄÚ´æ¿é£¬½«Æä·Å»Ø¶ÔÓ¦µÄÄÚ´æ³ØÖĞ
+            // å°å†…å­˜å—ï¼Œå°†å…¶æ”¾å›å¯¹åº”çš„å†…å­˜æ± ä¸­
             size_t alignedSize = alignSize(size);
             if (alignedSize <= m_maxBlockSize) {
                 auto it = m_pools.find(alignedSize);
@@ -125,13 +125,13 @@ namespace WT {
                 }
             }
 
-            // Èç¹û²»ÊÇÀ´×ÔÄÚ´æ³ØµÄÄÚ´æ¿é£¬ÔòÖ±½ÓÊÍ·Å
+            // å¦‚æœä¸æ˜¯æ¥è‡ªå†…å­˜æ± çš„å†…å­˜å—ï¼Œåˆ™ç›´æ¥é‡Šæ”¾
             je_free(ptr);
         }
 
         /**
-         * @brief »ñÈ¡µ±Ç°ÄÚ´æ³ØÖĞµÄÄÚ´æ¿éÊıÁ¿
-         * @return ÄÚ´æ³ØÖĞµÄÄÚ´æ¿éÊıÁ¿
+         * @brief è·å–å½“å‰å†…å­˜æ± ä¸­çš„å†…å­˜å—æ•°é‡
+         * @return å†…å­˜æ± ä¸­çš„å†…å­˜å—æ•°é‡
          */
         size_t getPoolSize() const {
             size_t totalSize = 0;
@@ -142,11 +142,11 @@ namespace WT {
         }
 
         /**
-         * @brief ·ÖÅä¾ßÓĞÀàĞÍTµÄ¶ÔÏó
-         * @tparam T ¶ÔÏóÀàĞÍ
-         * @tparam Args ¹¹Ôìº¯Êı²ÎÊıÀàĞÍ
-         * @param args ¹¹Ôìº¯Êı²ÎÊı
-         * @return ·ÖÅäµÄ¶ÔÏóÖ¸Õë
+         * @brief åˆ†é…å…·æœ‰ç±»å‹Tçš„å¯¹è±¡
+         * @tparam T å¯¹è±¡ç±»å‹
+         * @tparam Args æ„é€ å‡½æ•°å‚æ•°ç±»å‹
+         * @param args æ„é€ å‡½æ•°å‚æ•°
+         * @return åˆ†é…çš„å¯¹è±¡æŒ‡é’ˆ
          */
         template<typename T, typename... Args>
         T* allocateObject(Args&&... args) {
@@ -156,9 +156,9 @@ namespace WT {
         }
 
         /**
-         * @brief ÊÍ·Å¾ßÓĞÀàĞÍTµÄ¶ÔÏó
-         * @tparam T ¶ÔÏóÀàĞÍ
-         * @param ptr ¶ÔÏóÖ¸Õë
+         * @brief é‡Šæ”¾å…·æœ‰ç±»å‹Tçš„å¯¹è±¡
+         * @tparam T å¯¹è±¡ç±»å‹
+         * @param ptr å¯¹è±¡æŒ‡é’ˆ
          */
         template<typename T>
         void deallocateObject(T* ptr) {
@@ -169,16 +169,16 @@ namespace WT {
 
     private:
         /**
-         * @brief ½«ÇëÇóµÄ´óĞ¡¶ÔÆëµ½ºÏÊÊµÄÄÚ´æ¿é´óĞ¡
-         * @param size ÇëÇóµÄÄÚ´æ¿é´óĞ¡
-         * @return ¶ÔÆëºóµÄÄÚ´æ¿é´óĞ¡
+         * @brief å°†è¯·æ±‚çš„å¤§å°å¯¹é½åˆ°åˆé€‚çš„å†…å­˜å—å¤§å°
+         * @param size è¯·æ±‚çš„å†…å­˜å—å¤§å°
+         * @return å¯¹é½åçš„å†…å­˜å—å¤§å°
          */
         size_t alignSize(size_t size) {
             if (size < m_minBlockSize) {
                 return m_minBlockSize;
             }
 
-            // ½«´óĞ¡ÏòÉÏ¶ÔÆëµ½ m_blockSizeStep µÄ±¶Êı
+            // å°†å¤§å°å‘ä¸Šå¯¹é½åˆ° m_blockSizeStep çš„å€æ•°
             size_t remainder = size % m_blockSizeStep;
             if (remainder != 0) {
                 size = size + m_blockSizeStep - remainder;
@@ -188,124 +188,124 @@ namespace WT {
         }
 
     private:
-        // ×îĞ¡ÄÚ´æ¿é´óĞ¡
+        // æœ€å°å†…å­˜å—å¤§å°
         size_t m_minBlockSize;
-        // ×î´óÄÚ´æ¿é´óĞ¡£¨³¬¹ı´Ë´óĞ¡µÄÄÚ´æ¿é½«Ö±½Ó·ÖÅä²»½øĞĞ³Ø»¯£©
+        // æœ€å¤§å†…å­˜å—å¤§å°ï¼ˆè¶…è¿‡æ­¤å¤§å°çš„å†…å­˜å—å°†ç›´æ¥åˆ†é…ä¸è¿›è¡Œæ± åŒ–ï¼‰
         size_t m_maxBlockSize;
-        // ÄÚ´æ¿é´óĞ¡µÄ²½½øÖµ
+        // å†…å­˜å—å¤§å°çš„æ­¥è¿›å€¼
         size_t m_blockSizeStep;
 
-        // ÄÚ´æ³Ø£¬keyÎªÄÚ´æ¿é´óĞ¡£¬valueÎªÄÚ´æ¿é¶ÓÁĞ
+        // å†…å­˜æ± ï¼Œkeyä¸ºå†…å­˜å—å¤§å°ï¼Œvalueä¸ºå†…å­˜å—é˜Ÿåˆ—
         ::tbb::concurrent_unordered_map<size_t, ::tbb::concurrent_queue<void*>> m_pools;
 
-        // ¼ÇÂ¼´óÄÚ´æ¿é·ÖÅäÇé¿ö£¬ÓÃÓÚÎö¹¹Ê±ÊÍ·Å
+        // è®°å½•å¤§å†…å­˜å—åˆ†é…æƒ…å†µï¼Œç”¨äºææ„æ—¶é‡Šæ”¾
         ::tbb::concurrent_unordered_map<void*, size_t> m_allocatedLargeBlocks;
 
     private:
         inline static std::map<std::string, MemoryPool*> namedMemoryPools;
     };
-   //std::map<std::string, MemoryPool*> MemoryPool::namedMemoryPools;
+    //std::map<std::string, MemoryPool*> MemoryPool::namedMemoryPools;
 
-    ///**
-    // * @brief Ê¹ÓÃÊ¾Àı
-    // */
-    //void memoryPoolExample() {
-    //    // ´´½¨ÄÚ´æ³Ø£¬×îĞ¡¿é8×Ö½Ú£¬×î´ó¿é4096×Ö½Ú£¬²½³¤8×Ö½Ú
-    //    MemoryPool pool(8, 4096, 8);
+     ///**
+     // * @brief ä½¿ç”¨ç¤ºä¾‹
+     // */
+     //void memoryPoolExample() {
+     //    // åˆ›å»ºå†…å­˜æ± ï¼Œæœ€å°å—8å­—èŠ‚ï¼Œæœ€å¤§å—4096å­—èŠ‚ï¼Œæ­¥é•¿8å­—èŠ‚
+     //    MemoryPool pool(8, 4096, 8);
 
-    //    // ·ÖÅä²»Í¬´óĞ¡µÄÄÚ´æ¿é
-    //    void* ptr1 = pool.allocate(64);
-    //    void* ptr2 = pool.allocate(128);
-    //    void* ptr3 = pool.allocate(256);
-    //    void* ptr4 = pool.allocate(8192); // Õâ¸ö»áÖ±½ÓÊ¹ÓÃje_malloc·ÖÅä£¬ÒòÎª³¬¹ıÁË×î´ó¿é´óĞ¡
+     //    // åˆ†é…ä¸åŒå¤§å°çš„å†…å­˜å—
+     //    void* ptr1 = pool.allocate(64);
+     //    void* ptr2 = pool.allocate(128);
+     //    void* ptr3 = pool.allocate(256);
+     //    void* ptr4 = pool.allocate(8192); // è¿™ä¸ªä¼šç›´æ¥ä½¿ç”¨je_mallocåˆ†é…ï¼Œå› ä¸ºè¶…è¿‡äº†æœ€å¤§å—å¤§å°
 
-    //    std::cout << "ÄÚ´æ³ØÖĞµÄÄÚ´æ¿éÊıÁ¿: " << pool.getPoolSize() << std::endl;
+     //    std::cout << "å†…å­˜æ± ä¸­çš„å†…å­˜å—æ•°é‡: " << pool.getPoolSize() << std::endl;
 
-    //    // Ê¹ÓÃ·ÖÅäµÄÄÚ´æ
-    //    strcpy((char*)ptr1, "²âÊÔ×Ö·û´®1");
-    //    strcpy((char*)ptr2, "²âÊÔ×Ö·û´®2");
-    //    strcpy((char*)ptr3, "²âÊÔ×Ö·û´®3");
-    //    strcpy((char*)ptr4, "²âÊÔ×Ö·û´®4");
+     //    // ä½¿ç”¨åˆ†é…çš„å†…å­˜
+     //    strcpy((char*)ptr1, "æµ‹è¯•å­—ç¬¦ä¸²1");
+     //    strcpy((char*)ptr2, "æµ‹è¯•å­—ç¬¦ä¸²2");
+     //    strcpy((char*)ptr3, "æµ‹è¯•å­—ç¬¦ä¸²3");
+     //    strcpy((char*)ptr4, "æµ‹è¯•å­—ç¬¦ä¸²4");
 
-    //    std::cout << "ptr1: " << (char*)ptr1 << std::endl;
-    //    std::cout << "ptr2: " << (char*)ptr2 << std::endl;
-    //    std::cout << "ptr3: " << (char*)ptr3 << std::endl;
-    //    std::cout << "ptr4: " << (char*)ptr4 << std::endl;
+     //    std::cout << "ptr1: " << (char*)ptr1 << std::endl;
+     //    std::cout << "ptr2: " << (char*)ptr2 << std::endl;
+     //    std::cout << "ptr3: " << (char*)ptr3 << std::endl;
+     //    std::cout << "ptr4: " << (char*)ptr4 << std::endl;
 
-    //    // ¹é»¹ÄÚ´æ¿éµ½³ØÖĞ
-    //    pool.deallocate(ptr1, 64);
-    //    pool.deallocate(ptr2, 128);
-    //    pool.deallocate(ptr3, 256);
-    //    pool.deallocate(ptr4, 8192);
+     //    // å½’è¿˜å†…å­˜å—åˆ°æ± ä¸­
+     //    pool.deallocate(ptr1, 64);
+     //    pool.deallocate(ptr2, 128);
+     //    pool.deallocate(ptr3, 256);
+     //    pool.deallocate(ptr4, 8192);
 
-    //    std::cout << "¹é»¹ºóÄÚ´æ³ØÖĞµÄÄÚ´æ¿éÊıÁ¿: " << pool.getPoolSize() << std::endl;
+     //    std::cout << "å½’è¿˜åå†…å­˜æ± ä¸­çš„å†…å­˜å—æ•°é‡: " << pool.getPoolSize() << std::endl;
 
-    //    // ´´½¨ºÍÊÍ·Å¶ÔÏóÊ¾Àı
-    //    struct TestStruct {
-    //        int value;
-    //        std::string name;
+     //    // åˆ›å»ºå’Œé‡Šæ”¾å¯¹è±¡ç¤ºä¾‹
+     //    struct TestStruct {
+     //        int value;
+     //        std::string name;
 
-    //        TestStruct(int v, const std::string& n) : value(v), name(n) {
-    //            std::cout << "¹¹Ôì TestStruct: " << name << " Öµ: " << value << std::endl;
-    //        }
+     //        TestStruct(int v, const std::string& n) : value(v), name(n) {
+     //            std::cout << "æ„é€  TestStruct: " << name << " å€¼: " << value << std::endl;
+     //        }
 
-    //        ~TestStruct() {
-    //            std::cout << "Îö¹¹ TestStruct: " << name << std::endl;
-    //        }
-    //    };
+     //        ~TestStruct() {
+     //            std::cout << "ææ„ TestStruct: " << name << std::endl;
+     //        }
+     //    };
 
-    //    // ·ÖÅä²¢¹¹Ôì¶ÔÏó
-    //    TestStruct* obj1 = pool.allocateObject<TestStruct>(1, "¶ÔÏó1");
-    //    TestStruct* obj2 = pool.allocateObject<TestStruct>(2, "¶ÔÏó2");
+     //    // åˆ†é…å¹¶æ„é€ å¯¹è±¡
+     //    TestStruct* obj1 = pool.allocateObject<TestStruct>(1, "å¯¹è±¡1");
+     //    TestStruct* obj2 = pool.allocateObject<TestStruct>(2, "å¯¹è±¡2");
 
-    //    // Ê¹ÓÃ¶ÔÏó
-    //    std::cout << "obj1: " << obj1->name << ", Öµ: " << obj1->value << std::endl;
-    //    std::cout << "obj2: " << obj2->name << ", Öµ: " << obj2->value << std::endl;
+     //    // ä½¿ç”¨å¯¹è±¡
+     //    std::cout << "obj1: " << obj1->name << ", å€¼: " << obj1->value << std::endl;
+     //    std::cout << "obj2: " << obj2->name << ", å€¼: " << obj2->value << std::endl;
 
-    //    // Îö¹¹²¢ÊÍ·Å¶ÔÏó
-    //    pool.deallocateObject(obj1);
-    //    pool.deallocateObject(obj2);
+     //    // ææ„å¹¶é‡Šæ”¾å¯¹è±¡
+     //    pool.deallocateObject(obj1);
+     //    pool.deallocateObject(obj2);
 
-    //    std::cout << "¶ÔÏóÊÍ·ÅºóÄÚ´æ³ØÖĞµÄÄÚ´æ¿éÊıÁ¿: " << pool.getPoolSize() << std::endl;
+     //    std::cout << "å¯¹è±¡é‡Šæ”¾åå†…å­˜æ± ä¸­çš„å†…å­˜å—æ•°é‡: " << pool.getPoolSize() << std::endl;
 
-    //    // ²âÊÔÅúÁ¿·ÖÅäºÍÊÍ·Å
-    //    std::vector<void*> pointers;
-    //    for (int i = 0; i < 1000; ++i) {
-    //        pointers.push_back(pool.allocate(64));
-    //    }
+     //    // æµ‹è¯•æ‰¹é‡åˆ†é…å’Œé‡Šæ”¾
+     //    std::vector<void*> pointers;
+     //    for (int i = 0; i < 1000; ++i) {
+     //        pointers.push_back(pool.allocate(64));
+     //    }
 
-    //    std::cout << "ÅúÁ¿·ÖÅäºóÄÚ´æ³ØÖĞµÄÄÚ´æ¿éÊıÁ¿: " << pool.getPoolSize() << std::endl;
+     //    std::cout << "æ‰¹é‡åˆ†é…åå†…å­˜æ± ä¸­çš„å†…å­˜å—æ•°é‡: " << pool.getPoolSize() << std::endl;
 
-    //    // ÊÍ·ÅÒ»°ëµÄÄÚ´æ¿é
-    //    for (size_t i = 0; i < pointers.size() / 2; ++i) {
-    //        pool.deallocate(pointers[i], 64);
-    //    }
+     //    // é‡Šæ”¾ä¸€åŠçš„å†…å­˜å—
+     //    for (size_t i = 0; i < pointers.size() / 2; ++i) {
+     //        pool.deallocate(pointers[i], 64);
+     //    }
 
-    //    std::cout << "ÊÍ·ÅÒ»°ëÄÚ´æ¿éºóÄÚ´æ³ØÖĞµÄÄÚ´æ¿éÊıÁ¿: " << pool.getPoolSize() << std::endl;
+     //    std::cout << "é‡Šæ”¾ä¸€åŠå†…å­˜å—åå†…å­˜æ± ä¸­çš„å†…å­˜å—æ•°é‡: " << pool.getPoolSize() << std::endl;
 
-    //    // ÔÙ´Î·ÖÅä£¬Ó¦¸Ã»áÓÅÏÈÊ¹ÓÃÒÑ¾­ÊÍ·ÅµÄÄÚ´æ¿é
-    //    for (size_t i = 0; i < pointers.size() / 2; ++i) {
-    //        pointers[i] = pool.allocate(64);
-    //    }
+     //    // å†æ¬¡åˆ†é…ï¼Œåº”è¯¥ä¼šä¼˜å…ˆä½¿ç”¨å·²ç»é‡Šæ”¾çš„å†…å­˜å—
+     //    for (size_t i = 0; i < pointers.size() / 2; ++i) {
+     //        pointers[i] = pool.allocate(64);
+     //    }
 
-    //    std::cout << "ÔÙ´Î·ÖÅäºóÄÚ´æ³ØÖĞµÄÄÚ´æ¿éÊıÁ¿: " << pool.getPoolSize() << std::endl;
+     //    std::cout << "å†æ¬¡åˆ†é…åå†…å­˜æ± ä¸­çš„å†…å­˜å—æ•°é‡: " << pool.getPoolSize() << std::endl;
 
-    //    // ÊÍ·ÅËùÓĞÄÚ´æ¿é
-    //    for (auto ptr : pointers) {
-    //        pool.deallocate(ptr, 64);
-    //    }
+     //    // é‡Šæ”¾æ‰€æœ‰å†…å­˜å—
+     //    for (auto ptr : pointers) {
+     //        pool.deallocate(ptr, 64);
+     //    }
 
-    //    std::cout << "×îÖÕÄÚ´æ³ØÖĞµÄÄÚ´æ¿éÊıÁ¿: " << pool.getPoolSize() << std::endl;
-    //}
+     //    std::cout << "æœ€ç»ˆå†…å­˜æ± ä¸­çš„å†…å­˜å—æ•°é‡: " << pool.getPoolSize() << std::endl;
+     //}
 
-    ///**
-    // * @brief Ö÷º¯Êı
-    // */
-    //int main() {
-    //    std::cout << "¿ªÊ¼ÄÚ´æ³Ø²âÊÔ..." << std::endl;
-    //    memoryPoolExample();
-    //    std::cout << "ÄÚ´æ³Ø²âÊÔÍê³É." << std::endl;
-    //    return 0;
-    //}
+     ///**
+     // * @brief ä¸»å‡½æ•°
+     // */
+     //int main() {
+     //    std::cout << "å¼€å§‹å†…å­˜æ± æµ‹è¯•..." << std::endl;
+     //    memoryPoolExample();
+     //    std::cout << "å†…å­˜æ± æµ‹è¯•å®Œæˆ." << std::endl;
+     //    return 0;
+     //}
 
 };

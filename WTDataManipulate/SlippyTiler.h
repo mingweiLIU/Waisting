@@ -55,6 +55,7 @@ namespace WT{
 		SlippyMapTiler(std::shared_ptr<SlippyMapTilerOptions> options);
 		~SlippyMapTiler();
 		bool process(std::shared_ptr<IProgressInfo> progressInfo) override;
+		void cancle() override;
 		//获取处理器名称
 		virtual std::string getName()const { return "影像切片器"; };
 		bool initialize();
@@ -89,6 +90,7 @@ namespace WT{
 		/*std::shared_ptr<JemallocAllocator> memory_allocator;
 		std::shared_ptr<FileBufferManager> file_buffer;*/
 		std::shared_ptr<FileBatchOutput> fileBatchOutputer;
+		std::shared_ptr<IProgressInfo> progressInfo;
 
 		// 统计信息
 		std::atomic<int> total_tiles_processed;
@@ -96,7 +98,6 @@ namespace WT{
 
 		// 多线程同步用的互斥锁
 		std::mutex gdal_mutex;
-		std::mutex progress_mutex;
 		std::mutex fs_mutex;
 
 
@@ -198,9 +199,6 @@ namespace WT{
 
 		// 创建一个线程本地的GDAL数据集
 		GDALDatasetH create_local_dataset();
-
-		// 增加一个线程安全的进度更新函数
-		void update_progress(int zoom, int tile_x, int tile_y, int total_tiles, std::shared_ptr<IProgressInfo> progressInfo);
 
 		// 计算瓦片边界和映射关系
 		bool calculate_tile_bounds(int src_min_x, int src_min_y, int src_max_x, int src_max_y, TileBounds& bounds);

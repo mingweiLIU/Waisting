@@ -3,7 +3,6 @@
 #include <QFileInfo>
 #include <QDebug>
 #include <vector>
-#include "../../WTDataManipulate/SlippyTiler.h"
 #include "../../WTDataManipulate/IDataM.h"
 
 // 构造函数
@@ -163,6 +162,8 @@ void ImageTilingDialog::cancelProcessing()
 {
     if (m_isProcessing) {
         m_cancelRequested = true;
+
+        mapTiler->cancle();
         
         // 等待线程完成
         m_futureWatcher->waitForFinished();
@@ -335,10 +336,10 @@ bool ImageTilingDialog::processTiles()
 	});
 
 	std::shared_ptr<ImageTilingDialogProgress> imageTilingDialogProgress = std::make_shared<ImageTilingDialogProgress>(this);
-	WT::SlippyMapTiler cutter(options);
+    mapTiler=std::make_shared<WT::SlippyMapTiler>(options);
 
 	// 初始化
-	if (!cutter.initialize()) {
+	if (!mapTiler->initialize()) {
 		std::cerr << "初始化错误" << std::endl;
 		emit processingError("初始化失败！");
 		return false;
@@ -348,7 +349,7 @@ bool ImageTilingDialog::processTiles()
 	std::cout << "开始生成切片..." << std::endl;
 	auto start_time = std::chrono::high_resolution_clock::now();
 
-	bool success = cutter.process(imageTilingDialogProgress);
+	bool success = mapTiler->process(imageTilingDialogProgress);
 
 	auto end_time = std::chrono::high_resolution_clock::now();
 	auto duration = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count();

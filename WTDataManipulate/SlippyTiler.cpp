@@ -1,39 +1,39 @@
-#include "SlippyTiler.h"
+ï»¿#include "SlippyTiler.h"
 #include <cmath>
-// TBB¿â
-#include <tbb/parallel_for.h>
-#include <tbb/blocked_range2d.h>
-#include <tbb/global_control.h>
-#include <tbb/enumerable_thread_specific.h>
-#include <tbb/parallel_for.h>
-#include <tbb/blocked_range.h>
+// TBB??
+#include <oneapi/tbb/parallel_for.h>
+#include <oneapi/tbb/blocked_range2d.h>
+#include <oneapi/tbb/global_control.h>
+#include <oneapi/tbb/enumerable_thread_specific.h>
+#include <oneapi/tbb/parallel_for.h>
+#include <oneapi/tbb/blocked_range.h>
 #include <nlohmann/json.hpp>
 #include <iostream>
 #include<fstream>
 
 #include "MemoryPool.h"
 
-namespace WT{
+namespace WT {
 	SlippyMapTiler::SlippyMapTiler(std::shared_ptr<SlippyMapTilerOptions> options) {
 		this->options = options;
-		// ³õÊ¼»¯µØÀí±ä»»²ÎÊı
+		// åˆå§‹åŒ–åœ°ç†å˜æ¢å‚æ•°
 		for (int i = 0; i < 6; ++i) {
 			geo_transform[i] = 0.0;
 		}
-				
-		// ´´½¨×ø±êÏµÍ³¶ÔÏó
+
+		// åˆ›å»ºåæ ‡ç³»ç»Ÿå¯¹è±¡
 		coord_system = std::make_unique<CoordinateSystem>();
 	}
 
 	SlippyMapTiler::~SlippyMapTiler()
 	{
-		// È·±£ÊÍ·Å×ÊÔ´
+		// ç¡®ä¿é‡Šæ”¾èµ„æº
 		if (dataset) {
 			GDALClose(dataset);
 			dataset = nullptr;
 		}
 		GDALDestroyDriverManager();
-		//ÕâÀïÒªÇå³ıÄÚ´æ³ØµÄÄÚÈİ
+		//è¿™é‡Œè¦æ¸…é™¤å†…å­˜æ± çš„å†…å®¹
 		MemoryPool::releaseInstance(this->getName());
 	}
 
@@ -52,15 +52,15 @@ namespace WT{
 
 	void SlippyMapTiler::get_tile_range(int zoom, int& min_tile_x, int& min_tile_y, int& max_tile_x, int& max_tile_y)
 	{
-		// ¼ÆËã×îĞ¡ÍßÆ¬×ø±ê
+		// è®¡ç®—æœ€å°ç“¦ç‰‡åæ ‡
 		min_tile_x = long2tilex(min_x, zoom);
-		min_tile_y = lat2tiley(min_y,zoom);
+		min_tile_y = lat2tiley(min_y, zoom);
 
-		// ¼ÆËã×î´óÍßÆ¬×ø±ê
+		// è®¡ç®—æœ€å¤§ç“¦ç‰‡åæ ‡
 		max_tile_x = long2tilex(max_x, zoom);
 		max_tile_y = lat2tiley(max_y, zoom);
 
-		// È·±£y×ø±êµÄ´óĞ¡¹ØÏµÕıÈ·£¨ÔÚÇĞÆ¬×ø±êÏµÖĞ£¬yÖµ´ÓÉÏµ½ÏÂÔö¼Ó£©
+		// ç¡®ä¿yåæ ‡çš„å¤§å°å…³ç³»æ­£ç¡®ï¼ˆåœ¨åˆ‡ç‰‡åæ ‡ç³»ä¸­ï¼Œyå€¼ä»ä¸Šåˆ°ä¸‹å¢åŠ ï¼‰
 		if (min_tile_y > max_tile_y) {
 			std::swap(min_tile_y, max_tile_y);
 		}
@@ -68,12 +68,12 @@ namespace WT{
 
 	void SlippyMapTiler::get_tile_geo_bounds(int zoom, int tile_x, int tile_y, double& tile_min_x, double& tile_min_y, double& tile_max_x, double& tile_max_y)
 	{
-		// ÍßÆ¬¾­Î³¶È·¶Î§
-		tile_min_x = tilex2long(tile_x,zoom);
-		tile_max_x = tilex2long(tile_x+1, zoom);
+		// ç“¦ç‰‡ç»çº¬åº¦èŒƒå›´
+		tile_min_x = tilex2long(tile_x, zoom);
+		tile_max_x = tilex2long(tile_x + 1, zoom);
 
-		tile_max_y = tiley2lat(tile_y,zoom);
-		tile_min_y = tiley2lat(tile_y+1, zoom);
+		tile_max_y = tiley2lat(tile_y, zoom);
+		tile_min_y = tiley2lat(tile_y + 1, zoom);
 	}
 
 	bool SlippyMapTiler::geo_to_pixel(const double& geo_x, const double& geo_y, int& pixel_x, int& pixel_y)
@@ -81,7 +81,7 @@ namespace WT{
 		double x = geo_x;
 		double y = geo_y;
 
-		// Èç¹ûĞèÒª×ø±ê×ª»»£¬½«WGS84×ø±ê×ª»»ÎªÓ°ÏñÔ­Ê¼×ø±êÏµ
+		// å¦‚æœéœ€è¦åæ ‡è½¬æ¢ï¼Œå°†WGS84åæ ‡è½¬æ¢ä¸ºå½±åƒåŸå§‹åæ ‡ç³»
 		if (coord_system->requires_transform()) {
 			OGRCoordinateTransformationH inv_transform = coord_system->create_inverse_transform();
 
@@ -89,7 +89,7 @@ namespace WT{
 				return false;
 			}
 
-			if (!OCTTransform(inv_transform, 1,  &y, &x, nullptr)) {
+			if (!OCTTransform(inv_transform, 1, &y, &x, nullptr)) {
 				OCTDestroyCoordinateTransformation(inv_transform);
 				return false;
 			}
@@ -97,7 +97,7 @@ namespace WT{
 			OCTDestroyCoordinateTransformation(inv_transform);
 		}
 
-		// Ê¹ÓÃµØÀí±ä»»²ÎÊı½«×ø±ê×ª»»ÎªÏñËØ×ø±ê
+		// ä½¿ç”¨åœ°ç†å˜æ¢å‚æ•°å°†åæ ‡è½¬æ¢ä¸ºåƒç´ åæ ‡
 		pixel_x = int((y - geo_transform[0]) / geo_transform[1]);
 		pixel_y = int((x - geo_transform[3]) / geo_transform[5]);
 
@@ -116,19 +116,19 @@ namespace WT{
 
 	int SlippyMapTiler::lat2tiley(double lat, int z)
 	{
-		double latrad = lat * M_PI / 180.0;  // ×ª»»Îª»¡¶È
+		double latrad = lat * M_PI / 180.0;  // è½¬æ¢ä¸ºå¼§åº¦
 		return (int)(floor((1.0 - asinh(tan(latrad)) / M_PI) / 2.0 * (1 << z)));
 	}
 
 	double SlippyMapTiler::tiley2lat(int y, int z)
 	{
 		double n = M_PI - 2.0 * M_PI * y / (double)(1 << z);
-		return 180.0 / M_PI * atan(0.5 * (exp(n) - exp(-n)));  // ·´Ë«ÇúÕıÇĞ¼ÆËã
+		return 180.0 / M_PI * atan(0.5 * (exp(n) - exp(-n)));   // ååŒæ›²æ­£åˆ‡è®¡ç®—
 	}
 
 	double SlippyMapTiler::mapSize(int level, int tileSize)
 	{
-		return  std::ceil(tileSize * (double)(1<<level));
+		return  std::ceil(tileSize * (double)(1 << level));
 	}
 
 	double SlippyMapTiler::groundResolution(double latitude, double level, int tileSize)
@@ -136,23 +136,23 @@ namespace WT{
 		return cos(latitude * M_PI / 180) * 2 * M_PI * EARTH_RADIUS / mapSize(level, tileSize);
 	}
 
-	int SlippyMapTiler::getProperLevel(double groundResolution,int tileSize)
+	int SlippyMapTiler::getProperLevel(double groundResolution, int tileSize)
 	{
-		const double EARTH_CIRCUMFERENCE = 40075016.686;  // µØÇò³àµÀÖÜ³¤£¨Ã×£©
+		const double EARTH_CIRCUMFERENCE = 40075016.686;  // åœ°çƒèµ¤é“å‘¨é•¿ï¼ˆç±³ï¼‰
 
-		// OSM ÔÚ zoom=0 Ê±µÄ·Ö±æÂÊ£¨Ã×/ÏñËØ£©
+		// OSM åœ¨ zoom=0 æ—¶çš„åˆ†è¾¨ç‡ï¼ˆç±³/åƒç´ ï¼‰
 		const double RESOLUTION_0 = EARTH_CIRCUMFERENCE / tileSize;
 
-		// ¼ÆËã×î¼Ñ zoom£¨ÀíÂÛÖµ¿ÉÄÜÊÇĞ¡Êı£©
+		// è®¡ç®—æœ€ä½³ zoomï¼ˆç†è®ºå€¼å¯èƒ½æ˜¯å°æ•°ï¼‰
 		double zoom = std::log2(RESOLUTION_0 / groundResolution);
 
-		// È¡Õû£¨ÏòÏÂÈ¡Õû£¬±ÜÃâ·Ö±æÂÊ¹ı¸ß£©
+		// å–æ•´ï¼ˆå‘ä¸‹å–æ•´ï¼Œé¿å…åˆ†è¾¨ç‡è¿‡é«˜ï¼‰
 		int bestZoom = static_cast<int>(std::floor(zoom));
 
 		return bestZoom;
 	}
 
-	// ´´½¨Ò»¸öÏß³Ì±¾µØµÄGDALÊı¾İ¼¯
+	// åˆ›å»ºä¸€ä¸ªçº¿ç¨‹æœ¬åœ°çš„GDALæ•°æ®é›†
 	GDALDatasetH SlippyMapTiler::create_local_dataset() {
 		std::lock_guard<std::mutex> lock(gdal_mutex);
 		return GDALOpen(options->inputFile.c_str(), GA_ReadOnly);
@@ -161,50 +161,50 @@ namespace WT{
 	bool SlippyMapTiler::generate_tile(int zoom, int tile_x, int tile_y, GDALDatasetH local_dataset)
 	{
 		try {
-			// ¼ÆËãÍßÆ¬µÄµØÀí·¶Î§£¨ÔÚWGS84×ø±êÏµÏÂ£©
+			// è®¡ç®—ç“¦ç‰‡çš„åœ°ç†èŒƒå›´ï¼ˆåœ¨WGS84åæ ‡ç³»ä¸‹ï¼‰
 			double tile_min_x, tile_min_y, tile_max_x, tile_max_y;
 			get_tile_geo_bounds(zoom, tile_x, tile_y, tile_min_x, tile_min_y, tile_max_x, tile_max_y);
 
-			// ´´½¨ÍßÆ¬Â·¾¶
+			// åˆ›å»ºç“¦ç‰‡è·¯å¾„
 			fs::path x_dir = fs::path(options->outputDir) / std::to_string(zoom) / std::to_string(tile_x);
 
-			// ¼ÆËãÍßÆ¬ÔÚÔ­Ê¼Ó°ÏñÖĞµÄÏñËØ·¶Î§
+			// è®¡ç®—ç“¦ç‰‡åœ¨åŸå§‹å½±åƒä¸­çš„åƒç´ èŒƒå›´
 			int src_min_x, src_min_y, src_max_x, src_max_y;
 			if (!geo_to_pixel(tile_min_x, tile_max_y, src_min_x, src_min_y) ||
 				!geo_to_pixel(tile_max_x, tile_min_y, src_max_x, src_max_y)) {
-				return false; // ×ø±ê×ª»»Ê§°Ü
+				return false; // åæ ‡è½¬æ¢å¤±è´¥
 			}
 
-			// ¼ÆËãÍßÆ¬±ß½çºÍÓ³Éä¹ØÏµ
+			// è®¡ç®—ç“¦ç‰‡è¾¹ç•Œå’Œæ˜ å°„å…³ç³»
 			TileBounds bounds;
 			if (!calculate_tile_bounds(src_min_x, src_min_y, src_max_x, src_max_y, bounds)) {
-				return false; // ÍßÆ¬ÍêÈ«ÔÚÓ°Ïñ·¶Î§Íâ»òÎŞĞ§
+				return false;// ç“¦ç‰‡å®Œå…¨åœ¨å½±åƒèŒƒå›´å¤–æˆ–æ— æ•ˆ
 			}
 
-			// È·±£Êä³öÄ¿Â¼´æÔÚ
+			// ç¡®ä¿è¾“å‡ºç›®å½•å­˜åœ¨
 			if (!ensure_output_directory(x_dir)) {
 				return false;
 			}
 
-			// ·ÖÅäÍêÕûÍßÆ¬´óĞ¡µÄ»º³åÇø£¨»ùÓÚÊä³ö²¨¶ÎÊı£©
-			//²ÉÓÃÕâÑùµÄ²ßÂÔ:Èç¹ûÊÇpng ÄÇÃ´Ò»¿ªÊ¼¾ÍÅäÌ×Ò»¸ö¶ÀÁ¢µÄÍ¸Ã÷²¨¶Î Èç¹ûÓĞÍ¸Ã÷ÖµÔòÎª0 ¶ÔÓ¦ÏñËØÖµ²»Îª·ÇÊı¾İÇø»òÕßnodataÇø ÔòÎª255 
-			//ÕâÑù×îºóÍ³¼ÆÖµÊÇ·ñºÍÊı¾İÏàµÈ¾ÍÄÜÅĞ¶ÏÊÇ·ñĞèÒªËü ²»ĞèÒªÔòÈ¥µô
-			//ÕâÀï×îºó½«pixelsizeºÍÊÇ·ñÓĞµ÷É«°å°ó¶¨ ÒÔÎªÓĞµ÷É«°å ÄÇÃ´Ö±½ÓÎªshort ¾ÍÎª2 ÆäËûµÄ¾ÍÊÇ°´ÕÕÕæÊµµÄÓ°ÏñÎ»Êı¼ÇÂ¼À´
-			size_t buffer_size=options->tileSize * options->tileSize * image_info.output_band_count * (image_info.has_palette ? 2: image_info.pixel_size);			
+			// åˆ†é…å®Œæ•´ç“¦ç‰‡å¤§å°çš„ç¼“å†²åŒºï¼ˆåŸºäºè¾“å‡ºæ³¢æ®µæ•°ï¼‰
+			//é‡‡ç”¨è¿™æ ·çš„ç­–ç•¥:å¦‚æœæ˜¯png é‚£ä¹ˆä¸€å¼€å§‹å°±é…å¥—ä¸€ä¸ªç‹¬ç«‹çš„é€æ˜æ³¢æ®µ å¦‚æœæœ‰é€æ˜å€¼åˆ™ä¸º0 å¯¹åº”åƒç´ å€¼ä¸ä¸ºéæ•°æ®åŒºæˆ–è€…nodataåŒº åˆ™ä¸º255 
+			//è¿™æ ·æœ€åç»Ÿè®¡å€¼æ˜¯å¦å’Œæ•°æ®ç›¸ç­‰å°±èƒ½åˆ¤æ–­æ˜¯å¦éœ€è¦å®ƒ ä¸éœ€è¦åˆ™å»æ‰
+			//è¿™é‡Œæœ€åå°†pixelsizeå’Œæ˜¯å¦æœ‰è°ƒè‰²æ¿ç»‘å®š ä»¥ä¸ºæœ‰è°ƒè‰²æ¿ é‚£ä¹ˆç›´æ¥ä¸ºshort å°±ä¸º2 å…¶ä»–çš„å°±æ˜¯æŒ‰ç…§çœŸå®çš„å½±åƒä½æ•°è®°å½•æ¥
+			size_t buffer_size = options->tileSize * options->tileSize * image_info.output_band_count * (image_info.has_palette ? 2 : image_info.pixel_size);
 			unsigned char* pData = (unsigned char*)(MemoryPool::GetInstance(this->getName())->allocate(buffer_size));
-			memset(pData , 0, buffer_size);
+			memset(pData, 0, buffer_size);
 
-			//Í¸Ã÷²¨¶ÎÖ±½ÓÉèÖÃÎª8Î»µÄ
+			//é€æ˜æ³¢æ®µç›´æ¥è®¾ç½®ä¸º8ä½çš„
 			unsigned char* pAlphaData = (unsigned char*)(MemoryPool::GetInstance(this->getName())->allocate(options->tileSize * options->tileSize));
-			memset(pAlphaData, 255, options->tileSize * options->tileSize);//·ÇÍ¸Ã÷ÇøÊı¾İÎªÖ÷ ËùÒÔÑ¡Ôñ³õÊ¼Îª255
+			memset(pAlphaData, 255, options->tileSize * options->tileSize);//éé€æ˜åŒºæ•°æ®ä¸ºä¸» æ‰€ä»¥é€‰æ‹©åˆå§‹ä¸º255
 
-			// ¸ù¾İÓ°ÏñÀàĞÍ´¦ÀíÊı¾İ
+			// æ ¹æ®å½±åƒç±»å‹å¤„ç†æ•°æ®
 			bool success;
 			if (image_info.has_palette) {
-				success = process_palette_image(local_dataset, bounds, image_info, buffer_size,pData,pAlphaData);
+				success = process_palette_image(local_dataset, bounds, image_info, buffer_size, pData, pAlphaData);
 			}
 			else {
-				success = process_regular_image(local_dataset, bounds, image_info, buffer_size,pData, pAlphaData);
+				success = process_regular_image(local_dataset, bounds, image_info, buffer_size, pData, pAlphaData);
 			}
 
 			if (!success) {
@@ -213,73 +213,73 @@ namespace WT{
 				return false;
 			}
 
-			//ÏÂÃæÀ´Ëõ·ÅÊı¾İ
+			//ä¸‹é¢æ¥ç¼©æ”¾æ•°æ®
 			unsigned char* scaledData = (unsigned char*)(MemoryPool::GetInstance(this->getName())->allocate(image_info.output_band_count * options->tileSize * options->tileSize));
 			if (image_info.data_type == GDT_Byte) {
-				memcpy(scaledData, pData, image_info.output_band_count * options->tileSize * options->tileSize); 
+				memcpy(scaledData, pData, image_info.output_band_count * options->tileSize * options->tileSize);
 			}
 			else
 			{
 				scaleDataRange(pData, scaledData, maxs, mins);
 			}
-			//Õâ¸öÊ±ºò¾Í¿ÉÒÔÊÍ·ÅpDataÁË
+			//è¿™ä¸ªæ—¶å€™å°±å¯ä»¥é‡Šæ”¾pDataäº†
 			MemoryPool::GetInstance(this->getName())->deallocate(pData, buffer_size);
 
-			unsigned char* pMergedData = nullptr;//ÔÚºÏ²¢º¯ÊıÖĞÀ´·ÖÅäÄÚ´æ
-			bool merged=mergeDataAndAlpha(scaledData, pAlphaData, pMergedData, image_info.output_band_count, options->tileSize * options->tileSize);
-			//ÊÍ·ÅpAlphaData
+			unsigned char* pMergedData = nullptr;//åœ¨åˆå¹¶å‡½æ•°ä¸­æ¥åˆ†é…å†…å­˜
+			bool merged = mergeDataAndAlpha(scaledData, pAlphaData, pMergedData, image_info.output_band_count, options->tileSize * options->tileSize);
+			//é‡Šæ”¾pAlphaData
 			MemoryPool::GetInstance(this->getName())->deallocate(pAlphaData, options->tileSize * options->tileSize);
 
-			//½«ÄÚ´æÊı¾İÌá½»¸øÊä³öÆ÷
+			//å°†å†…å­˜æ•°æ®æäº¤ç»™è¾“å‡ºå™¨
 			fs::path file = fs::path(std::to_string(zoom)) / std::to_string(tile_x) / std::to_string(tile_y);
-			IOFileInfo* oneFileInfo = nullptr;//Õâ¸öÊÍ·Å½»¸øfileIOÀ´
+			IOFileInfo* oneFileInfo = nullptr;//è¿™ä¸ªé‡Šæ”¾äº¤ç»™fileIOæ¥
 			if (!merged)
 			{
 				oneFileInfo = new IOFileInfo{ file.string(), scaledData,(size_t)image_info.output_band_count * options->tileSize * options->tileSize, this->getName() };
 			}
 			else {
 				MemoryPool::GetInstance(this->getName())->deallocate(scaledData, image_info.output_band_count * options->tileSize * options->tileSize);
-				oneFileInfo = new IOFileInfo{ file.string(), pMergedData,(size_t)(image_info.output_band_count+1) * options->tileSize * options->tileSize, this->getName() };
+				oneFileInfo = new IOFileInfo{ file.string(), pMergedData,(size_t)(image_info.output_band_count + 1) * options->tileSize * options->tileSize, this->getName() };
 			}
 			fileBatchOutputer->addFile(oneFileInfo);
 
 			return true;
 		}
 		catch (const std::exception& e) {
-			std::cerr << "ÍßÆ¬Éú³ÉÒì³£: " << e.what() << std::endl;
+			std::cerr << "ç“¦ç‰‡ç”Ÿæˆå¼‚å¸¸: " << e.what() << std::endl;
 			return false;
 		}
 	}
 
 	bool SlippyMapTiler::mergeDataAndAlpha(unsigned char* pData, unsigned char* alphaData, unsigned char*& finalData, int bandCount, int pixelCount) {
-		if (options->outputFormat==IMAGEFORMAT::JPG)
-		{//Èç¹ûÊÇjpgÖ±½Ó·µ»Ø
+		if (options->outputFormat == IMAGEFORMAT::JPG)
+		{//å¦‚æœæ˜¯jpgç›´æ¥è¿”å›
 			return false;
 		}
-		
-		//ÏÈÅĞ¶ÏÊÇalphaÍ¼²ãÊÇ·ñĞèÒª±£Áô
+
+		//å…ˆåˆ¤æ–­æ˜¯alphaå›¾å±‚æ˜¯å¦éœ€è¦ä¿ç•™
 		bool needAlpha = false;
 		::tbb::task_group_context context;
 		::tbb::parallel_for(0, pixelCount, 1, [&](int i) {
-			if (*(alphaData+i)==0)
+			if (*(alphaData + i) == 0)
 			{
 				context.cancel_group_execution();
 				needAlpha = true;
 				return;
 			}
-		},context);
-		//Èç¹ûĞèÒªÍ¸Ã÷Í¨µÀ ÄÇÃ´¾ÍºÏ²¢
+			}, context);
+		//å¦‚æœéœ€è¦é€æ˜é€šé“ é‚£ä¹ˆå°±åˆå¹¶
 		if (needAlpha)
 		{
-			finalData = (unsigned char*)(MemoryPool::GetInstance(this->getName())->allocate((bandCount+1)*pixelCount));
+			finalData = (unsigned char*)(MemoryPool::GetInstance(this->getName())->allocate((bandCount + 1) * pixelCount));
 			//memset(finalData, 255, (bandCount + 1) * pixelCount);
 			if (!finalData) {
 				return false;
 			}
 
-			::tbb::parallel_for(::tbb::blocked_range<int>(0,pixelCount),
-				[&](const ::tbb::blocked_range<int> range){
-					for (int i = range.begin(); i !=range.end(); ++i)
+			::tbb::parallel_for(::tbb::blocked_range<int>(0, pixelCount),
+				[&](const ::tbb::blocked_range<int> range) {
+					for (int i = range.begin(); i != range.end(); ++i)
 					{
 						int disIndex = (bandCount + 1) * i;
 						int srcIndex = bandCount * i;
@@ -294,59 +294,50 @@ namespace WT{
 		return false;
 	}
 
-	// Ôö¼ÓÒ»¸öÏß³Ì°²È«µÄ½ø¶È¸üĞÂº¯Êı
-	void SlippyMapTiler::update_progress(int zoom, int tile_x, int tile_y, int total_tiles, std::shared_ptr<IProgressInfo> progressInfo) {
-		int current = ++total_tiles_processed;
-		int temp = std::max(1,total_tiles / 100);
-		if (current % temp == 0 || current == total_tiles) {
-			std::lock_guard<std::mutex> lock(progress_mutex);
-			progressInfo->showProgress(current, "", "");
-		}
-	}
 
 	bool SlippyMapTiler::calculate_tile_bounds(int src_min_x, int src_min_y, int src_max_x, int src_max_y, TileBounds& bounds)
 	{
-		// ¼ì²éÍßÆ¬ÊÇ·ñÍêÈ«ÔÚÓ°Ïñ·¶Î§Íâ
+		// æ£€æŸ¥ç“¦ç‰‡æ˜¯å¦å®Œå…¨åœ¨å½±åƒèŒƒå›´å¤–
 		if (src_max_x < 0 || src_min_x >= img_width ||
 			src_max_y < 0 || src_min_y >= img_height) {
 			return false;
 		}
 
-		// ³õÊ¼»¯Ä¿±êÍßÆ¬±ß½ç
+		// åˆå§‹åŒ–ç›®æ ‡ç“¦ç‰‡è¾¹ç•Œ
 		bounds.dst_min_x = 0;
 		bounds.dst_min_y = 0;
 		bounds.dst_max_x = options->tileSize - 1;
 		bounds.dst_max_y = options->tileSize - 1;
 
-		// ¼ÆËãÄ¿±êÍßÆ¬ÖĞĞèÒªÌî³äÊı¾İµÄÇøÓò
+		// è®¡ç®—ç›®æ ‡ç“¦ç‰‡ä¸­éœ€è¦å¡«å……æ•°æ®çš„åŒºåŸŸ
 		if (src_min_x < 0) {
-			// ×ó±ß³¬³ö£¬¼ÆËãÄ¿±êÇøÓòµÄ×ó±ß½ç
+			// å·¦è¾¹è¶…å‡ºï¼Œè®¡ç®—ç›®æ ‡åŒºåŸŸçš„å·¦è¾¹ç•Œ
 			double ratio = (double)(-src_min_x) / (src_max_x - src_min_x);
 			bounds.dst_min_x = (int)(ratio * options->tileSize);
 		}
 		if (src_min_y < 0) {
-			// ÉÏ±ß³¬³ö£¬¼ÆËãÄ¿±êÇøÓòµÄÉÏ±ß½ç
+			// ä¸Šè¾¹è¶…å‡ºï¼Œè®¡ç®—ç›®æ ‡åŒºåŸŸçš„ä¸Šè¾¹ç•Œ
 			double ratio = (double)(-src_min_y) / (src_max_y - src_min_y);
 			bounds.dst_min_y = (int)(ratio * options->tileSize);
 		}
 		if (src_max_x >= img_width) {
-			// ÓÒ±ß³¬³ö£¬¼ÆËãÄ¿±êÇøÓòµÄÓÒ±ß½ç
+			// å³è¾¹è¶…å‡ºï¼Œè®¡ç®—ç›®æ ‡åŒºåŸŸçš„å³è¾¹ç•Œ
 			double ratio = (double)(img_width - 1 - src_min_x) / (src_max_x - src_min_x);
 			bounds.dst_max_x = (int)(ratio * options->tileSize);
 		}
 		if (src_max_y >= img_height) {
-			// ÏÂ±ß³¬³ö£¬¼ÆËãÄ¿±êÇøÓòµÄÏÂ±ß½ç
+			// ä¸‹è¾¹è¶…å‡ºï¼Œè®¡ç®—ç›®æ ‡åŒºåŸŸçš„ä¸‹è¾¹ç•Œ
 			double ratio = (double)(img_height - 1 - src_min_y) / (src_max_y - src_min_y);
 			bounds.dst_max_y = (int)(ratio * options->tileSize);
 		}
 
-		// ²Ã¼ôÔ´Êı¾İ·¶Î§µ½Ó°Ïñ±ß½çÄÚ
+		// è£å‰ªæºæ•°æ®èŒƒå›´åˆ°å½±åƒè¾¹ç•Œå†…
 		bounds.clipped_src_min_x = std::max(0, src_min_x);
 		bounds.clipped_src_min_y = std::max(0, src_min_y);
 		bounds.clipped_src_max_x = std::min(img_width - 1, src_max_x);
 		bounds.clipped_src_max_y = std::min(img_height - 1, src_max_y);
 
-		// ¼ÆËãÊµ¼ÊĞèÒª¶ÁÈ¡ºÍÄ¿±êµÄÊı¾İ´óĞ¡
+		// è®¡ç®—å®é™…éœ€è¦è¯»å–å’Œç›®æ ‡çš„æ•°æ®å¤§å°
 		bounds.read_width = bounds.clipped_src_max_x - bounds.clipped_src_min_x + 1;
 		bounds.read_height = bounds.clipped_src_max_y - bounds.clipped_src_min_y + 1;
 		bounds.dst_width = bounds.dst_max_x - bounds.dst_min_x + 1;
@@ -359,60 +350,60 @@ namespace WT{
 	{
 		ImageInfo info;
 
-		// ¼ì²éÊÇ·ñÎª´øµ÷É«°åµÄµ¥²¨¶ÎÓ°Ïñ
+		// æ£€æŸ¥æ˜¯å¦ä¸ºå¸¦è°ƒè‰²æ¿çš„å•æ³¢æ®µå½±åƒ
 		GDALRasterBandH first_band = GDALGetRasterBand(dataset, 1);
 		info.color_table = GDALGetRasterColorTable(first_band);
 		info.has_palette = (band_count == 1 && info.color_table != nullptr);
 
-		//¼ÆËãÊµ¼ÊµÄ²¨¶ÎÊı
+		//è®¡ç®—å®é™…çš„æ³¢æ®µæ•°
 		if (info.has_palette) {
 			GDALPaletteInterp paleteInterp = GDALGetPaletteInterpretation(dataset);
 
 			switch (paleteInterp)
 			{
-				/*! Grayscale (in GDALColorEntry.c1) */ 
-				case GPI_Gray: {
-					info.output_band_count = 1;
-					break;
-				}
-				/*! Red, Green, Blue and Alpha in (in c1, c2, c3 and c4) */ 
-				case GPI_RGB: {
-					info.output_band_count = 3;
-					break;
-				}
-				/*! Cyan, Magenta, Yellow and Black (in c1, c2, c3 and c4)*/ 
-				case GPI_CMYK: {
-					info.output_band_count = 4;
-					break;
-				}
-				/*! Hue, Lightness and Saturation (in c1, c2, and c3) */ 
-				case GPI_HLS: {
-					info.output_band_count = 3;
-					break;
+				/*! Grayscale (in GDALColorEntry.c1) */
+			case GPI_Gray: {
+				info.output_band_count = 1;
+				break;
+			}
+						 /*! Red, Green, Blue and Alpha in (in c1, c2, c3 and c4) */
+			case GPI_RGB: {
+				info.output_band_count = 3;
+				break;
+			}
+						/*! Cyan, Magenta, Yellow and Black (in c1, c2, c3 and c4)*/
+			case GPI_CMYK: {
+				info.output_band_count = 4;
+				break;
+			}
+						 /*! Hue, Lightness and Saturation (in c1, c2, and c3) */
+			case GPI_HLS: {
+				info.output_band_count = 3;
+				break;
 
-				}
-				default: {
-					// ¶ÔÓÚÎ´Öª¸ñÊ½£¬¿ÉÒÔÍ¨¹ı¼ì²éµ÷É«°åÌõÄ¿µÄalphaÖµÀ´ÅĞ¶Ï
-					// Èç¹ûËùÓĞÌõÄ¿µÄalpha¶¼ÊÇ255£¬ÔòÎªRGB£¬·ñÔòÎªRGBA
-					int entry_count = GDALGetColorEntryCount(info.color_table);
-					bool has_alpha = false;
-					for (int i = 0; i < entry_count; i++) {
-						const GDALColorEntry* entry = GDALGetColorEntry(info.color_table, i);
-						if (entry && entry->c4 != 255) {  // c4ÊÇalphaÍ¨µÀ
-							has_alpha = true;
-							break;
-						}
+			}
+			default: {
+				// å¯¹äºæœªçŸ¥æ ¼å¼ï¼Œå¯ä»¥é€šè¿‡æ£€æŸ¥è°ƒè‰²æ¿æ¡ç›®çš„alphaå€¼æ¥åˆ¤æ–­
+				// å¦‚æœæ‰€æœ‰æ¡ç›®çš„alphaéƒ½æ˜¯255ï¼Œåˆ™ä¸ºRGBï¼Œå¦åˆ™ä¸ºRGBA
+				int entry_count = GDALGetColorEntryCount(info.color_table);
+				bool has_alpha = false;
+				for (int i = 0; i < entry_count; i++) {
+					const GDALColorEntry* entry = GDALGetColorEntry(info.color_table, i);
+					if (entry && entry->c4 != 255) {  // c4??alpha???
+						has_alpha = true;
+						break;
 					}
-					info.output_band_count = has_alpha ? 4 : 3;  // RGBA»òRGB
-					break;
 				}
+				info.output_band_count = has_alpha ? 4 : 3;  // RGBA??RGB
+				break;
+			}
 			}
 		}
 		else {
 			info.output_band_count = band_count;
 		}
 
-		// ¼ÆËãÏñËØ´óĞ¡
+		// è®¡ç®—åƒç´ å¤§å°
 		info.data_type = info.has_palette ? GDALDataType::GDT_Int16 : data_type;
 		info.pixel_size = GDALGetDataTypeSizeBytes(data_type);
 		return info;
@@ -421,14 +412,14 @@ namespace WT{
 	bool SlippyMapTiler::process_palette_image(GDALDatasetH dataset, const TileBounds& bounds, const ImageInfo& info
 		, size_t dataBufferSize, unsigned char* output_buffer, unsigned char* alphaBuffer)
 	{
-		// ·ÖÅäÁÙÊ±»º³åÇøÓÃÓÚ¶ÁÈ¡Ô­Ê¼Ë÷ÒıÊı¾İ
+		// åˆ†é…ä¸´æ—¶ç¼“å†²åŒºç”¨äºè¯»å–åŸå§‹ç´¢å¼•æ•°æ®
 		size_t temp_buffer_size = bounds.dst_width * bounds.dst_height * info.pixel_size;
 		unsigned char* temp_buffer = (unsigned char*)malloc(temp_buffer_size);
 		if (!temp_buffer) {
 			return false;
 		}
 
-		// ¶ÁÈ¡Ë÷ÒıÊı¾İ
+		// è¯»å–ç´¢å¼•æ•°æ®
 		CPLErr err;
 		{
 			std::lock_guard lock(gdal_mutex);
@@ -436,7 +427,7 @@ namespace WT{
 				dataset, GF_Read,
 				bounds.clipped_src_min_x, bounds.clipped_src_min_y, bounds.read_width, bounds.read_height,
 				temp_buffer, bounds.dst_width, bounds.dst_height,
-				data_type, 1, nullptr,  // Ö»¶ÁÈ¡Ò»¸ö²¨¶Î
+				data_type, 1, nullptr,  // åªè¯»å–ä¸€ä¸ªæ³¢æ®µ
 				info.pixel_size, bounds.dst_width * info.pixel_size, 1
 			);
 		}
@@ -446,8 +437,8 @@ namespace WT{
 			return false;
 		}
 
-		//ÏÈĞŞ¸ÄnodataÖµ
-		if (options->outputFormat==IMAGEFORMAT::PNG&&(bounds.dst_height != options->tileSize || bounds.dst_width != options->tileSize)) {
+		//å…ˆä¿®æ”¹nodataå€¼
+		if (options->outputFormat == IMAGEFORMAT::PNG && (bounds.dst_height != options->tileSize || bounds.dst_width != options->tileSize)) {
 			memset(alphaBuffer, 0, options->tileSize * options->tileSize);
 			::tbb::parallel_for(
 				::tbb::blocked_range2d<int>(bounds.dst_min_y, bounds.dst_max_y + 1, bounds.dst_min_x, bounds.dst_max_x + 1),
@@ -461,12 +452,12 @@ namespace WT{
 					}
 				}
 			);
-		}			
+		}
 
-		// »ñÈ¡µ÷É«°åÌõÄ¿Êı
+		// è·å–è°ƒè‰²æ¿æ¡ç›®æ•°
 		int palette_count = GDALGetColorEntryCount(info.color_table);
 
-		// Ê¹ÓÃTBB²¢ĞĞ´¦ÀíÏñËØ×ª»»
+		// ä½¿ç”¨TBBå¹¶è¡Œå¤„ç†åƒç´ è½¬æ¢
 		::tbb::parallel_for(
 			::tbb::blocked_range2d<int>(0, bounds.dst_height, 0, bounds.dst_width),
 			[&](const ::tbb::blocked_range2d<int>& range) {
@@ -475,7 +466,7 @@ namespace WT{
 					for (int x = range.cols().begin(); x != range.cols().end(); ++x) {
 						int dst_x = bounds.dst_min_x + x;
 
-						// »ñÈ¡Ë÷ÒıÖµ
+						// è·å–ç´¢å¼•å€¼
 						int index;
 						if (info.pixel_size == 1) {
 							index = temp_buffer[y * bounds.dst_width + x];
@@ -487,30 +478,30 @@ namespace WT{
 							index = ((unsigned int*)temp_buffer)[y * bounds.dst_width + x];
 						}
 
-						// »ñÈ¡¶ÔÓ¦µÄRGBÖµ
-						GDALColorEntry color_entry { 0.0,0.0,0.0,0.0 };
+						// è®¡ç®—ç›®æ ‡ä½ç½®çš„ç´¢å¼•
+						GDALColorEntry color_entry{ 0.0,0.0,0.0,0.0 };
 						if (index >= 0 && index < palette_count) {
 							GDALGetColorEntryAsRGB(info.color_table, index, &color_entry);
 						}
 
-						// ¼ÆËãÄ¿±êÎ»ÖÃµÄË÷Òı
-						size_t dst_idx = (dst_y * options->tileSize + dst_x) * image_info.output_band_count * 2;//ÕâÀïÖ±½ÓÉèÖÃÎª2 ÒòÎªÎªshort
+						// è®¡ç®—ç›®æ ‡ä½ç½®çš„ç´¢å¼•
+						size_t dst_idx = (dst_y * options->tileSize + dst_x) * image_info.output_band_count * 2;//????????????2 ????short
 
-						// Ğ´ÈëRGBÖµ ÕâÀïÎÒÃÇÔİÊ±ÈÏÎªÃ»ÓĞÍ¸Ã÷É«
-						output_buffer[dst_idx] = color_entry.c1+1;     // R ²»ÖªµÀÎªºÎĞèÒª¶à¼Ó1²ÅÄÜºÍarcgisÖĞ¿´µ½µÄÒ»ÖÂ
-						if (image_info.output_band_count==3)
+						// å†™å…¥RGBå€¼ è¿™é‡Œæˆ‘ä»¬æš‚æ—¶è®¤ä¸ºæ²¡æœ‰é€æ˜è‰²
+						output_buffer[dst_idx] = color_entry.c1 + 1;     // R ä¸çŸ¥é“ä¸ºä½•éœ€è¦å¤šåŠ 1æ‰èƒ½å’Œarcgisä¸­çœ‹åˆ°çš„ä¸€è‡´
+						if (image_info.output_band_count == 3)
 						{
 							output_buffer[dst_idx + 2] = color_entry.c2 + 1; // G
 							output_buffer[dst_idx + 4] = color_entry.c3 + 1; // B
 						}
-						//ÉèÖÃÍ¸Ã÷¶ÈÎÊÌâ
-						if (!options->nodata.empty()&&options->outputFormat==IMAGEFORMAT::PNG)
+						//è®¾ç½®é€æ˜åº¦é—®é¢˜
+						if (!options->nodata.empty() && options->outputFormat == IMAGEFORMAT::PNG)
 						{
 							bool noData = true;
 							for (int i = 0; i < image_info.output_band_count; ++i)
 							{
-								//Èç¹ûÓĞÒ»¸öÊı×Ö²»ÏàµÈ ¾Í²»ÊÇnodata
-								if (options->nodata[i] != output_buffer[dst_idx+i*2]) {
+								//å¦‚æœæœ‰ä¸€ä¸ªæ•°å­—ä¸ç›¸ç­‰ å°±ä¸æ˜¯nodata
+								if (options->nodata[i] != output_buffer[dst_idx + i * 2]) {
 									noData = false;
 									break;
 								}
@@ -520,24 +511,24 @@ namespace WT{
 								alphaBuffer[dst_y * options->tileSize + dst_x] = 0;
 							}
 						}
-						
+
 					}
 				}
 			}
 		);
 
-		// ÊÍ·ÅÁÙÊ±»º³åÇø
+		// é‡Šæ”¾ä¸´æ—¶ç¼“å†²åŒº
 		free(temp_buffer);
 		return true;
 	}
 
 	bool SlippyMapTiler::process_regular_image(GDALDatasetH dataset, const TileBounds& bounds, const ImageInfo& info
-		,size_t dataBufferSize, unsigned char* output_buffer, unsigned char* alphaBuffer)
+		, size_t dataBufferSize, unsigned char* output_buffer, unsigned char* alphaBuffer)
 	{
-		//ÕâÀï·ÖÁ½ÖÖÇé¿ö Ò»ÖÖÊÇÍßÆ¬ÍêÈ«ÔÚÓ°Ïñ·¶Î§ÄÚ Ö±½Ó¶ÁÈ¡¾ÍºÃÁË Ò»ÖÖ²»ÔÚ·¶Î§ÄÚ ĞèÒª¶ÁÈ¡Ò»²¿·ÖÔÙ·Åµ½Ô­ÓĞµÄÊı¾İ·¶Î§ÄÚ ÕâÀïÎªÁË±ÜÃâ¶àÓàµÄ¿½±´ Ğ´µ½²»Í¬µÄÑ¡Ïî·ÖÖ§ÖĞ
-		if (bounds.dst_height==options->tileSize&&bounds.dst_width==options->tileSize)
+		//è¿™é‡Œåˆ†ä¸¤ç§æƒ…å†µ ä¸€ç§æ˜¯ç“¦ç‰‡å®Œå…¨åœ¨å½±åƒèŒƒå›´å†… ç›´æ¥è¯»å–å°±å¥½äº† ä¸€ç§ä¸åœ¨èŒƒå›´å†… éœ€è¦è¯»å–ä¸€éƒ¨åˆ†å†æ”¾åˆ°åŸæœ‰çš„æ•°æ®èŒƒå›´å†… è¿™é‡Œä¸ºäº†é¿å…å¤šä½™çš„æ‹·è´ å†™åˆ°ä¸åŒçš„é€‰é¡¹åˆ†æ”¯ä¸­
+		if (bounds.dst_height == options->tileSize && bounds.dst_width == options->tileSize)
 		{
-			//Ö±½Ó¶ÁÈ¡
+			//ç›´æ¥è¯»å–
 			CPLErr err;
 			{
 				std::lock_guard lock(gdal_mutex);
@@ -555,9 +546,9 @@ namespace WT{
 				return false;
 			}
 
-			//¼ì²éÊÇ·ñÎªÍ¸Ã÷
-			//¶ÁÈ¡ºóĞèÒªÅĞ¶ÏºÍnodataµÄÖµµÄ¹ØÏµ
-			if (options->outputFormat==IMAGEFORMAT::PNG&&!options->nodata.empty())
+			//æ£€æŸ¥æ˜¯å¦ä¸ºé€æ˜
+			//è¯»å–åéœ€è¦åˆ¤æ–­å’Œnodataçš„å€¼çš„å…³ç³»
+			if (options->outputFormat == IMAGEFORMAT::PNG && !options->nodata.empty())
 			{
 				::tbb::parallel_for(
 					::tbb::blocked_range2d<int>(0, bounds.dst_height, 0, bounds.dst_width),
@@ -566,9 +557,9 @@ namespace WT{
 							int dst_y = bounds.dst_min_y + y;
 							for (int x = range.cols().begin(); x != range.cols().end(); ++x) {
 								int dst_x = bounds.dst_min_x + x;
-								size_t alpha_idx = (dst_y * options->tileSize + dst_x);//1¸ö²¨¶Î
+								size_t alpha_idx = (dst_y * options->tileSize + dst_x);//1??????
 								size_t dst_idx = alpha_idx * band_count * info.pixel_size;
-								//²¢ÉèÖÃÖµ¶à¸ö²¨¶ÎºÍnodataÒ»ÖÂĞÔµÄÎ»ÖÃÎª0
+								//å¹¶è®¾ç½®å€¼å¤šä¸ªæ³¢æ®µå’Œnodataä¸€è‡´æ€§çš„ä½ç½®ä¸º0
 								if (checkNodata(output_buffer, dst_idx, info.pixel_size, band_count))
 								{
 									*(alphaBuffer + alpha_idx) = 0;
@@ -580,14 +571,14 @@ namespace WT{
 			}
 		}
 		else {
-			//´æÔÚ·ÇÊı¾İ·¶Î§ÇøµÄ ÄÇÃ´·ÇÊı¾İ·¶Î§ÇøµÄÍ¸Ã÷¶È¾ÍÎª0 ÎªÁË·½±ã Ö±½Ó½«Õâ¸öÈ«²¿ÉèÖÃÎª0 ÔÙÀ´¸÷¸ö×ªÎª255
-			memset(alphaBuffer, 0, dataBufferSize/(image_info.output_band_count*image_info.pixel_size));
+			//å­˜åœ¨éæ•°æ®èŒƒå›´åŒºçš„ é‚£ä¹ˆéæ•°æ®èŒƒå›´åŒºçš„é€æ˜åº¦å°±ä¸º0 ä¸ºäº†æ–¹ä¾¿ ç›´æ¥å°†è¿™ä¸ªå…¨éƒ¨è®¾ç½®ä¸º0 å†æ¥å„ä¸ªè½¬ä¸º255
+			memset(alphaBuffer, 0, dataBufferSize / (image_info.output_band_count * image_info.pixel_size));
 			::tbb::parallel_for(
-				::tbb::blocked_range2d<int>(bounds.dst_min_y, bounds.dst_max_y+1, bounds.dst_min_x, bounds.dst_max_x+1),
+				::tbb::blocked_range2d<int>(bounds.dst_min_y, bounds.dst_max_y + 1, bounds.dst_min_x, bounds.dst_max_x + 1),
 				[&](const ::tbb::blocked_range2d<int>& range) {
-					for (int y=range.rows().begin();y!=range.rows().end();++y)
+					for (int y = range.rows().begin(); y != range.rows().end(); ++y)
 					{
-						for (int x=range.cols().begin();x!=range.cols().end();++x)
+						for (int x = range.cols().begin(); x != range.cols().end(); ++x)
 						{
 							*(alphaBuffer + y * options->tileSize + x) = 255;
 						}
@@ -595,15 +586,15 @@ namespace WT{
 				}
 			);
 
-			// ·ÖÅäÁÙÊ±»º³åÇøÓÃÓÚ¶ÁÈ¡Êµ¼ÊÊı¾İ
+			// åˆ†é…ä¸´æ—¶ç¼“å†²åŒºç”¨äºè¯»å–å®é™…æ•°æ®
 			size_t temp_buffer_size = bounds.dst_width * bounds.dst_height * band_count * info.pixel_size;
 			unsigned char* temp_buffer = (unsigned char*)(MemoryPool::GetInstance(this->getName())->allocate(temp_buffer_size));
 			if (!temp_buffer) {
 				return false;
 			}
-			// ³õÊ¼»¯ÁÙÊ±»º³åÇø
+			// åˆå§‹åŒ–ä¸´æ—¶ç¼“å†²åŒº
 			memset(temp_buffer, 0, temp_buffer_size);
-			
+
 			CPLErr err;
 			{
 				std::lock_guard lock(gdal_mutex);
@@ -617,11 +608,11 @@ namespace WT{
 			}
 
 			if (err != CE_None) {
-				MemoryPool::GetInstance(this->getName())->deallocate(temp_buffer,temp_buffer_size);
+				MemoryPool::GetInstance(this->getName())->deallocate(temp_buffer, temp_buffer_size);
 				return false;
 			}
 
-			//¶ÁÈ¡ºóĞèÒªÅĞ¶ÏºÍnodataµÄÖµµÄ¹ØÏµ
+			//è¯»å–åéœ€è¦åˆ¤æ–­å’Œnodataçš„å€¼çš„å…³ç³»
 			::tbb::parallel_for(
 				::tbb::blocked_range2d<int>(0, bounds.dst_height, 0, bounds.dst_width),
 				[&](const ::tbb::blocked_range2d<int>& range) {
@@ -629,14 +620,14 @@ namespace WT{
 						int dst_y = bounds.dst_min_y + y;
 						for (int x = range.cols().begin(); x != range.cols().end(); ++x) {
 							int dst_x = bounds.dst_min_x + x;
-							// ¼ÆËãÔ´ºÍÄ¿±êÎ»ÖÃµÄË÷Òı
+							// è®¡ç®—æºå’Œç›®æ ‡ä½ç½®çš„ç´¢å¼•
 							size_t src_idx = (y * bounds.dst_width + x) * band_count * info.pixel_size;
-							size_t alpha_idx= (dst_y * options->tileSize + dst_x) ;//1¸ö8Î»²¨¶Î
+							size_t alpha_idx = (dst_y * options->tileSize + dst_x);//1ä¸ª8ä½æ³¢æ®µ
 							size_t dst_idx = alpha_idx * band_count * info.pixel_size;
-							// ¸´ÖÆÏñËØÊı¾İ
+							// å¤åˆ¶åƒç´ æ•°æ®
 							memcpy(output_buffer + dst_idx, temp_buffer + src_idx, band_count * info.pixel_size);
-							//²¢ÉèÖÃÖµ¶à¸ö²¨¶ÎºÍnodataÒ»ÖÂĞÔµÄÎ»ÖÃÎª0
-							if (options->outputFormat == IMAGEFORMAT::PNG&&!options->nodata.empty() && checkNodata(output_buffer, dst_idx, info.pixel_size, band_count))
+							//å¹¶è®¾ç½®å€¼å¤šä¸ªæ³¢æ®µå’Œnodataä¸€è‡´æ€§çš„ä½ç½®ä¸º0
+							if (options->outputFormat == IMAGEFORMAT::PNG && !options->nodata.empty() && checkNodata(output_buffer, dst_idx, info.pixel_size, band_count))
 							{
 								*(alphaBuffer + alpha_idx) = 0;
 							}
@@ -644,7 +635,7 @@ namespace WT{
 					}
 				}
 			);
-			// ÊÍ·ÅÁÙÊ±»º³åÇø
+			// é‡Šæ”¾ä¸´æ—¶ç¼“å†²åŒº
 			MemoryPool::GetInstance(this->getName())->deallocate(temp_buffer, temp_buffer_size);
 		}
 		return true;
@@ -659,7 +650,7 @@ namespace WT{
 				return true;
 			}
 			catch (const std::exception& e) {
-				std::cerr << "´´½¨Ä¿Â¼Ê§°Ü: " << e.what() << std::endl;
+				std::cerr << "åˆ›å»ºç›®å½•å¤±è´¥: " << e.what() << std::endl;
 				return false;
 			}
 		}
@@ -668,28 +659,26 @@ namespace WT{
 
 	void SlippyMapTiler::process_zoom_level(int zoom, std::shared_ptr<IProgressInfo> progressInfo)
 	{
-		std::cout << "\n´¦ÀíËõ·Å¼¶±ğ: " << zoom << std::endl;
+		std::cout << "\nå¤„ç†ç¼©æ”¾çº§åˆ«: " << zoom << std::endl;
 
-		// ¼ÆËã¸Ã¼¶±ğµÄÍßÆ¬·¶Î§
+		// è®¡ç®—è¯¥çº§åˆ«çš„ç“¦ç‰‡èŒƒå›´
 		int min_tile_x, min_tile_y, max_tile_x, max_tile_y;
 		get_tile_range(zoom, min_tile_x, min_tile_y, max_tile_x, max_tile_y);
 
-		// È·±£Êä³öÄ¿Â¼´æÔÚ
+		// ç¡®ä¿è¾“å‡ºç›®å½•å­˜åœ¨
 		create_directories(zoom);
 
-		// ¼ÆËã×Ü¹²ĞèÒª´¦ÀíµÄÍßÆ¬ÊıÁ¿
+		// è®¡ç®—æ€»å…±éœ€è¦å¤„ç†çš„ç“¦ç‰‡æ•°é‡
 		int tiles_wide = max_tile_x - min_tile_x + 1;
 		int tiles_high = max_tile_y - min_tile_y + 1;
 		int total_tiles = tiles_wide * tiles_high;
 
-		std::cout << "ÍßÆ¬·¶Î§: X=" << min_tile_x << "-" << max_tile_x
+		std::cout << "ç“¦ç‰‡èŒƒå›´: X=" << min_tile_x << "-" << max_tile_x
 			<< ", Y=" << min_tile_y << "-" << max_tile_y
-			<< " (×Ü¼Æ " << total_tiles << " ¸öÍßÆ¬)" << std::endl;
+			<< " (æ€»è®¡ " << total_tiles << " ä¸ªç“¦ç‰‡)" << std::endl;
 
-		// ÖØÖÃ¼ÆÊıÆ÷
-		//total_tiles_processed = 0;
 
-		// Ê¹ÓÃÏß³Ì±¾µØ´æ´¢´¦ÀíDataset
+		// ä½¿ç”¨çº¿ç¨‹æœ¬åœ°å­˜å‚¨å¤„ç†Dataset
 		struct ThreadLocalData {
 			GDALDatasetH local_dataset;
 			ThreadLocalData() : local_dataset(nullptr) {}
@@ -702,116 +691,127 @@ namespace WT{
 
 		::tbb::enumerable_thread_specific<ThreadLocalData> tls_data;
 
-		// Ê¹ÓÃTBB²¢ĞĞ´¦Àí
-		::tbb::parallel_for(
-			::tbb::blocked_range2d<int, int>(min_tile_y, max_tile_y + 1, min_tile_x, max_tile_x + 1),
-			[this, zoom, total_tiles, &progressInfo, &tls_data](const ::tbb::blocked_range2d<int, int>& r) {
-				// »ñÈ¡Ïß³Ì±¾µØ´æ´¢
-				ThreadLocalData& local_data = tls_data.local();
+		// ä½¿ç”¨TBBå¹¶è¡Œå¤„ç†
+		try
+		{
+			::tbb::parallel_for(
+				::tbb::blocked_range2d<int, int>(min_tile_y, max_tile_y + 1, min_tile_x, max_tile_x + 1),
+				[this, zoom, total_tiles, &progressInfo, &tls_data](const ::tbb::blocked_range2d<int, int>& r) {
+					// è·å–çº¿ç¨‹æœ¬åœ°å­˜å‚¨
+					ThreadLocalData& local_data = tls_data.local();
 
-				// ÀÁ³õÊ¼»¯±¾µØÊı¾İ¼¯
-				if (!local_data.local_dataset) {
-					local_data.local_dataset = this->create_local_dataset();
+					// æ‡’åˆå§‹åŒ–æœ¬åœ°æ•°æ®é›†
 					if (!local_data.local_dataset) {
-						std::cerr << "ÎŞ·¨´´½¨Ïß³Ì±¾µØÊı¾İ¼¯" << std::endl;
-						return;
-					}
-				}
-
-				for (int tile_y = r.rows().begin(); tile_y != r.rows().end(); ++tile_y) {
-					for (int tile_x = r.cols().begin(); tile_x != r.cols().end(); ++tile_x) {
-						// Ê¹ÓÃÏß³Ì±¾µØÊı¾İ¼¯Éú³ÉÍßÆ¬
-						if (generate_tile(zoom, tile_x, tile_y, local_data.local_dataset)) {
-							// ¸üĞÂ½ø¶È
-							update_progress(zoom, tile_x, tile_y, total_tiles, progressInfo);
+						local_data.local_dataset = this->create_local_dataset();
+						if (!local_data.local_dataset) {
+							std::cerr << "æ— æ³•åˆ›å»ºçº¿ç¨‹æœ¬åœ°æ•°æ®é›†" << std::endl;
+							return;
 						}
 					}
-				}
-			}
-		);
+
+					for (int tile_y = r.rows().begin(); tile_y != r.rows().end(); ++tile_y) {
+						for (int tile_x = r.cols().begin(); tile_x != r.cols().end(); ++tile_x) {
+							if (progressInfo->isCanceled()) {
+								return;
+							}
+
+							// ä½¿ç”¨çº¿ç¨‹æœ¬åœ°æ•°æ®é›†ç”Ÿæˆç“¦ç‰‡
+							if (generate_tile(zoom, tile_x, tile_y, local_data.local_dataset)) {
+								progressInfo->addProgress(1, "", "");
+							}
+						}
+					}
+				},progressInfo->getContext()
+			);
+		}
+		catch (const std::exception&)
+		{
+			std::cout << "ç“¦ç‰‡ç”Ÿæˆçº¿ç¨‹ç»“æŸ..." << std::endl;
+		}
+
 		std::cout << std::endl;
 	}
 
 	bool SlippyMapTiler::initialize()
 	{
-		// ×¢²áGDALÇı¶¯
+		// æ³¨å†ŒGDALé©±åŠ¨
 		GDALAllRegister();
 
-		// ÉèÖÃÏß³ÌÊıÁ¿
+		// è®¾ç½®çº¿ç¨‹æ•°é‡
 		if (options->numThreads > 0) {
-			std::cout << "ÉèÖÃÏß³ÌÊıÁ¿: " << options->numThreads << std::endl;
+			std::cout << "è®¾ç½®çº¿ç¨‹æ•°é‡: " << options->numThreads << std::endl;
 			::tbb::global_control global_limit(::tbb::global_control::max_allowed_parallelism, options->numThreads);
 		}
 
-		// ´ò¿ªÊı¾İ¼¯
+		// æ‰“å¼€æ•°æ®é›†
 		GDALOpenInfo* poOpenInfo = new GDALOpenInfo(options->inputFile.c_str(), GA_ReadOnly);
 
-		// ¼ì²éÊÇ·ñÊÇGDALÖ§³ÖµÄ¸ñÊ½
+		// æ£€æŸ¥æ˜¯å¦æ˜¯GDALæ”¯æŒçš„æ ¼å¼
 		if (!GDALIdentifyDriver(poOpenInfo->pszFilename, nullptr)) {
-			std::cerr << "ÎŞ·¨Ê¶±ğÊäÈëÎÄ¼ş¸ñÊ½: " << options->inputFile << std::endl;
+			std::cerr << "æ— æ³•è¯†åˆ«è¾“å…¥æ–‡ä»¶æ ¼å¼: " << options->inputFile << std::endl;
 			delete poOpenInfo;
 			return false;
 		}
 
-		dataset = GDALOpen(options->inputFile.c_str(), GA_ReadOnly);		
+		dataset = GDALOpen(options->inputFile.c_str(), GA_ReadOnly);
 
 		if (!dataset) {
-			std::cerr << "ÎŞ·¨´ò¿ªÊäÈëÎÄ¼ş: " << options->inputFile << std::endl;
+			std::cerr << "æ— æ³•æ‰“å¼€è¾“å…¥æ–‡ä»¶: " << options->inputFile << std::endl;
 			return false;
 		}
 
 
-		// »ñÈ¡µØÀí±ä»»²ÎÊı
+		// è·å–åœ°ç†å˜æ¢å‚æ•°
 		if (GDALGetGeoTransform(dataset, geo_transform) != CE_None) {
-			std::cerr << "ÎŞ·¨»ñÈ¡µØÀí±ä»»²ÎÊı" << std::endl;
+			std::cerr << "æ— æ³•è·å–åœ°ç†å˜æ¢å‚æ•°" << std::endl;
 			return false;
 		}
 
-		// »ñÈ¡Ó°Ïñ³ß´ç
+		// è·å–å½±åƒå°ºå¯¸
 		img_width = GDALGetRasterXSize(dataset);
 		img_height = GDALGetRasterYSize(dataset);
 
 		if (img_width <= 0 || img_height <= 0) {
-			std::cerr << "ÎŞĞ§µÄÓ°Ïñ³ß´ç: " << img_width << "x" << img_height << std::endl;
+			std::cerr << "æ— æ•ˆçš„å½±åƒå°ºå¯¸: " << img_width << "x" << img_height << std::endl;
 			return false;
 		}
 
-		// »ñÈ¡²¨¶ÎÊıÁ¿ºÍÊı¾İÀàĞÍ
+		// è·å–æ³¢æ®µæ•°é‡å’Œæ•°æ®ç±»å‹
 		band_count = GDALGetRasterCount(dataset);
 		if (band_count <= 0) {
-			std::cerr << "ÎŞĞ§µÄ²¨¶ÎÊıÁ¿: " << band_count << std::endl;
+			std::cerr << "æ— æ•ˆçš„æ³¢æ®µæ•°é‡: " << band_count << std::endl;
 			return false;
 		}
 
-		// »ñÈ¡Êı¾İÀàĞÍ£¨Ê¹ÓÃµÚÒ»¸ö²¨¶ÎµÄÀàĞÍ£©
+		// è·å–æ•°æ®ç±»å‹ï¼ˆä½¿ç”¨ç¬¬ä¸€ä¸ªæ³¢æ®µçš„ç±»å‹ï¼‰
 		GDALRasterBandH band = GDALGetRasterBand(dataset, 1);
 		if (!band) {
-			std::cerr << "ÎŞ·¨»ñÈ¡²¨¶ÎĞÅÏ¢" << std::endl;
+			std::cerr << "æ— æ³•è·å–æ³¢æ®µä¿¡æ¯" << std::endl;
 			return false;
 		}
 		data_type = GDALGetRasterDataType(band);
 
-		// Êä³öÓ°ÏñĞÅÏ¢
-		std::cout << "Ó°Ïñ³ß´ç: " << img_width << "x" << img_height
-			<< ", ²¨¶ÎÊı: " << band_count
-			<< ", Êı¾İÀàĞÍ: " << GDALGetDataTypeName(data_type) << std::endl;
+		// è¾“å‡ºå½±åƒä¿¡æ¯
+		std::cout << "å½±åƒå°ºå¯¸: " << img_width << "x" << img_height
+			<< ", æ³¢æ®µæ•°: " << band_count
+			<< ", æ•°æ®ç±»å‹: " << GDALGetDataTypeName(data_type) << std::endl;
 
-		// ³õÊ¼»¯×ø±êÏµÍ³
+		// åˆå§‹åŒ–åæ ‡ç³»ç»Ÿ
 		if (!coord_system->initialize(dataset, options->prjFilePath, options->wktString)) {
-			std::cerr << "³õÊ¼»¯×ø±êÏµÍ³Ê§°Ü" << std::endl;
+			std::cerr << "åˆå§‹åŒ–åæ ‡ç³»ç»Ÿå¤±è´¥" << std::endl;
 			return false;
 		}
 
-		// ¼ÆËãÓ°ÏñµÄµØÀí·¶Î§
+		// è®¡ç®—å½±åƒçš„åœ°ç†èŒƒå›´
 		double xBounds[4] = { 0,img_width,img_width,0 };
 		double yBounds[4] = { 0,0,img_height,img_height };
 
-		// Ó¦ÓÃµØÀí±ä»»
+		// åº”ç”¨åœ°ç†å˜æ¢
 		for (int i = 0; i < 4; ++i) {
 			double x = xBounds[i];
 			double y = yBounds[i];
 
-			// ÏñËØ×ø±ê×ªÎªµØÀí×ø±ê
+			// åƒç´ åæ ‡è½¬ä¸ºåœ°ç†åæ ‡
 			double geo_x = geo_transform[0] + x * geo_transform[1] + y * geo_transform[2];
 			double geo_y = geo_transform[3] + x * geo_transform[4] + y * geo_transform[5];
 
@@ -819,10 +819,10 @@ namespace WT{
 			yBounds[i] = geo_y;
 		}
 
-		// ×ª»»µ½WGS84×ø±êÏµ
+		// è½¬æ¢åˆ°WGS84åæ ‡ç³»
 		coord_system->transform_points(xBounds, yBounds, 4);
 
-		// ÕÒ³öµØÀí·¶Î§
+		// æ‰¾å‡ºåœ°ç†èŒƒå›´
 		min_x = std::numeric_limits<double>::max();
 		min_y = std::numeric_limits<double>::max();
 		max_x = std::numeric_limits<double>::lowest();
@@ -835,20 +835,20 @@ namespace WT{
 			max_y = std::max(max_y, xBounds[i]);
 		}
 
-		// È·±£·¶Î§ÔÚÓĞĞ§µÄ¾­Î³¶È·¶Î§ÄÚ
+		// ç¡®ä¿èŒƒå›´åœ¨æœ‰æ•ˆçš„ç»çº¬åº¦èŒƒå›´å†…
 		min_x = std::max(min_x, MIN_LONGITUDE);
 		max_x = std::min(max_x, MAX_LONGITUDE);
 		min_y = std::max(min_y, MIN_LATITUDE);
 		max_y = std::min(max_y, MAX_LATITUDE);
 
-		std::cout << "µØÀí·¶Î§: "
-			<< "¾­¶È=" << min_x << "ÖÁ" << max_x
-			<< ", Î³¶È=" << min_y << "ÖÁ" << max_y << std::endl;
+		std::cout << "åœ°ç†èŒƒå›´: "
+			<< "ç»åº¦=" << min_x << "è‡³" << max_x
+			<< ", çº¬åº¦=" << min_y << "è‡³" << max_y << std::endl;
 
-		//´¦ÀíÒªÇĞÆ¬µÄ²ã¼¶ÎÊÌâ
+		//å¤„ç†è¦åˆ‡ç‰‡çš„å±‚çº§é—®é¢˜
 		if (options->minLevel < 0) {
 			options->minLevel = 0;
-			//»ñÈ¡Ó°Ïñ·Ö±æÂÊ×î¼Ñ²ã¼¶
+			//è·å–å½±åƒåˆ†è¾¨ç‡æœ€ä½³å±‚çº§
 			double xResolutionM = 0, yResolutionM = 0;
 			double xOriginResolution = geo_transform[1];
 			double yOriginResolution = std::abs(geo_transform[5]);
@@ -860,18 +860,18 @@ namespace WT{
 				options->maxLevel = this->getProperLevel(std::min(xOriginResolution, yOriginResolution), options->tileSize);
 			}
 			else {
-				//¾ÍÓÃ×ª»»Îªwgs84ºóµÄ´¦Àí
+				//å°±ç”¨è½¬æ¢ä¸ºwgs84åçš„å¤„ç†
 				coord_system->calculateGeographicResolution((min_y + max_y) / 2.0, xOriginResolution, yOriginResolution, xResolutionM = 0, yResolutionM);
 				options->maxLevel = this->getProperLevel(std::min(xResolutionM, yResolutionM), options->tileSize);
 			}
 		}
 
-		// »ñÈ¡Ó°ÏñĞÅÏ¢
+		// è·å–å½±åƒä¿¡æ¯
 		image_info = get_image_info(dataset);
 
-		//ÏÂÃæÒª´¦ÀíNoDataValue 
+		//ä¸‹é¢è¦å¤„ç†NoDataValue 
 		if (options->outputFormat == IMAGEFORMAT::PNG) {
-			//ÏÈ¼ì²énodataµÄºÏ·¨ĞÔ nodataÒ»¶¨ÒªÔÚdatatype·¶Î§ÄÚ
+			//å…ˆæ£€æŸ¥nodataçš„åˆæ³•æ€§ nodataä¸€å®šè¦åœ¨datatypeèŒƒå›´å†…
 			if (options->nodata.size() > 0)
 			{
 				std::map<GDALDataType, std::function<bool(double)>> nodataRange = {
@@ -887,16 +887,16 @@ namespace WT{
 					{GDT_Float64,[](double bandNoData) {return (bandNoData >= std::numeric_limits<double>::min()) && (bandNoData <= std::numeric_limits<double>::max()); }}
 				};
 				for (size_t i = 0; i < image_info.output_band_count; i++)
-				{					
+				{
 					bool isNodataValide = nodataRange[data_type](options->nodata[i]);
 					if (!isNodataValide) {
-						std::cerr << "NodataÖµÉèÖÃÓ¦ÔÚÓ°ÏñÎ»ÊıµÄ×îĞ¡×î´ó·¶Î§ÄÚ£¡" << std::endl;
+						std::cerr << "Nodataå€¼è®¾ç½®åº”åœ¨å½±åƒä½æ•°çš„æœ€å°æœ€å¤§èŒƒå›´å†…ï¼" << std::endl;
 						return false;
 					}
 				}
 			}
 
-			//¾ÍËãÃ»ÓĞnodataÖµ Èç¹ûÊÇpng Ò²Ó¦¸Ã¸øËüÉèÖÃÖµ ÒòÎªÒª´¦Àí·ÇÓ°Ïñ·¶Î§ÄÚµÄÊı¾İ
+			//å°±ç®—æ²¡æœ‰nodataå€¼ å¦‚æœæ˜¯png ä¹Ÿåº”è¯¥ç»™å®ƒè®¾ç½®å€¼ å› ä¸ºè¦å¤„ç†éå½±åƒèŒƒå›´å†…çš„æ•°æ®
 			std::map<GDALDataType, double> nodataMax = {
 				{GDT_Byte,std::numeric_limits<BYTE>::max()},
 				{GDT_Int8,std::numeric_limits<int8_t>::max()},
@@ -912,14 +912,14 @@ namespace WT{
 
 			for (size_t i = 0; i < image_info.output_band_count; i++)
 			{
-				GDALRasterBandH  hBand = GDALGetRasterBand(dataset, 1+i);
+				GDALRasterBandH  hBand = GDALGetRasterBand(dataset, 1 + i);
 				if (hBand == nullptr) {
 					std::cerr << "Error: Failed to access band " << i << std::endl;
 					continue;
 				}
 				int hasNoData = 0;
 				double noDataValue = GDALGetRasterNoDataValue(hBand, &hasNoData);
-				//Èç¹ûÓĞ¾ÍÊ¹ÓÃÔ­ÎÄ¼şµÄ Ã»ÓĞ¾ÍÊ¹ÓÃÉèÖÃµÄ
+				//å¦‚æœæœ‰å°±ä½¿ç”¨åŸæ–‡ä»¶çš„ æ²¡æœ‰å°±ä½¿ç”¨è®¾ç½®çš„
 				if (hasNoData) {
 					if (options->nodata.size() == 0)
 					{
@@ -930,7 +930,7 @@ namespace WT{
 			}
 		}
 
-		//»ñÈ¡Í¼²ãÏñËØÖµÍ³¼ÆĞÅÏ¢ ÒÔ·½±ã¶ÔÏñËØ½øĞĞËõ·Å ÕâÀïÒªÇø·Öµ÷É«°åÓ°ÏñºÍÆÕÍ¨Ó°Ïñ
+		//è·å–å›¾å±‚åƒç´ å€¼ç»Ÿè®¡ä¿¡æ¯ ä»¥æ–¹ä¾¿å¯¹åƒç´ è¿›è¡Œç¼©æ”¾ è¿™é‡Œè¦åŒºåˆ†è°ƒè‰²æ¿å½±åƒå’Œæ™®é€šå½±åƒ
 		mins.swap(std::vector<double>()); maxs.swap(std::vector<double>());
 		if (!image_info.has_palette) {
 			if (data_type != GDT_Byte) {
@@ -950,29 +950,30 @@ namespace WT{
 			}
 		}
 		else {
-			//Í³¼Æpalette
+			//ç»Ÿè®¡palette
 			calcuPaletteColorValueRange();
-		}		
+		}
 
 		return true;
 	}
 
-	bool SlippyMapTiler::process(std::shared_ptr<IProgressInfo> progressInfo)
+	bool SlippyMapTiler::process(std::shared_ptr<IProgressInfo> progressorInfo)
 	{
 		if (!dataset) {
-			std::cerr << "Êı¾İ¼¯Î´³õÊ¼»¯£¬ÇëÏÈµ÷ÓÃinitialize()" << std::endl;
+			std::cerr << "æ•°æ®é›†æœªåˆå§‹åŒ–ï¼Œè¯·å…ˆè°ƒç”¨initialize()" << std::endl;
 			return false;
 		}
+		progressInfo = progressorInfo;
 
-		// ´´½¨¸ùÊä³öÄ¿Â¼
+		// åˆ›å»ºæ ¹è¾“å‡ºç›®å½•
 		if (!fs::exists(options->outputDir)) {
 			if (!fs::create_directories(options->outputDir)) {
-				std::cerr << "ÎŞ·¨´´½¨Êä³öÄ¿Â¼: " << options->outputDir << std::endl;
+				std::cerr << "æ— æ³•åˆ›å»ºè¾“å‡ºç›®å½•: " << options->outputDir << std::endl;
 				return false;
 			}
 		}
 
-		// ´´½¨ÄÚ´æ¹ÜÀíÆ÷ºÍÎÄ¼ş»º³å¹ÜÀíÆ÷
+		// åˆ›å»ºå†…å­˜ç®¡ç†å™¨å’Œæ–‡ä»¶ç¼“å†²ç®¡ç†å™¨
 		fileBatchOutputer = std::make_shared<FileBatchOutput>();
 		std::unique_ptr<ImageFileParallelIOAdapter> imageIOAdatper = std::make_unique<ImageFileParallelIOAdapter>(options->outputDir, true
 			, options->tileSize, options->tileSize, options->outputFormat
@@ -980,30 +981,33 @@ namespace WT{
 		imageIOAdatper->setProgressCallback(progressInfo);
 		fileBatchOutputer->setAdapter(std::move(imageIOAdatper));
 
-		// ¼ÆËãËùÓĞµÄÍßÆ¬Êı ·½±ã½ø¶ÈÌõµÄ´¦Àí
+		// è®¡ç®—æ‰€æœ‰çš„ç“¦ç‰‡æ•° æ–¹ä¾¿è¿›åº¦æ¡çš„å¤„ç†
 		int total_tiles = 0;
 		for (int zoom = options->minLevel; zoom <= options->maxLevel; zoom++) {
-			// ¼ÆËã¸Ã¼¶±ğµÄÍßÆ¬·¶Î§
+			// è®¡ç®—è¯¥çº§åˆ«çš„ç“¦ç‰‡èŒƒå›´
 			int min_tile_x, min_tile_y, max_tile_x, max_tile_y;
 			get_tile_range(zoom, min_tile_x, min_tile_y, max_tile_x, max_tile_y);
 
-			// ¼ÆËã×ÜÍßÆ¬ÊıÁ¿
+			// è®¡ç®—æ€»ç“¦ç‰‡æ•°é‡
 			total_tiles += (max_tile_x - min_tile_x + 1) * (max_tile_y - min_tile_y + 1);
 		}
-		progressInfo->setTotalNum(2*total_tiles);//ÕâÀïÉèÖÃ2±¶ÊÇÒòÎªÊı¾İ´¦ÀíºÍÊı¾İÊä³öÁ½¸öÁ÷³Ì¶¼Òª¼ÆËã½ø¶È
+		progressInfo->setTotalNum(2 * total_tiles);//è¿™é‡Œè®¾ç½®2å€æ˜¯å› ä¸ºæ•°æ®å¤„ç†å’Œæ•°æ®è¾“å‡ºä¸¤ä¸ªæµç¨‹éƒ½è¦è®¡ç®—è¿›åº¦
 
-		// ¼ÇÂ¼¿ªÊ¼Ê±¼ä
+		// è®°å½•å¼€å§‹æ—¶é—´
 		start_time = std::chrono::high_resolution_clock::now();
 
-		// ´¦ÀíÃ¿¸öËõ·Å¼¶±ğ
+		// å¤„ç†æ¯ä¸ªç¼©æ”¾çº§åˆ«
 		for (int zoom = options->minLevel; zoom <= options->maxLevel; ++zoom) {
-			process_zoom_level(zoom, progressInfo);
+			if (!progressInfo->isCanceled())
+			{
+				process_zoom_level(zoom, progressInfo);
+			}
 		}
 
-		//ËùÓĞ´¦ÀíÍê±Ïºó ĞèÒªÇå¿Õ
+		//æ‰€æœ‰å¤„ç†å®Œæ¯•å éœ€è¦æ¸…ç©º
 		fileBatchOutputer->output();
 
-		//Êä³öÔªÊı¾İ
+		//è¾“å‡ºå…ƒæ•°æ®
 		nlohmann::json metaInfo;
 		metaInfo["extent"] = { min_x, min_y, max_x, max_y };
 		metaInfo["center"] = { (min_x + max_x) / 2,(min_y + max_y) / 2 };
@@ -1012,44 +1016,47 @@ namespace WT{
 		fStream << std::setw(4) << metaInfo << std::endl;
 		fStream.close();
 
-		// µÈ´ıËùÓĞÎÄ¼şĞ´ÈëÍê³É
-		std::cout << "µÈ´ıÎÄ¼şĞ´ÈëÍê³É..." << std::endl;
+		// ç­‰å¾…æ‰€æœ‰æ–‡ä»¶å†™å…¥å®Œæˆ
+		std::cout << "ç­‰å¾…æ–‡ä»¶å†™å…¥å®Œæˆ..." << std::endl;
 
-		// ¼ÆËã×Ü´¦ÀíÊ±¼ä
+		// è®¡ç®—æ€»å¤„ç†æ—¶é—´
 		auto end_time = std::chrono::high_resolution_clock::now();
 		auto duration = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count();
 
-		// Êä³öÍ³¼ÆĞÅÏ¢
-		std::cout << "\nÇĞÆ¬Íê³É!" << std::endl;
-		std::cout << "×Ü´¦ÀíÊ±¼ä: " << duration << " Ãë" << std::endl;
+		// è¾“å‡ºç»Ÿè®¡ä¿¡æ¯
+		std::cout << "\nåˆ‡ç‰‡å®Œæˆ!" << std::endl;
+		std::cout << "æ€»å¤„ç†æ—¶é—´: " << duration << " ç§’" << std::endl;
 
 		return true;
 	}
 
+	void  SlippyMapTiler::cancle() {
+		progressInfo->cancel();
+	}
 
-	//outData´óĞ¡ÓÉÍâ²¿·ÖÅä
+	//outDataå¤§å°ç”±å¤–éƒ¨åˆ†é…
 	bool SlippyMapTiler::scaleDataRange(unsigned char* pData, unsigned char* outData, std::vector<double>& statisticMax, std::vector<double>& statisticMin) {
-		// È·±£²ÎÊıÓĞĞ§ĞÔ
+		// ç¡®ä¿å‚æ•°æœ‰æ•ˆæ€§
 		if (!pData || !outData) {
 			return false;
 		}
 
-		// »ñÈ¡²¨¶ÎÊı£¬È·±£Í³¼ÆÖµºÍnodataÏòÁ¿³¤¶ÈÆ¥Åä
+		// è·å–æ³¢æ®µæ•°ï¼Œç¡®ä¿ç»Ÿè®¡å€¼å’Œnodataå‘é‡é•¿åº¦åŒ¹é…
 		int bands = image_info.output_band_count;
-		if (statisticMax.size() < bands || statisticMin.size() < bands ) {
+		if (statisticMax.size() < bands || statisticMin.size() < bands) {
 			return false;
 		}
 
-		// ¼ÆËãÏñËØ×ÜÊı
+		// è®¡ç®—åƒç´ æ€»æ•°
 		int pixelCount = options->tileSize * options->tileSize;
 
-		// ¸ù¾İ²»Í¬µÄÊı¾İÀàĞÍ½øĞĞ´¦Àí Ëõ·ÅÖ»Õë¶Ô·Ç8Î»Êı¾İ
+		// æ ¹æ®ä¸åŒçš„æ•°æ®ç±»å‹è¿›è¡Œå¤„ç† ç¼©æ”¾åªé’ˆå¯¹é8ä½æ•°æ®
 		switch (image_info.data_type) {
-		//case GDT_Byte: {
-		//	// ¶ÔÓÚByteÀàĞÍ£¬Ö±½Ó¿½±´Êı¾İ£¬²»ĞèÒªËõ·Å
-		//	memcpy(outData, pData, pixelCount * bands);
-		//	break;
-		//}
+			//case GDT_Byte: {
+			//	// å¯¹äºByteç±»å‹ï¼Œç›´æ¥æ‹·è´æ•°æ®ï¼Œä¸éœ€è¦ç¼©æ”¾
+			//	memcpy(outData, pData, pixelCount * bands);
+			//	break;
+			//}
 		case GDT_UInt16: {
 			scaleValue<uint16_t>(pData, outData, pixelCount, bands, statisticMin, statisticMax);
 			break;
@@ -1075,24 +1082,24 @@ namespace WT{
 			break;
 		}
 		default:
-			// ¶ÔÓÚÎ´Ö§³ÖµÄÊı¾İÀàĞÍ£¬·µ»ØÊ§°Ü
+			// å¯¹äºæœªæ”¯æŒçš„æ•°æ®ç±»å‹ï¼Œè¿”å›å¤±è´¥
 			return false;
 		}
 		return true;
 	}
 
-	bool SlippyMapTiler::checkNodata(unsigned char* pData, size_t pos,int pixelSize,  int bandNum)
+	bool SlippyMapTiler::checkNodata(unsigned char* pData, size_t pos, int pixelSize, int bandNum)
 	{
 		if (options->nodata.empty()) {
 			return false;
 		}
-		// ¼ÆËãµ±Ç°ÏñËØµÄÆğÊ¼Î»ÖÃ
-		unsigned char* pixelStart = pData + pos ;
+		// è®¡ç®—å½“å‰åƒç´ çš„èµ·å§‹ä½ç½®
+		unsigned char* pixelStart = pData + pos;
 
-		// ±éÀúÃ¿¸ö²¨¶Î
+		// ???????????
 		for (int band = 0; band < bandNum; ++band) {
 			if (band >= options->nodata.size()) {
-				break; // Èç¹ûnodataÖµÊıÁ¿ÉÙÓÚ²¨¶ÎÊı£¬ÔòÖ»¼ì²éÒÑÓĞµÄ
+				break; //å¦‚æœnodataå€¼æ•°é‡å°‘äºæ³¢æ®µæ•°ï¼Œåˆ™åªæ£€æŸ¥å·²æœ‰çš„
 			}
 
 			bool isNoData = false;
@@ -1114,7 +1121,7 @@ namespace WT{
 
 			case GDT_Int16: {
 				short value = *reinterpret_cast<const short*>(bandData);
-				isNoData = isEqual< short>(value, static_cast< short>(noDataValue));
+				isNoData = isEqual< short>(value, static_cast<short>(noDataValue));
 				break;
 			}
 
@@ -1132,7 +1139,7 @@ namespace WT{
 
 			case GDT_Float32: {
 				float value = *reinterpret_cast<const float*>(bandData);
-				// ¶ÔÓÚ¸¡µãÊı£¬ĞèÒªÌØ±ğ´¦ÀíNaNµÄÇé¿ö
+				// å¯¹äºæµ®ç‚¹æ•°ï¼Œéœ€è¦ç‰¹åˆ«å¤„ç†NaNçš„æƒ…å†µ
 				if (std::isnan(value) && std::isnan(noDataValue)) {
 					isNoData = true;
 				}
@@ -1144,7 +1151,7 @@ namespace WT{
 
 			case GDT_Float64: {
 				double value = *reinterpret_cast<const double*>(bandData);
-				// ¶ÔÓÚ¸¡µãÊı£¬ĞèÒªÌØ±ğ´¦ÀíNaNµÄÇé¿ö
+				// å¯¹äºæµ®ç‚¹æ•°ï¼Œéœ€è¦ç‰¹åˆ«å¤„ç†NaNçš„æƒ…å†µ
 				if (std::isnan(value) && std::isnan(noDataValue)) {
 					isNoData = true;
 				}
@@ -1155,11 +1162,11 @@ namespace WT{
 			}
 
 			case GDT_CInt16: {
-				// ¸´ÊıÀàĞÍ£ºÊµ²¿ºÍĞé²¿¶¼ĞèÒª¼ì²é
+				// å¤æ•°ç±»å‹ï¼šå®éƒ¨å’Œè™šéƒ¨éƒ½éœ€è¦æ£€æŸ¥
 				short* complexValue = (short*)(bandData);
 				double realPart = static_cast<double>(complexValue[0]);
 				double imagPart = static_cast<double>(complexValue[1]);
-				// ¶ÔÓÚ¸´Êı£¬Í¨³£Ö»¼ì²éÊµ²¿£¬»òÕß¿ÉÒÔ¼ì²éÄ£
+				// å¯¹äºå¤æ•°ï¼Œé€šå¸¸åªæ£€æŸ¥å®éƒ¨ï¼Œæˆ–è€…å¯ä»¥æ£€æŸ¥æ¨¡
 				isNoData = isEqual<double>(realPart, noDataValue);
 				break;
 			}
@@ -1196,17 +1203,17 @@ namespace WT{
 			}
 
 			default:
-				// Î´ÖªÊı¾İÀàĞÍ£¬·µ»Øfalse
+				// æœªçŸ¥æ•°æ®ç±»å‹ï¼Œè¿”å›false
 				return false;
 			}
 
-			// Èç¹ûÈÎºÎÒ»¸ö²¨¶Î²»ÊÇNoData£¬ÔòÕû¸öÏñËØ²»ÊÇNoData
+			// å¦‚æœä»»ä½•ä¸€ä¸ªæ³¢æ®µä¸æ˜¯NoDataï¼Œåˆ™æ•´ä¸ªåƒç´ ä¸æ˜¯NoData
 			if (!isNoData) {
 				return false;
 			}
 		}
 
-		// ËùÓĞ²¨¶Î¶¼ÊÇNoDataÖµ
+		// æ‰€æœ‰æ³¢æ®µéƒ½æ˜¯NoDataå€¼
 		return true;
 	}
 
@@ -1235,7 +1242,7 @@ namespace WT{
 				}
 			}
 		}
-		//ÉèÖÃ ÕâÀïÖ»´¦ÀígrayºÍrgb
+		//è®¾ç½® è¿™é‡Œåªå¤„ç†grayå’Œrgb
 		if (image_info.output_band_count == 1) {
 			mins.push_back(minR);
 			maxs.push_back(maxR);

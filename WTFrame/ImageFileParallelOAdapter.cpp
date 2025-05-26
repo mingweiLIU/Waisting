@@ -14,12 +14,12 @@
 #include "cpl_vsi.h"
 
 // TBB库
-#include <tbb/parallel_for.h>
-#include <tbb/parallel_for_each.h>
-#include <tbb/task_group.h>
-#include <tbb/blocked_range.h>
-#include <tbb/concurrent_queue.h>
-#include <tbb/global_control.h>
+#include <oneapi/tbb/parallel_for.h>
+#include <oneapi/tbb/parallel_for_each.h>
+#include <oneapi/tbb/task_group.h>
+#include <oneapi/tbb/blocked_range.h>
+#include <oneapi/tbb/concurrent_queue.h>
+#include <oneapi/tbb/global_control.h>
 
 namespace WT {
 
@@ -83,7 +83,6 @@ namespace WT {
 		// 使用原子计数器跟踪成功/失败
 		std::atomic<int> successCount{0};
 		std::atomic<int> failureCount{0};
-		ticProgressNum = files.size() % 30;//预估一个值
 
 		// 按目录分组（保持原有逻辑）
 		std::unordered_map<std::string, std::vector<IOFileInfo*>> dirGroups;
@@ -96,6 +95,9 @@ namespace WT {
 		::tbb::parallel_for_each(dirGroups.begin(), dirGroups.end(),
 			[this, &successCount, &failureCount](auto& dirGroup) {
 				const auto& [dir, fileList] = dirGroup;
+				if (progressInfo->isCanceled()) {
+					return;
+				}
 
 				// 创建目录（线程安全）
 				if (mCreateDirs) {
@@ -116,17 +118,16 @@ namespace WT {
 				::tbb::parallel_for_each(fileList.begin(), fileList.end(),
 					[this, &successCount, &failureCount](IOFileInfo* fileInfo) {
 						try {
+							if (progressInfo->isCanceled()) {
+								return;
+							}
 							const auto fullPath = std::filesystem::path(mBasePath) / fileInfo->filePath;
 							ImageTask task(fileInfo, fullPath.string());
 
 							bool success = processImageTask(task);
 							if (success) {
-								successCount++;
-								if (successCount%ticProgressNum==0)
-								{
-									progressInfo->addProgress(successCount, "", "");
-									successCount = 0;
-								}
+								successCount++;								
+								progressInfo->addProgress(1, "", "");
 							}
 							else {
 								failureCount++;
@@ -139,11 +140,12 @@ namespace WT {
 
 						// 清理内存
 						delete fileInfo;
-					});
-			});
+					}, progressInfo->getContext());
+			}, progressInfo->getContext());
 
 		std::cout << "批量处理完成 - 成功: " << successCount.load()
 			<< ", 失败: " << failureCount.load() << std::endl;
+
 
 		return failureCount.load() == 0;
 	}
@@ -152,6 +154,7 @@ namespace WT {
 		if (files.empty()) {
 			return true;
 		}
+
 
 		// 创建任务队列
 		::tbb::concurrent_queue<std::shared_ptr<ImageTask>> taskQueue;
@@ -167,7 +170,7 @@ namespace WT {
 		}
 
 		// 使用task_group异步处理所有任务
-		::tbb::task_group tg;
+		::tbb::task_group tg(progressInfo->getContext());
 
 		// 创建工作线程
 		const int numWorkers = std::min(static_cast<int>(files.size()),
@@ -178,8 +181,12 @@ namespace WT {
 				std::shared_ptr<ImageTask> task;
 				while (taskQueue.try_pop(task)) {
 					try {
+						if (progressInfo->isCanceled()) {
+							return;
+						}
 						bool success = processImageTask(*task);
 						task->promise.set_value(success);
+						progressInfo->addProgress(1, "", "");
 					}
 					catch (const std::exception& e) {
 						std::cerr << "异步处理图像时发生异常: " << e.what() << std::endl;
@@ -198,11 +205,6 @@ namespace WT {
 		for (auto& future : futures) {
 			if (future.get()) {
 				successCount++; 
-				if (successCount % ticProgressNum == 0 )
-				{
-					progressInfo->addProgress(successCount,"","");
-					successCount = 0;
-				}
 			}
 			else {
 				allSuccess = false;
@@ -505,7 +507,7 @@ namespace WT {
 					if (bitDepth == 8) {
 						pixelValue = static_cast<double>(imageData[pixelPos + b]);
 					}
-					else { // 16位
+					else { // 16λ
 						unsigned short value =
 							(static_cast<unsigned short>(imageData[(pixelPos + b) * 2]) << 8) |
 							static_cast<unsigned short>(imageData[(pixelPos + b) * 2 + 1]);
@@ -533,7 +535,7 @@ namespace WT {
 			if (bitDepth == 8) {
 				pixelValue = static_cast<double>(imageData[pixelPos + b]);
 			}
-			else { // 16位
+			else { // 16λ
 				unsigned short value =
 					(static_cast<unsigned short>(imageData[(pixelPos + b) * 2]) << 8) |
 					static_cast<unsigned short>(imageData[(pixelPos + b) * 2 + 1]);
@@ -620,6 +622,5 @@ namespace WT {
 				}
 			}
 		}
-	}
-		
+	}		
 };

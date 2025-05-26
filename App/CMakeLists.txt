@@ -1,8 +1,12 @@
 cmake_minimum_required(VERSION 3.16)
 
 project(Waisting VERSION 0.1 LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 17)
 
+find_package(OpenSceneGraph REQUIRED osg osgDB osgViewer osgUtil osgGA )
+find_package(TBB REQUIRED)
 find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Concurrent)
+
 
 qt_standard_project_setup(REQUIRES 6.5)
 
@@ -48,7 +52,6 @@ WTGetTypeFilesRelative(
     Recurse ON
 )
 
-
 qt_add_executable(${PROJECT_NAME}
     ${HeaderFileNames} ${SourceFileNames}
 )
@@ -74,6 +77,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     WIN32_EXECUTABLE NO
 )
 
+
 #如果是Qt的组件 修改这儿
 set(SubDirs
     #WTComponents
@@ -81,7 +85,7 @@ set(SubDirs
 )
 #如果是纯C++组件 修改这儿
 set(PureCXXLib
-    # WTTools
+    # WTTools    
 )
 
 set(SelfPlugins)
@@ -98,6 +102,7 @@ endforeach()
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
+    TBB::tbb
     Qt6::Core
     Qt6::Gui
     Qt6::Qml
@@ -107,7 +112,6 @@ target_link_libraries(${PROJECT_NAME}
     WTDataManipulate
     ${SelfPlugins}
 )
-find_package(OpenSceneGraph REQUIRED osg osgDB osgViewer osgUtil osgGA )
 
 set(includeDirs
     ${OPENSCENEGRAPH_INCLUDE_DIRS}

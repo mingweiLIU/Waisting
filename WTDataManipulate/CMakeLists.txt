@@ -25,13 +25,11 @@ set(includeDirs
     # ${OPENSCENEGRAPH_INCLUDE_DIRS}
     # ${osgEarth_INCLUDE_DIRS}
     ${GDAL_INCLUDE_DIRS}
-    ${TBB_INCLUDE_DIRS}
     ${GLM_INCLUDE_DIRS}
     ${Jemolloc_ROOT}/include
     ${Jemolloc_ROOT}/include/msvc_compat
     # ${GeographicLib_INCLUDE_DIRS}
 )
-
 
 add_library(${PROJECT_NAME} STATIC ${SourceFileNames} ${HeaderFileNames})
 target_include_directories(${PROJECT_NAME}  PUBLIC ${includeDirs} ${HeaderFileNames} )

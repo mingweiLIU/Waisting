@@ -1087,7 +1087,7 @@ Window {
                         text: "取消"
                         onClicked: {
                             tileProcessor.cancelProcessing()
-                            close()
+                            //close()
                         }
 
                         background: Rectangle {

@@ -3,11 +3,10 @@
 #include <QQmlContext>
 #include <QtQuick/QQuickView>
 #include <QIcon>
-#include<qsurfaceformat.h>
+#include <qsurfaceformat.h>
 #include <QtQuickControls2/QQuickStyle>  // 引入 Style 模块
 
 #include "./views/ImageTilingDialog.h"
-
 int main(int argc, char *argv[])
 {
 	// 方法1：禁用DPI缩放（强制1:1像素）
@@ -21,7 +20,6 @@ int main(int argc, char *argv[])
 	//注册各类UI类
     // 注册TileProcessor作为QML类型
     qmlRegisterType<ImageTilingDialog>("ImageTilingDialog", 1, 0, "ImageTilingDialog");
-
 
 	QQmlApplicationEngine engine;
 

@@ -40,7 +40,7 @@ set(RapidJson_Inc ${ThirdPartyPath}/RapidJSON/include)                          
 set(taskflow_Inc ${ThirdPartyPath}/taskflow)                                        #图流程
 set(ASSIMP_DIR ${ThirdPartyPath}/assimp/lib/cmake/assimp-5.4)                       #模型格式
 set(SPDLOG_Inc ${ThirdPartyPath}/spdlog/include)
-set(TBB_ROOT ${ThirdPartyPath}/tbb-2021.13.0-x64/lib/cmake/TBB)
+set(TBB_ROOT ${ThirdPartyPath}/tbb/lib/cmake/TBB)
 set(GLM_ROOT ${ThirdPartyPath}/glm/share/glm)
 set(Jemolloc_ROOT ${ThirdPartyPath}/jemalloc)
 set(PNG_ROOT ${ThirdPartyPath}/libpng)

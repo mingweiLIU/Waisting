@@ -10,7 +10,8 @@
 #include <QFutureWatcher>
 #include <QVector>
 #include <QtConcurrent/QtConcurrent>
-#include "../../WTFrame/IProgressInfo.h"
+#include "IProgressInfo.h"
+#include "SlippyTiler.h"
 
 /**
  * @brief 切片处理器类，处理栅格数据切片操作
@@ -119,6 +120,7 @@ private:
     int m_coordinateSystemType;  // 0=影像自带坐标, 1=PRJ文件, 2=WKT字符串
     double m_progress;
     bool m_isProcessing;
+    std::shared_ptr < WT::SlippyMapTiler> mapTiler=nullptr;
     
     // 异步处理相关
     QFutureWatcher<bool> *m_futureWatcher;
@@ -135,24 +137,43 @@ private:
 class  ImageTilingDialogProgress final :public  WT::IProgressInfo  {
 private:
     ImageTilingDialog* dialog = nullptr;
+    std::mutex mMutex;//用于多线程设置用
 public:
     ImageTilingDialogProgress(ImageTilingDialog* dialog) :dialog(dialog){ }
+
     /*****************************************************************************
 	* @brief : 显示处理进度
 	*****************************************************************************/
-    void showProgress(int currentIndex, std::string currentFileName, std::string operats = "数据转换") {
-        this->processedNum = currentIndex;
-        dialog->updateProgress(this->processedNum / (totalNum * 1.0f));
+    bool showProgress(int currentIndex, std::string currentFileName, std::string operats = "数据转换") override {
+        std::lock_guard<std::mutex> lock(mMutex);
+        processedNum = currentIndex;
+        if (processedNum %ticNum==0)
+        {
+            dialog->updateProgress(this->processedNum / (totalNum * 1.0f));
+        }
+        if (processedNum == totalNum) {
+            finished();
+        }
+        return canceled;
     }
     //增加数据
-	void addProgress(int addedIndex, std::string currentFileName, std::string operats = "数据转换") {
-		processedNum += addedIndex;
-		dialog->updateProgress(this->processedNum / (totalNum * 1.0f));
+	bool addProgress(int addedIndex, std::string currentFileName, std::string operats = "数据转换")override {
+        std::lock_guard<std::mutex> lock(mMutex); 
+        processedNum += addedIndex;
+        if (processedNum % ticNum == 0)
+        {
+            dialog->updateProgress(this->processedNum / (totalNum * 1.0f));
+        }
+        if (processedNum == totalNum) {
+            finished();
+        }
+        return canceled;
 	}
+
     /*****************************************************************************
     * @brief : 完成进度
     *****************************************************************************/
-    void finished(std::string label = "处理完成") const {
+    void finished(std::string label = "处理完成") const override {
         dialog->updateProgress(1.0);
     }
 };
