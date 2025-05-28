@@ -2,15 +2,12 @@
 #include "TilingSchema.h"
 #include "Rectangle.h"
 #include "Ellipsoid.h"
+#include "WebMercatorProjection.h"
 namespace WT {
 	class WebMercatorTilingSheme final :public TilingScheme {
 	public:
-		WebMercatorTilingSheme(int numberOfZeroTilesX = 1, int numberOfZeroTilesY = 1,Ellipsoid ellipsoid,);
-
-		int getNumberOfXTilesAtLevel(int level) override;
-
-		//获取level时Y方向的瓦片数
-		int getNumberOfYTilesAtLevel(int level)override;
+		WebMercatorTilingSheme(int numberOfZeroTilesX = 1, int numberOfZeroTilesY = 1
+			,Ellipsoid& ellipsoid= Ellipsoid::WGS84,Rectangle& rect=Rectangle::MAX_VALUE);
 
 		//将以弧度为单位的矩形范围转换为度为单位
 		void rectangleToNativeRectangle(Rectangle rect, Rectangle& nativeRect) override;
@@ -24,6 +21,8 @@ namespace WT {
 		//计算地理位置在哪个瓦片上
 		virtual void positionToTileXY(float radX, float radY, int level, int& tileX, int& tileY) = 0;
 	private:
-		Ellipsoid ellipsoid;
+		Ellipsoid mEllipsoid;
+		Rectangle mRect;
+		WebMercatorProjection mProjection;
 	};
 }

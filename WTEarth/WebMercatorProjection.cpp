@@ -18,19 +18,19 @@ namespace WT{
 		return 0.5 * std::log((1.0 + sinLatitude) / (1.0 - sinLatitude));
 	}
 
-    glm::dvec3 WebMercatorProjection::project(const Cartographic& cartographic) const {
+    glm::dvec3 WebMercatorProjection::project(const Cartographic& cartographic) {
         // 计算 X 坐标：经度乘以地球半长轴
-        const double x = cartographic.longitude * mSemimajorAxis;
+        double x = cartographic.longtitude * mSemimajorAxis;
 
         // 计算 Y 坐标：大地纬度转换为墨卡托角度后乘以地球半长轴
-        const double y = geodeticLatitudeToMercatorAngle(cartographic.latitude) * mSemimajorAxis;
+        double y = geodeticLatitudeToMercatorAngle(cartographic.latitude) * mSemimajorAxis;
 
         // Z 坐标直接复制高度
-        const double z = cartographic.height;
+        double z = cartographic.height;
         return glm::dvec3(x, y, z);     
     }
 
-    Cartographic WebMercatorProjection::unproject(const glm::dvec3& cartesian) const {
+    Cartographic WebMercatorProjection::unproject(const glm::dvec3& cartesian)  {
         // 计算经度：X 坐标乘以地球半长轴的倒数
         const double longitude = cartesian.x * mOneOverSemimajorAxis;
 
