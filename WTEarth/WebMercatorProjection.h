@@ -1,6 +1,7 @@
 #pragma once
 #include <glm/glm.hpp>
 #include <glm/gtc/constants.hpp>
+#include <cmath>
 #include "Ellipsoid.h"
 
 namespace WT{
@@ -12,7 +13,7 @@ namespace WT{
 		// 墨卡托投影的理论最大/最小纬度。
 		// Cesium 通常定义这个值为 85.05112878 度，转换为弧度是 atan(sinh(PI))。
 		// 这是一个经验值，确保投影不会发散到无穷大。
-		constexpr double MAXIMUM_LATITUDE = std::atan(std::sinh(glm::pi)); // 约 1.4844155弧度，或 85.05112878 度
+		double MAXIMUM_LATITUDE = std::atan(std::sinh(glm::pi<double>())); // 约 1.4844155弧度，或 85.05112878 度
 	public:
 		WebMercatorProjection(const Ellipsoid& ellipsoid=Ellipsoid::WGS84):mEllipsoid(ellipsoid){
 			mSemimajorAxis = ellipsoid.getMaximumRadius();
@@ -21,7 +22,7 @@ namespace WT{
 
 		double getMAXIMUM_LATITUDE() { return MAXIMUM_LATITUDE; }
 
-		const Ellipsoid& getEllipsoid()const (return mEllipsoid);
+		const Ellipsoid& getEllipsoid()const { return mEllipsoid };
 
 		/**
 		 * @brief 将墨卡托投影角度（范围 -PI 到 PI）转换为大地纬度（范围 -PI/2 到 PI/2）。
@@ -54,7 +55,7 @@ namespace WT{
 		 * @param cartographic 地理坐标，单位为弧度。
 		 * @returns 等效的 Web 墨卡托 X、Y、Z 坐标，单位为米。
 		 */
-		glm::dvec3 project(const Cartographic& cartographic) const;
+		glm::dvec3 project(const Cartographic& cartographic);
 
         /**
          * @brief 将 Web 墨卡托 X、Y 坐标（单位米）转换为包含大地椭球坐标的 Cartographic。
@@ -63,6 +64,6 @@ namespace WT{
          * @param cartesian Web 墨卡托笛卡尔坐标，其中 Z 坐标是高度（单位米）。
          * @returns 等效的地理坐标。
          */
-		Cartographic unproject(const glm::dvec3& cartesian) const;
+		Cartographic unproject(const glm::dvec3& cartesian);
 	};
 }

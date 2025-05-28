@@ -20,7 +20,7 @@ namespace WT{
 
     glm::dvec3 WebMercatorProjection::project(const Cartographic& cartographic) {
         // 计算 X 坐标：经度乘以地球半长轴
-        double x = cartographic.longtitude * mSemimajorAxis;
+        double x = cartographic.longitude * mSemimajorAxis;
 
         // 计算 Y 坐标：大地纬度转换为墨卡托角度后乘以地球半长轴
         double y = geodeticLatitudeToMercatorAngle(cartographic.latitude) * mSemimajorAxis;

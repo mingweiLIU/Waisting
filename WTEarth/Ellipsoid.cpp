@@ -144,7 +144,7 @@ namespace WT{
 
 	std::optional<glm::dvec3> Ellipsoid::geodeticSurfaceNormalCartographic(const Cartographic& posCartographic)
 	{
-		const double longitude = posCartographic.longtitude;
+		const double longitude = posCartographic.longitude;
 		const double latitude = posCartographic.latitude;
 		const double cosLatitude = cos(latitude);
 

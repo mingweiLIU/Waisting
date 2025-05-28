@@ -52,17 +52,9 @@ namespace WT {
 
 		const double longitude = std::atan2(n.y, n.x);
 		const double latitude = std::asin(n.z);
-		const double height =
-			CesiumMath::sign(glm::dot(h, cartesian)) * glm::length(h);
+		const double height =CesiumMath::sign(glm::dot(h, cartesian)) * glm::length(h);
 
-		if (!result) {
-			return Cartographic(longitude, latitude, height);
-		}
-
-		result->longitude = longitude;
-		result->latitude = latitude;
-		result->height = height;
-		return *result;
+		return Cartographic(longitude, latitude, height);
 	}
 
 	glm::dvec3 Cartographic::toCartesian(const Cartographic& cartographic, const Ellipsoid& ellipsoid /*= Ellipsoid::WGS84*/)

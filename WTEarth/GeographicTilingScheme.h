@@ -15,12 +15,6 @@ namespace WT{
 			this->numberOfLevelZeroTilesY = numberOfLevelZeroTilesY;
 		}
 
-		//获取level时X方向的瓦片数
-		int getNumberOfXTilesAtLevel(int level) override;
-
-		//获取level时Y方向的瓦片数
-		int getNumberOfYTilesAtLevel(int level) override;
-
 		//将以弧度为单位的矩形范围转换为度为单位
 		void rectangleToNativeRectangle(Rectangle rect, Rectangle& nativeRect) override;
 

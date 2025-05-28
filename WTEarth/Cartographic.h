@@ -4,8 +4,8 @@ namespace WT {
 	class Cartographic
 	{
 	public:
-		Cartographic(double longtitude = 0, double latitude = 0, double height = 0)
-			:longtitude(longtitude), latitude(latitude), height(height) {}
+		Cartographic(double longitude = 0, double latitude = 0, double height = 0)
+			:longitude(longitude), latitude(latitude), height(height) {}
 
 		/**
 		* 生成表示该地理坐标的字符串，格式为"(longitude, latitude, height)"
@@ -92,6 +92,6 @@ namespace WT {
 		static bool equalsEpsilon(const Cartographic& left, const Cartographic& right, double epsilon = 0.0);
 
 	public:
-		double longtitude, latitude, height;
+		double longitude, latitude, height;
 	}
 };
