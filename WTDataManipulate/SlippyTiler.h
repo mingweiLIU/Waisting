@@ -87,8 +87,6 @@ namespace WT{
 		// 坐标系统和转换
 		std::unique_ptr<CoordinateSystem> coord_system;
 
-		/*std::shared_ptr<JemallocAllocator> memory_allocator;
-		std::shared_ptr<FileBufferManager> file_buffer;*/
 		std::shared_ptr<FileBatchOutput> fileBatchOutputer;
 		std::shared_ptr<IProgressInfo> progressInfo;
 

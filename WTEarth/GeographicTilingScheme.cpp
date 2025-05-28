@@ -1,15 +1,6 @@
 #include "GeographicTilingScheme.h"
 
 namespace WT{
-	int GeographicTilingScheme::getNumberOfXTilesAtLevel(int level)
-	{
-		return this->numberOfLevelZeroTilesX << level;
-	}
-
-	int GeographicTilingScheme::getNumberOfYTilesAtLevel(int level)
-	{
-		return this->numberOfLevelZeroTilesY << level;
-	}
 
 	void GeographicTilingScheme::rectangleToNativeRectangle(Rectangle rect, Rectangle& nativeRect)
 	{

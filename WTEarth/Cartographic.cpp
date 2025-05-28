@@ -1,5 +1,7 @@
 #include "Cartographic.h"
 #include "Ellipsoid.h"
+#include <sstream> 
+#include <iomanip>
 namespace WT {
 
 	std::string Cartographic::toString() const

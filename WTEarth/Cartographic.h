@@ -4,9 +4,9 @@ namespace WT {
 	class Cartographic
 	{
 	public:
-		Cartographic(double longtitude=0,double latitude = 0,double height = 0)
-			:longtitude(longtitude), latitude(latitude), height(height){}
-		
+		Cartographic(double longtitude = 0, double latitude = 0, double height = 0)
+			:longtitude(longtitude), latitude(latitude), height(height) {}
+
 		/**
 		* 生成表示该地理坐标的字符串，格式为"(longitude, latitude, height)"
 		* @return 格式化的坐标字符串
@@ -57,7 +57,7 @@ namespace WT {
 		 *         如果笛卡尔坐标位于椭球体中心则返回std::nullopt
 		 */
 		static std::optional<Cartographic> fromCartesian(const glm::dvec3& cartesian, const Ellipsoid& ellipsoid = Ellipsoid::WGS84);
-		
+
 		/**
 		 * 从地理坐标(Cartographic)创建新的笛卡尔坐标(Cartesian3)实例。
 		 * 输入对象中的值应为弧度制。
@@ -79,7 +79,7 @@ namespace WT {
 		 * @return 如果两个坐标完全相同返回true，否则返回false
 		 */
 		static bool equals(const Cartographic& left, const Cartographic& right);
-		
+
 
 		/**
 		 * 比较两个地理坐标的各个分量，如果在给定的epsilon范围内则认为相等
@@ -90,7 +90,8 @@ namespace WT {
 		 * @return 如果两个坐标在epsilon范围内相等返回true，否则返回false
 		 */
 		static bool equalsEpsilon(const Cartographic& left, const Cartographic& right, double epsilon = 0.0);
-		
-	private:
+
+	public:
 		double longtitude, latitude, height;
+	}
 };
