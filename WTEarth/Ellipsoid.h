@@ -3,12 +3,11 @@
 #include <glm/gtc/constants.hpp>
 #include <optional>
 #include <vector>
-#include<string>
-
-#include "Rectangle.h"
-#include "Cartographic.h"
+#include <string>
 
 namespace WT{
+	class Cartographic;
+	class Rectangle;
 	class Ellipsoid {
 	public:
 		explicit Ellipsoid(double x = 0.0, double y = 0.0, double z = 0.0);
@@ -203,6 +202,7 @@ namespace WT{
 		glm::dvec3& getRadiiToFourth()  { return mRadiiToFourth; }
 		glm::dvec3& getOneOverRadii()  { return mOneOverRadii; }
 		glm::dvec3& getOneOverRadiiSquared()  { return mOneOverRadiiSquared; }
+		double getCenterTolernaceSquard()const {return mCenterTolernaceSquard; }
 		double getMinimumRadius() const { return mMinimumRadius; }
 		double getMaximumRadius() const { return mMaximumRadius; }
 
@@ -252,4 +252,4 @@ namespace WT{
 		//x方/z方
 		double mSquaredXOverSquaredZ=0.0;
 	};
-}
+};

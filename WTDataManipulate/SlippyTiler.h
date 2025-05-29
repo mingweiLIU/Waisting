@@ -15,6 +15,7 @@
 #include "CoordinateSystemManager.h"
 #include "IProgressInfo.h"
 #include "ImageFileParallelIOAdapter.h"
+#include "TilingSchema.h"
 
 namespace fs = std::filesystem;
 
@@ -89,6 +90,7 @@ namespace WT{
 
 		std::shared_ptr<FileBatchOutput> fileBatchOutputer;
 		std::shared_ptr<IProgressInfo> progressInfo;
+		std::shared_ptr<TilingScheme> tilingScheme;
 
 		// 统计信息
 		std::atomic<int> total_tiles_processed;

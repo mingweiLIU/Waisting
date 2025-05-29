@@ -12,6 +12,7 @@
 #include <iostream>
 #include<fstream>
 
+#include"WebMercatorTilingSheme.h"
 #include "MemoryPool.h"
 
 namespace WT {
@@ -24,6 +25,8 @@ namespace WT {
 
 		// 创建坐标系统对象
 		coord_system = std::make_unique<CoordinateSystem>();
+		//创建切片规则
+		tilingScheme = std::make_unique<WebMercatorTilingSheme>();
 	}
 
 	SlippyMapTiler::~SlippyMapTiler()
@@ -855,11 +858,14 @@ namespace WT {
 			bool has_projection = (proj_wkt && strlen(proj_wkt) > 0);
 			if (has_projection)
 			{
+				options->maxLevel = tilingScheme->getPoperLevel(std::min(xOriginResolution, yOriginResolution), options->tileSize);
 				options->maxLevel = this->getProperLevel(std::min(xOriginResolution, yOriginResolution), options->tileSize);
+
 			}
 			else {
 				//就用转换为wgs84后的处理
 				coord_system->calculateGeographicResolution((min_y + max_y) / 2.0, xOriginResolution, yOriginResolution, xResolutionM = 0, yResolutionM);
+				options->maxLevel = tilingScheme->getPoperLevel(std::min(xResolutionM, yResolutionM), options->tileSize);
 				options->maxLevel = this->getProperLevel(std::min(xResolutionM, yResolutionM), options->tileSize);
 			}
 		}

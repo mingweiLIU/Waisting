@@ -19,6 +19,7 @@ endif()
 
 find_package(GDAL REQUIRED gdal)
 find_package(TBB REQUIRED)
+find_package(GLM REQUIRED)
 
 
 set(includeDirs 
@@ -35,6 +36,7 @@ target_include_directories(${PROJECT_NAME}  PUBLIC ${includeDirs} ${HeaderFileNa
 target_link_libraries(${PROJECT_NAME} PRIVATE 
     ${GDAL_LIBRARY}
     TBB::tbb
+    glm::glm
     WTDataManipulate
     WTFrame
     WTEarth

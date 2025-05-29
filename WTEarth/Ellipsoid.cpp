@@ -6,13 +6,15 @@
 #include<functional>
 #include <glm/gtc/epsilon.hpp> 
 
+#include "Cartographic.h"
+#include "Rectangle.h"
 
 namespace WT{
 	Ellipsoid Ellipsoid::WGS84(6378137.0, 6378137.0, 6356752.3142451793);
 	Ellipsoid Ellipsoid::UNIT_SPHERE(1.0,1.0,1.0);
 	Ellipsoid Ellipsoid::MOON(1737400.0, 1737400.0, 1737400.0);
 
-	Ellipsoid::Ellipsoid(double x = 0.0, double y = 0.0, double z = 0.0) {
+	Ellipsoid::Ellipsoid(double x /*= 0.0*/, double y /*= 0.0*/, double z /*= 0.0*/) {
 		if (x <= 0 || y <= 0 || z <= 0) {
 			std::cerr << "椭球体的xyz轴必须都大于0" << std::endl;
 			return;

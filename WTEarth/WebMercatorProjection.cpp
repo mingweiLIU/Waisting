@@ -1,5 +1,5 @@
 #include "WebMercatorProjection.h"
-
+#include "Cartographic.h"
 namespace WT{
 
 	double WebMercatorProjection::mercatorAngleToGeodeticLatitude(double mercatorAngle) {

@@ -39,6 +39,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     glm::glm
     ${Jemolloc_ROOT}/lib/jemalloc_sd.lib
     WTFrame
+    WTEarth
 )
 
 target_compile_definitions(${PROJECT_NAME} 

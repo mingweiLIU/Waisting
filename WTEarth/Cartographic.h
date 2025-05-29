@@ -1,5 +1,9 @@
 #pragma once
+#include <optional>
+#include<string>
+#include<glm/glm.hpp>
 #include "Ellipsoid.h"
+
 namespace WT {
 	class Cartographic
 	{
@@ -56,7 +60,7 @@ namespace WT {
 		 * @return 如果提供了result参数则返回修改后的result，否则返回新的Cartographic实例。
 		 *         如果笛卡尔坐标位于椭球体中心则返回std::nullopt
 		 */
-		static std::optional<Cartographic> fromCartesian(const glm::dvec3& cartesian, const Ellipsoid& ellipsoid = Ellipsoid::WGS84);
+		static std::optional<Cartographic> fromCartesian(const glm::dvec3& cartesian,Ellipsoid& ellipsoid = Ellipsoid::WGS84);
 
 		/**
 		 * 从地理坐标(Cartographic)创建新的笛卡尔坐标(Cartesian3)实例。
@@ -69,7 +73,7 @@ namespace WT {
 		 *
 		 * @throws std::invalid_argument 如果cartographic参数无效
 		 */
-		static glm::dvec3 toCartesian(const Cartographic& cartographic, const Ellipsoid& ellipsoid = Ellipsoid::WGS84);
+		static glm::dvec3 toCartesian(Cartographic& cartographic, Ellipsoid& ellipsoid = Ellipsoid::WGS84);
 
 		/**
 		 * 比较两个地理坐标的各个分量，如果完全相同则返回true，否则返回false
@@ -93,5 +97,5 @@ namespace WT {
 
 	public:
 		double longitude, latitude, height;
-	}
+	};
 };

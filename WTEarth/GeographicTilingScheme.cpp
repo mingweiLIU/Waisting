@@ -1,52 +1,63 @@
 #include "GeographicTilingScheme.h"
 
 namespace WT{
+	GeographicTilingScheme::GeographicTilingScheme(Ellipsoid& ellipsoid /*= Ellipsoid::WGS84*/, Rectangle rectangle /*= Rectangle::MAX_VALUE*/
+		, int numberOfLevelZeroTilesX /*= 2*/, int numberOfLevelZeroTilesY /*= 1*/) {
+		this->numberOfLevelZeroTilesX = numberOfLevelZeroTilesX;
+		this->numberOfLevelZeroTilesY = numberOfLevelZeroTilesY;
+		this->mRect = rectangle;
+		this->mEllipsoid = ellipsoid;
+		this->mProjection = std::make_shared<GeographicProjection>();
+	}
 
-	void GeographicTilingScheme::rectangleToNativeRectangle(Rectangle rect, Rectangle& nativeRect)
+	Rectangle GeographicTilingScheme::rectangleToNativeRectangle(Rectangle rect)
 	{
+		Rectangle nativeRect;
 		nativeRect.west = glm::degrees(rect.west);
 		nativeRect.south = glm::degrees(rect.south);
 		nativeRect.east = glm::degrees(rect.east);
 		nativeRect.north = glm::degrees(rect.north);
+		return nativeRect;
 	}
 
-	void GeographicTilingScheme::tileXYToNativeRectangle(int tileX, int tileY, int level, Rectangle& nativeRect)
+	Rectangle GeographicTilingScheme::tileXYToNativeRectangle(int tileX, int tileY, int level)
 	{
 		Rectangle rect;
-		this->tileXYToRectangle(tileX, tileY, level, rect);
-		this->rectangleToNativeRectangle(rect, nativeRect);
+		rect=this->tileXYToRectangle(tileX, tileY, level);
+		return this->rectangleToNativeRectangle(rect);
 	}
 
-	void GeographicTilingScheme::tileXYToRectangle(int tileX, int tileY, int level, Rectangle& rect)
+	Rectangle GeographicTilingScheme::tileXYToRectangle(int tileX, int tileY, int level)
 	{
 		int xTiles = this->getNumberOfXTilesAtLevel(level);
 		int yTiles = this->getNumberOfYTilesAtLevel(level);
 
-		float xTileWidth = (this->mRectangle.east - this->mRectangle.west)/xTiles;
-		float west = tileX * xTileWidth + this->mRectangle.west;
+		float xTileWidth = (this->mRect.east - this->mRect.west)/xTiles;
+		float west = tileX * xTileWidth + this->mRect.west;
 		float east = west + xTileWidth;
 
-		float yTileHeight= (this->mRectangle.north - this->mRectangle.south) / yTiles;
-		float north = this->mRectangle.north - tileY * yTileHeight;
+		float yTileHeight= (this->mRect.north - this->mRect.south) / yTiles;
+		float north = this->mRect.north - tileY * yTileHeight;
 		float south = north - yTileHeight;
 
-		rect = Rectangle{ west,south,east,north };
+		return Rectangle{ west,south,east,north };
 	}
 
-	void GeographicTilingScheme::positionToTileXY(float radX, float radY, int level, int& tileX, int& tileY)
+	bool GeographicTilingScheme::positionToTileXY(float radX, float radY, int level, int& tileX, int& tileY)
 	{
-		if (!(mRectangle.west <= radX && radX <= mRectangle.east && mRectangle.south <= radY && radY<=mRectangle.north )) return;
+		if (!(mRect.west <= radX && radX <= mRect.east && mRect.south <= radY && radY<=mRect.north )) return false;
 
 		int xTiles = this->getNumberOfXTilesAtLevel(level);
 		int yTiles = this->getNumberOfYTilesAtLevel(level);
 
-		float xTileWidth = (this->mRectangle.east - this->mRectangle.west) / xTiles;
-		float yTileHeight = (this->mRectangle.north - this->mRectangle.south) / yTiles;
+		float xTileWidth = (this->mRect.east - this->mRect.west) / xTiles;
+		float yTileHeight = (this->mRect.north - this->mRect.south) / yTiles;
 
-		tileX = ((radX - this->mRectangle.west) / xTileWidth) ;
+		tileX = ((radX - this->mRect.west) / xTileWidth) ;
 		if (tileX >= xTiles) tileX = xTiles - 1;
 
-		tileY = ((this->mRectangle.north - radY) / yTileHeight);
+		tileY = ((this->mRect.north - radY) / yTileHeight);
 		if (tileY >= yTiles) tileY = yTiles - 1;
+		return true;
 	}
 }

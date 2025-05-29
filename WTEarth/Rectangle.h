@@ -3,6 +3,7 @@
 #include <glm/gtc/constants.hpp>
 #include <vector>
 #include "Cartographic.h"
+#include "Ellipsoid.h"
 
 namespace WT {
 	class Rectangle {
@@ -135,14 +136,14 @@ namespace WT {
 		std::vector<glm::dvec3> subsample(Ellipsoid& ellipsoid = Ellipsoid::WGS84,double surfaceHeight = 0.0) const;
 
 		/**
-	 * @brief 根据 [0.0, 1.0] 范围内的归一化坐标计算矩形的一个子区域。
-	 *
-	 * @param westLerp 西侧插值因子，范围 [0.0, 1.0]。必须小于或等于 eastLerp。
-	 * @param southLerp 南侧插值因子，范围 [0.0, 1.0]。必须小于或等于 northLerp。
-	 * @param eastLerp 东侧插值因子，范围 [0.0, 1.0]。必须大于或等于 westLerp。
-	 * @param northLerp 北侧插值因子，范围 [0.0, 1.0]。必须大于或等于 southLerp。
-	 * @returns 返回一个新的 `Rectangle` 实例。
-	 */
+		 * @brief 根据 [0.0, 1.0] 范围内的归一化坐标计算矩形的一个子区域。
+		 *
+		 * @param westLerp 西侧插值因子，范围 [0.0, 1.0]。必须小于或等于 eastLerp。
+		 * @param southLerp 南侧插值因子，范围 [0.0, 1.0]。必须小于或等于 northLerp。
+		 * @param eastLerp 东侧插值因子，范围 [0.0, 1.0]。必须大于或等于 westLerp。
+		 * @param northLerp 北侧插值因子，范围 [0.0, 1.0]。必须大于或等于 southLerp。
+		 * @returns 返回一个新的 `Rectangle` 实例。
+		 */
 		Rectangle subsection(
 			double westLerp,
 			double southLerp,
