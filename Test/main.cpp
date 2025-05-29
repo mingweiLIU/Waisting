@@ -6,11 +6,11 @@ void main() {
 
     // 创建切片器
     std::shared_ptr< WT::SlippyMapTilerOptions> options = std::make_shared<WT::SlippyMapTilerOptions>();
-	//options->inputFile = "D:\\Data\\DOM1\\yangjiabaDOM.tif";
-	//options->outputDir = "D:\\Data\\DOM1\\test";
+	options->inputFile = "D:\\Data\\DOM1\\yangjiabaDOM.tif";
+	options->outputDir = "D:\\Data\\DOM1\\test";
     //rgb真彩色 nodata为0 0 0
-	options->inputFile = "E:\\Data\\dq\\yangjiaba\\initial\\DOM1\\yangjiabaDOM.tif";
-	options->outputDir = "E:\\Data\\dq\\yangjiaba\\initial\\DOM1\\test";
+	//options->inputFile = "E:\\Data\\dq\\yangjiaba\\initial\\DOM1\\yangjiabaDOM.tif";
+	//options->outputDir = "E:\\Data\\dq\\yangjiaba\\initial\\DOM1\\test";
     //单波段灰白色 nodata自带 像素为32位
     //options->inputFile = "E:\\Data\\dq\\DEM\\DEM_1000h.img";
     //options->outputDir = "E:\\Data\\23";

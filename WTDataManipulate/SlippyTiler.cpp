@@ -667,6 +667,7 @@ namespace WT {
 
 		// 计算该级别的瓦片范围
 		int min_tile_x, min_tile_y, max_tile_x, max_tile_y;
+		Rectangle ranges = tilingScheme->rectangle2TileXYRange(Rectangle(min_x, min_y, max_x, max_y), zoom);
 		get_tile_range(zoom, min_tile_x, min_tile_y, max_tile_x, max_tile_y);
 
 		// 确保输出目录存在

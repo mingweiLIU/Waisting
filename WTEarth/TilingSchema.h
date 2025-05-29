@@ -57,13 +57,13 @@ namespace WT {
 		// 给定Rectanle计算其瓦片范围
 		virtual Rectangle rectangle2TileXYRange(Rectangle& rectToCalc,int level) {
 			Cartographic minXYPos = rectToCalc.getSouthwest();
-			Cartographic maxXYPos = rectToCalc.getSouthwest();
+			Cartographic maxXYPos = rectToCalc.getNortheast();
 
 			//把坐标转为弧度
 			minXYPos.longitude = glm::radians(minXYPos.longitude);
 			minXYPos.latitude = glm::radians(minXYPos.latitude);
-			minXYPos.longitude = glm::radians(minXYPos.longitude);
-			minXYPos.latitude = glm::radians(minXYPos.latitude);
+			maxXYPos.longitude = glm::radians(maxXYPos.longitude);
+			maxXYPos.latitude = glm::radians(maxXYPos.latitude);
 
 			//
 			int minTileX, minTileY, maxTileX, maxTileY;
