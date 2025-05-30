@@ -24,8 +24,8 @@ namespace WT{
 	public:
 		std::string inputFile="";//输入的文件
 		std::string outputDir="";//输出路径
-		int minLevel = -9999;//最小切片级数
-		int maxLevel = -9999;//最大切片级数
+		int minLevel = 17;//-9999;//最小切片级数
+		int maxLevel = 17;//-9999;//最大切片级数
 		int tileSize = 256;//瓦片大小
 		std::vector<double> nodata;// = { 255,255,255 };//NoData设置 如果影像没有nodata就使用这个
 		IMAGEFORMAT outputFormat = IMAGEFORMAT::JPG;//输出瓦片后缀
@@ -81,6 +81,7 @@ namespace WT{
 		int band_count;
 		GDALDataType data_type;
 		ImageInfo image_info;
+		bool useAbs = false;
 
 		std::vector<double> maxs;//每个波段的最大值
 		std::vector<double> mins;//每个波段的最小值

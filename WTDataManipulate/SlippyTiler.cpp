@@ -167,16 +167,28 @@ namespace WT {
 		try {
 			// 计算瓦片的地理范围（在WGS84坐标系下）
 			double tile_min_x, tile_min_y, tile_max_x, tile_max_y;
-			get_tile_geo_bounds(zoom, tile_x, tile_y, tile_min_x, tile_min_y, tile_max_x, tile_max_y);
+			if (!useAbs)
+			{
+				get_tile_geo_bounds(zoom, tile_x, tile_y, tile_min_x, tile_min_y, tile_max_x, tile_max_y);
+			}
+			else {
+				Rectangle temp=tilingScheme->tileXYToDegreeRectangle(tile_x, tile_y, zoom);
+				tile_min_x = temp.west; tile_min_y = temp.south; tile_max_x = temp.east; tile_max_y = temp.north;
+			}
 
 			// 创建瓦片路径
 			fs::path x_dir = fs::path(options->outputDir) / std::to_string(zoom) / std::to_string(tile_x);
 
 			// 计算瓦片在原始影像中的像素范围
 			int src_min_x, src_min_y, src_max_x, src_max_y;
-			if (!geo_to_pixel(tile_min_x, tile_max_y, src_min_x, src_min_y) ||
-				!geo_to_pixel(tile_max_x, tile_min_y, src_max_x, src_max_y)) {
-				return false; // 坐标转换失败
+			if (!useAbs) {
+				if (!geo_to_pixel(tile_min_x, tile_max_y, src_min_x, src_min_y) ||
+					!geo_to_pixel(tile_max_x, tile_min_y, src_max_x, src_max_y)) {
+					return false; // 坐标转换失败
+				}
+			}
+			else {
+				//tilingScheme->
 			}
 
 			// 计算瓦片边界和映射关系
@@ -667,8 +679,13 @@ namespace WT {
 
 		// 计算该级别的瓦片范围
 		int min_tile_x, min_tile_y, max_tile_x, max_tile_y;
-		Rectangle ranges = tilingScheme->rectangle2TileXYRange(Rectangle(min_x, min_y, max_x, max_y), zoom);
-		get_tile_range(zoom, min_tile_x, min_tile_y, max_tile_x, max_tile_y);
+		//if (useAbs) {
+			Rectangle ranges = tilingScheme->rectangle2TileXYRange(Rectangle(min_x, min_y, max_x, max_y), zoom);
+			min_tile_x = ranges.west;min_tile_y=ranges.south; max_tile_x=ranges.east; max_tile_y=ranges.north;
+		//}
+		//else {
+			get_tile_range(zoom, min_tile_x, min_tile_y, max_tile_x, max_tile_y);
+		//}
 
 		// 确保输出目录存在
 		create_directories(zoom);
