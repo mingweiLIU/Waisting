@@ -30,6 +30,7 @@ namespace WT{
 		std::vector<double> nodata;// = { 255,255,255 };//NoData设置 如果影像没有nodata就使用这个
 		IMAGEFORMAT outputFormat = IMAGEFORMAT::JPG;//输出瓦片后缀
 		int numThreads = std::thread::hardware_concurrency()-1;//使用的线程数
+		bool isImg = true;//表示是否是影像切片 如果true则是影像切片 如果是false 则是地形切片
 		std::string prjFilePath = "";//外部prj文件路径 可以为空
 		std::string wktString = "";//外部wkt字符串 可以为空
 	};
@@ -81,7 +82,7 @@ namespace WT{
 		int band_count;
 		GDALDataType data_type;
 		ImageInfo image_info;
-		bool useAbs = false;
+		bool useAbs = true;
 
 		std::vector<double> maxs;//每个波段的最大值
 		std::vector<double> mins;//每个波段的最小值

@@ -35,7 +35,7 @@ namespace WT {
 		 * @param tileX 输出参数，用于存储计算出的磁贴 X 坐标。
 		 * @param tileY 输出参数，用于存储计算出的磁贴 Y 坐标。
 		 */
-		 bool positionToTileXY(float radX, float radY, int level, int& tileX, int& tileY) override;
+		 bool positionToTileXY(double radX, double radY, int level, int& tileX, int& tileY) override;
 
 	private:
 		glm::dvec3 southwest_projected ;

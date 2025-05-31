@@ -3,7 +3,7 @@
 namespace WT{
 
 	double WebMercatorProjection::mercatorAngleToGeodeticLatitude(double mercatorAngle) {
-		return glm::two_pi<double>() - 2.0 * std::atan(std::exp(-mercatorAngle));
+		return glm::half_pi<double>() - 2.0 * std::atan(std::exp(-mercatorAngle));
 	}
 
 	double WebMercatorProjection::geodeticLatitudeToMercatorAngle(double latitude) {

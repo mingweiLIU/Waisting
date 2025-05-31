@@ -24,6 +24,6 @@ namespace WT{
 		Rectangle tileXYToRectangle(int tileX, int tileY, int level) override;
 
 		//计算地理位置在哪个瓦片上
-		bool positionToTileXY(float radX, float radY, int level, int& tileX, int& tileY) override;
+		bool positionToTileXY(double radX, double radY, int level, int& tileX, int& tileY) override;
 	};
 }

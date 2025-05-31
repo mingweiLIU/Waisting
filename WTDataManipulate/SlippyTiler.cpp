@@ -13,6 +13,7 @@
 #include<fstream>
 
 #include"WebMercatorTilingSheme.h"
+#include "GeographicTilingScheme.h"
 #include "MemoryPool.h"
 
 namespace WT {
@@ -25,8 +26,15 @@ namespace WT {
 
 		// 创建坐标系统对象
 		coord_system = std::make_unique<CoordinateSystem>();
-		//创建切片规则
-		tilingScheme = std::make_unique<WebMercatorTilingSheme>();
+
+		//创建切片规则 如果是影像切片则使用osm规则 如果是地形切片则使用地理规则
+		if (options->isImg)
+		{
+			tilingScheme = std::make_unique<WebMercatorTilingSheme>();
+		}
+		else {
+			tilingScheme = std::make_unique<GeographicTilingScheme>();
+		}
 	}
 
 	SlippyMapTiler::~SlippyMapTiler()
@@ -181,14 +189,10 @@ namespace WT {
 
 			// 计算瓦片在原始影像中的像素范围
 			int src_min_x, src_min_y, src_max_x, src_max_y;
-			if (!useAbs) {
-				if (!geo_to_pixel(tile_min_x, tile_max_y, src_min_x, src_min_y) ||
-					!geo_to_pixel(tile_max_x, tile_min_y, src_max_x, src_max_y)) {
-					return false; // 坐标转换失败
-				}
-			}
-			else {
-				//tilingScheme->
+
+			if (!geo_to_pixel(tile_min_x, tile_max_y, src_min_x, src_min_y) ||
+				!geo_to_pixel(tile_max_x, tile_min_y, src_max_x, src_max_y)) {
+				return false; // 坐标转换失败
 			}
 
 			// 计算瓦片边界和映射关系
@@ -679,13 +683,13 @@ namespace WT {
 
 		// 计算该级别的瓦片范围
 		int min_tile_x, min_tile_y, max_tile_x, max_tile_y;
-		//if (useAbs) {
+		if (useAbs) {
 			Rectangle ranges = tilingScheme->rectangle2TileXYRange(Rectangle(min_x, min_y, max_x, max_y), zoom);
-			min_tile_x = ranges.west;min_tile_y=ranges.south; max_tile_x=ranges.east; max_tile_y=ranges.north;
-		//}
-		//else {
+			min_tile_x = ranges.west;min_tile_y=ranges.north; max_tile_x=ranges.east; max_tile_y=ranges.south;
+		}
+		else {
 			get_tile_range(zoom, min_tile_x, min_tile_y, max_tile_x, max_tile_y);
-		//}
+		}
 
 		// 确保输出目录存在
 		create_directories(zoom);
@@ -695,9 +699,17 @@ namespace WT {
 		int tiles_high = max_tile_y - min_tile_y + 1;
 		int total_tiles = tiles_wide * tiles_high;
 
-		std::cout << "瓦片范围: X=" << min_tile_x << "-" << max_tile_x
-			<< ", Y=" << min_tile_y << "-" << max_tile_y
-			<< " (总计 " << total_tiles << " 个瓦片)" << std::endl;
+		if (options->isImg)
+		{
+			std::cout << "瓦片范围: X=" << min_tile_x << "-" << max_tile_x
+				<< ", Y=" << min_tile_y << "-" << max_tile_y
+				<< " (总计 " << total_tiles << " 个瓦片)" << std::endl;
+		}
+		else {
+			std::cout << "瓦片范围: X=" << min_tile_x << "-" << max_tile_x
+				<< ", Y=" << tilingScheme->getNumberOfYTilesAtLevel(zoom)-min_tile_y << "-" << tilingScheme->getNumberOfYTilesAtLevel(zoom) - max_tile_y
+				<< " (总计 " << total_tiles << " 个瓦片)" << std::endl;
+		}
 
 
 		// 使用线程本地存储处理Dataset
@@ -876,15 +888,25 @@ namespace WT {
 			bool has_projection = (proj_wkt && strlen(proj_wkt) > 0);
 			if (has_projection)
 			{
-				options->maxLevel = tilingScheme->getPoperLevel(std::min(xOriginResolution, yOriginResolution), options->tileSize);
-				options->maxLevel = this->getProperLevel(std::min(xOriginResolution, yOriginResolution), options->tileSize);
+				if (useAbs)
+				{
+					options->maxLevel = tilingScheme->getPoperLevel(std::min(xOriginResolution, yOriginResolution), options->tileSize);
+				}
+				else {
+					options->maxLevel = this->getProperLevel(std::min(xOriginResolution, yOriginResolution), options->tileSize);
+				}
 
 			}
 			else {
 				//就用转换为wgs84后的处理
 				coord_system->calculateGeographicResolution((min_y + max_y) / 2.0, xOriginResolution, yOriginResolution, xResolutionM = 0, yResolutionM);
-				options->maxLevel = tilingScheme->getPoperLevel(std::min(xResolutionM, yResolutionM), options->tileSize);
-				options->maxLevel = this->getProperLevel(std::min(xResolutionM, yResolutionM), options->tileSize);
+				if (useAbs)
+				{
+					options->maxLevel = tilingScheme->getPoperLevel(std::min(xResolutionM, yResolutionM), options->tileSize);
+				}
+				else {
+					options->maxLevel = this->getProperLevel(std::min(xResolutionM, yResolutionM), options->tileSize);
+				}
 			}
 		}
 

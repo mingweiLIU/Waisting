@@ -51,7 +51,7 @@ namespace WT {
 		virtual Rectangle tileXYToRectangle(int tileX, int tileY, int level) = 0;
 
 		//计算地理位置在哪个瓦片上
-		virtual bool positionToTileXY(float radX, float radY, int level, int& tileX, int& tileY) = 0;
+		virtual bool positionToTileXY(double radX, double radY, int level, int& tileX, int& tileY) = 0;
 
 		/////////////////////////下面为切片计算用的函数/////////////////////////////////////////
 		// 给定Rectanle计算其瓦片范围

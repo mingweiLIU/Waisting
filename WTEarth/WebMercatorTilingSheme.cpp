@@ -28,11 +28,11 @@ namespace WT {
 		int xTiles = getNumberOfXTilesAtLevel(level);
 		int yTiles = getNumberOfYTilesAtLevel(level);
 
-		int xTileWidth = (northeast_projected.x - southwest_projected.x) / xTiles;
+		float xTileWidth = (northeast_projected.x - southwest_projected.x) / xTiles;
 		int west = southwest_projected.x + tileX * xTileWidth;
 		int east = southwest_projected.x + (tileX + 1) * xTileWidth;
 
-		int yTileHeight = (northeast_projected.y - southwest_projected.y) / yTiles;
+		float yTileHeight = (northeast_projected.y - southwest_projected.y) / yTiles;
 		int north = northeast_projected.y - tileY * yTileHeight;
 		int south = northeast_projected.y - (tileY + 1) * yTileHeight;
 		return Rectangle(west, south, east, north);
@@ -40,65 +40,23 @@ namespace WT {
 
 
 	Rectangle WebMercatorTilingSheme::tileXYToRectangle(int tileX, int tileY, int level) {
-		Rectangle nativeRect = tileXYToNativeRectangle(tileX, tileY, level);
-		Cartographic soutwest= this->mProjection->unproject(glm::dvec3(nativeRect.west, nativeRect.south, 0));
-		Cartographic northeast = this->mProjection->unproject(glm::dvec3(nativeRect.east, nativeRect.north, 0));
+		double minLongitude= tileX / (double)(numberOfLevelZeroTilesX << level)  * glm::two_pi<double>() - glm::pi<double>();
 
-		return Rectangle(soutwest.longitude,soutwest.latitude,northeast.longitude,northeast.latitude);
+		double n = glm::pi<double>() - glm::two_pi<double>() * (tileY+1) / (double)(numberOfLevelZeroTilesY << level);
+		double minLatitude = atan(0.5 * (exp(n) - exp(-n)));   // 反双曲正切计算
+
+		double maxLongitude = (tileX+1) / (double)(numberOfLevelZeroTilesX << level) * glm::two_pi<double>() - glm::pi<double>();
+
+		n = glm::pi<double>() - glm::two_pi<double>() * tileY / (double)(numberOfLevelZeroTilesY << level);
+		double maxLatitude = atan(0.5 * (exp(n) - exp(-n)));   // 反双曲正切计算
+
+		return Rectangle(minLongitude, minLatitude, maxLongitude, maxLatitude);
 	}
 
 
-	bool WebMercatorTilingSheme::positionToTileXY(float radX, float radY, int level, int& tileX, int& tileY) {
-        // 创建 Cartographic 对象用于内部计算
-        Cartographic position(static_cast<double>(radX), static_cast<double>(radY), 0.0); // 假设高度为 0.0
-
-        // 检查位置是否在瓦片方案的矩形边界内
-        if (!this->mRect.contains(position)) {
-            // 如果位置超出边界，则返回 false，不修改 tileX 和 tileY
-            return false;
-        }
-
-        // 获取指定级别下 X 和 Y 方向的瓦片数量
-        const int xTiles = getNumberOfXTilesAtLevel(level);
-        const int yTiles = getNumberOfYTilesAtLevel(level);
-
-        // 计算整个投影范围的宽度和高度（以米为单位）
-        int xTileWidth = (northeast_projected.x - southwest_projected.x) / xTiles;
-        int yTileHeight = (northeast_projected.y - southwest_projected.y) / yTiles;
-
-        // 将地理位置投影到 Web 墨卡托米制坐标
-        const glm::dvec3 webMercatorPosition = mProjection->project(position);
-
-        // 计算投影点与方案西边界和北边界的距离
-        // distanceFromWest: 从西边界到点的 X 距离
-        const double distanceFromWest = webMercatorPosition.x - southwest_projected.x;
-        // distanceFromNorth: 从北边界到点的 Y 距离 (注意 Y 轴方向，通常 Web 墨卡托的 Y 轴向上，但瓦片系统从北向下)
-        const double distanceFromNorth = northeast_projected.y - webMercatorPosition.y;
-
-        // 计算瓦片的 X 坐标
-        // 使用 static_cast<int> 进行向下取整
-        int xTileCoordinate = static_cast<int>(distanceFromWest / xTileWidth);
-        // 边界检查：确保 X 坐标不会超出最大瓦片数量
-        if (xTileCoordinate >= xTiles) {
-            xTileCoordinate = xTiles - 1;
-        }
-        else if (xTileCoordinate < 0) { // 确保不会是负数，虽然通常在 contains 检查后不会发生
-            xTileCoordinate = 0;
-        }
-
-        // 计算瓦片的 Y 坐标
-        int yTileCoordinate = static_cast<int>(distanceFromNorth / yTileHeight);
-        // 边界检查：确保 Y 坐标不会超出最大瓦片数量
-        if (yTileCoordinate >= yTiles) {
-            yTileCoordinate = yTiles - 1;
-        }
-        else if (yTileCoordinate < 0) { // 确保不会是负数
-            yTileCoordinate = 0;
-        }
-
-        // 通过引用参数返回结果
-        tileX = xTileCoordinate;
-        tileY = yTileCoordinate;
+	bool WebMercatorTilingSheme::positionToTileXY(double radX, double radY, int level, int& tileX, int& tileY) {
+		tileX=(int)(floor((radX + glm::pi<double>()) / glm::two_pi<double>() * (numberOfLevelZeroTilesX << level)));
+		tileY=(int)(floor((1.0 - asinh(tan(radY)) / glm::pi<double>()) / 2.0 * (numberOfLevelZeroTilesY << level)));
         return true; // 成功计算并返回
 	}
 };

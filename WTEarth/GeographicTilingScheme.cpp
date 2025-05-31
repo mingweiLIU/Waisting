@@ -43,7 +43,7 @@ namespace WT{
 		return Rectangle{ west,south,east,north };
 	}
 
-	bool GeographicTilingScheme::positionToTileXY(float radX, float radY, int level, int& tileX, int& tileY)
+	bool GeographicTilingScheme::positionToTileXY(double radX, double radY, int level, int& tileX, int& tileY)
 	{
 		if (!(mRect.west <= radX && radX <= mRect.east && mRect.south <= radY && radY<=mRect.north )) return false;
 
