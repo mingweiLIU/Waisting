@@ -251,7 +251,14 @@ namespace WT {
 			MemoryPool::GetInstance(this->getName())->deallocate(pAlphaData, options->tileSize * options->tileSize);
 
 			//将内存数据提交给输出器
-			fs::path file = fs::path(std::to_string(zoom)) / std::to_string(tile_x) / std::to_string(tile_y);
+			fs::path file;
+			if (options->isImg)
+			{
+				file = fs::path(std::to_string(zoom)) / std::to_string(tile_x) / std::to_string(tile_y);
+			}
+			else {
+				file = fs::path(std::to_string(zoom)) / std::to_string(tile_x) / std::to_string(tilingScheme->getNumberOfYTilesAtLevel(zoom)-tile_y-1);
+			}
 			IOFileInfo* oneFileInfo = nullptr;//这个释放交给fileIO来
 			if (!merged)
 			{
@@ -707,7 +714,7 @@ namespace WT {
 		}
 		else {
 			std::cout << "瓦片范围: X=" << min_tile_x << "-" << max_tile_x
-				<< ", Y=" << tilingScheme->getNumberOfYTilesAtLevel(zoom)-min_tile_y << "-" << tilingScheme->getNumberOfYTilesAtLevel(zoom) - max_tile_y
+				<< ", Y=" << tilingScheme->getNumberOfYTilesAtLevel(zoom)-max_tile_y-1 << "-" << tilingScheme->getNumberOfYTilesAtLevel(zoom) - min_tile_y-1
 				<< " (总计 " << total_tiles << " 个瓦片)" << std::endl;
 		}
 
