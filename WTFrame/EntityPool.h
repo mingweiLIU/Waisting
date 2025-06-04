@@ -6,6 +6,8 @@
 #include <atomic>
 #include <cassert>
 #include <type_traits>
+//搬抄改造自https://github.com/heremaps/tin-terrain
+
 namespace WT {
 
 	// 前向声明
