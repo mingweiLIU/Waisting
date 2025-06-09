@@ -19,4 +19,35 @@ namespace WT {
 		//判断点d是否在由a、b、c三个点组成的圆内
 		static bool inCircle(const glm::dvec2& a, const glm::dvec2& b, const glm::dvec2& c, const glm::dvec2& d);
 	};
+
+	class Line {
+	private:
+		double a, b, c;
+	public:
+		Line(const glm::dvec2& p, const glm::dvec2& q) {
+			const glm::dvec2 t = q - p;
+			double l = t.length();
+
+			a = t.y / l;
+			b = -t.x / l;
+			c = -(a * p.x + b * p.y);
+		}
+		inline double eval(const glm::dvec2& p)const noexcept {
+			return (a * p.x + b * p.y + c);
+		}
+	};
+
+	class Plane {
+	public:
+		double a, b, c;
+		Plane() = default;
+		Plane(const glm::dvec3& p, const glm::dvec3& q, const glm::dvec3& r) { init(p, q, r); }
+		inline init(const glm::dvec3& p, const glm::dvec3& q, const glm::dvec3& r) noexcept;
+		double eval(double x, double y) const noexcept {
+			return a * x + b * y + c;
+		}
+		double eval(int x, int y)const noexcept {
+			return a * x + b * y + c;
+		}
+	};
 };

@@ -35,7 +35,7 @@ namespace WT {
 		//void initMesh(const BBox2D& bb);
 		
 		virtual bool shouldSwap(const glm::dvec2 p, QuadEdgePtr e);
-		virtual bool scanTriagnle(DelaunayTrianglePtr t);
+		virtual bool scanTriagnle(DelaunayTrianglePtr t) {};
 
 		bool isInterior(QuadEdgePtr e);
 
@@ -47,9 +47,6 @@ namespace WT {
 		QuadEdgePtr locate(const glm::dvec2 x, QuadEdgePtr hint);
 		void insert(const glm::dvec2 x, DelaunayTrianglePtr tri);
 	};
-
-
-
 
 	class DelaunayTriangle
 	{
