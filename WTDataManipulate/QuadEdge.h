@@ -102,13 +102,13 @@ namespace WT {
         QuadEdgePtr Onext()const noexcept { return mNext; }
 
         //边的反向边
-        QuadEdgePtr Sym()const { return mRot->mRot; }
+        QuadEdgePtr Sym()const { return qnextRot->qnextRot; }
 
         //指向左边的对偶边
-        QuadEdgePtr Rot()const noexcept { return mRot; }
+        QuadEdgePtr Rot()const noexcept { return qnextRot; }
 
         //指向右边的对偶边
-        QuadEdgePtr invRot()const noexcept { return mInvRot; }
+        QuadEdgePtr invRot()const noexcept { return qpreInvRot; }
 
         //合成方法
         QuadEdgePtr Oprev()const { return Rot()->Onext()->Rot(); }
@@ -126,28 +126,38 @@ namespace WT {
         QuadEdgePtr Lprev()const { return Sym()->Onext(); }
 
         //获取起点
-        glm::dvec3 Org()const noexcept { return mOrigin; }
+        glm::dvec2 Org()const noexcept { return mOrigin; }
         //获取终点
-        glm::dvec3 Dest()const { return Sym()->mOrigin; }
+        glm::dvec2 Dest()const { return Sym()->mOrigin; }
 
         //获取左侧面
         DelaunayTrianglePtr Lface()const noexcept { return mLeftFace; }
         void setLFace(DelaunayTrianglePtr face)noexcept { mLeftFace = face; }
 
-        void setEndPoints(const glm::dvec3 org, const glm::dvec3 dest) {
+        void setEndPoints(const glm::dvec2 org, const glm::dvec2 dest) {
             mOrigin = org;
             Sym()->mOrigin = dest;
         }
 
+        //拓扑编辑
+        friend void splice(QuadEdgePtr a, QuadEdgePtr b);
+
+        //额外的辅助函数
+        //判断点是否在边的右侧
+        bool righOf(const glm::dvec2& x);
+
+        //判断点是否在边的左侧
+        bool leftOf(const glm::dvec2& x);
+
     protected:
-        glm::dvec3 mOrigin;
+        glm::dvec2 mOrigin;
         void* data;//预留的其他数据
         QuadEdgePtr mNext;
         DelaunayTrianglePtr mLeftFace;
 
 	private:
-        QuadEdgePtr mRot;//Rot --qnext
-        QuadEdgePtr mInvRot;//invRot--qprev
+        QuadEdgePtr qnextRot;//Rot --qnext
+        QuadEdgePtr qpreInvRot;//invRot--qprev
         QuadEdgePtr selfPtr;
         QuadEdge(QuadEdgePtr prev);
 	};
