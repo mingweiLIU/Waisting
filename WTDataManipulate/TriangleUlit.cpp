@@ -17,9 +17,19 @@ namespace WT {
 		return TriangleUlit::triCCW(x, dest, org);
 	}
 
+	bool TriangleUlit::rightOf(const glm::dvec2& x, QuadEdgePtr edge)
+	{
+		return TriangleUlit::rightOf(x, edge->Org(),edge->Dest());
+	}
+
 	bool TriangleUlit::leftOf(const glm::dvec2& x, const glm::dvec2& org, const glm::dvec2& dest)
 	{
 		return TriangleUlit::triCCW(x, org,dest);
+	}
+
+	bool TriangleUlit::leftOf(const glm::dvec2& x, QuadEdgePtr edge)
+	{
+		return TriangleUlit::leftOf(x, edge->Org(), edge->Dest());
 	}
 
 	bool TriangleUlit::inCircle(const glm::dvec2& a, const glm::dvec2& b, const glm::dvec2& c, const glm::dvec2& d)

@@ -12,9 +12,12 @@ namespace WT {
 
 		//判断点x在边（org--dest)的右侧
 		static bool rightOf(const glm::dvec2& x, const glm::dvec2& org, const glm::dvec2& dest);
+		static bool rightOf(const glm::dvec2& x, QuadEdgePtr edge);
+		
 
 		//判断点x在边（org--dest)的左侧
 		static bool leftOf(const glm::dvec2& x, const glm::dvec2& org, const glm::dvec2& dest);
+		static bool leftOf(const glm::dvec2& x, QuadEdgePtr edge);
 	
 		//判断点d是否在由a、b、c三个点组成的圆内
 		static bool inCircle(const glm::dvec2& a, const glm::dvec2& b, const glm::dvec2& c, const glm::dvec2& d);

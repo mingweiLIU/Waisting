@@ -3,6 +3,7 @@
 #include<glm/glm.hpp>
 #include"QuadEdge.h"
 #include "EntityPool.h"
+#include "IOAdapter.h"
 
 namespace WT {
 	class DelaunayTriangle;
@@ -16,7 +17,7 @@ namespace WT {
 
 	protected:
 		QuadEdgePtr mStartingEdge;
-		QuadEdgePtr mFirstFace;
+		DelaunayTrianglePtr mFirstFace;
 		DelaunayTrianglePtr makeFace(QuadEdgePtr edge);
 		void deleteEdge(QuadEdgePtr edge);
 		QuadEdgePtr connect(QuadEdgePtr a, QuadEdgePtr b);
@@ -72,5 +73,18 @@ namespace WT {
 		glm::dvec2 point1()const { return anchor->Org(); }
 		glm::dvec2 point2()const { return anchor->Dest(); }
 		glm::dvec2 point3()const { return anchor->Lprev()->Org(); }
+	};
+
+	//深化Mesh 采用Terra算法
+	class TerraMesh final :protected DelaunayMesh {
+	private:
+		IOFileInfo* mFileInfo;
+		int mWidth, mHeigth;
+		double mMaxError;
+	public:
+		TerraMesh(int width,int height,IOFileInfo* fileInfo);
+		void greedyInsert(double maxError);
+		bool scanTriagnle(DelaunayTrianglePtr t) override;
+		void convertToOBJ();
 	};
 };

@@ -375,8 +375,8 @@ namespace WT {
 // std::hash ÌØ»¯
 namespace std {
 	template<typename T>
-	struct hash<tntn::pool_ptr<T>> {
-		std::size_t operator()(const tntn::pool_ptr<T>& ptr) const noexcept {
+	struct hash<WT::pool_ptr<T>> {
+		std::size_t operator()(const WT::pool_ptr<T>& ptr) const noexcept {
 			std::size_t seed = 0;
 			tntn::hash_combine(seed, reinterpret_cast<std::uintptr_t>(ptr.pool()));
 			tntn::hash_combine(seed, ptr.index());

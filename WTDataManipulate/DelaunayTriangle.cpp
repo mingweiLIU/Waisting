@@ -12,44 +12,44 @@ namespace WT {
 
 	void DelaunayMesh::initMesh(const glm::dvec2 a, const glm::dvec2 b, const glm::dvec2 c, const glm::dvec2 d)
 	{
-		QuadEdgePtr ea = mEdges->spawn();
-		ea->init(ea);
-		ea->setEndPoints(a, b);
+		QuadEdgePtr edgeAB = mEdges->spawn();
+		edgeAB->init(edgeAB);
+		edgeAB->setEndPoints(a, b);
 
-		QuadEdgePtr eb = mEdges->spawn();
-		eb->init(eb);
-		splice(ea->Sym(), eb);
-		eb->setEndPoints(b, c);
+		QuadEdgePtr edgeBC = mEdges->spawn();
+		edgeBC->init(edgeBC);
+		splice(edgeAB->Sym(), edgeBC);
+		edgeBC->setEndPoints(b, c);
 
-		QuadEdgePtr ec = mEdges->spawn();
-		ec->init(ec);
-		splice(eb->Sym(), ec);
-		ec->setEndPoints(c, d);
+		QuadEdgePtr edgeCD = mEdges->spawn();
+		edgeCD->init(edgeCD);
+		splice(edgeBC->Sym(), edgeCD);
+		edgeCD->setEndPoints(c, d);
 
-		QuadEdgePtr ed = mEdges->spawn();
-		ed->init(ed);
-		splice(ec->Sym(), ed);
-		ed->setEndPoints(d, a);
-		splice(ed->Sym(), ea);
+		QuadEdgePtr edgeDA = mEdges->spawn();
+		edgeDA->init(edgeDA);
+		splice(edgeCD->Sym(), edgeDA);
+		edgeDA->setEndPoints(d, a);
+		splice(edgeDA->Sym(), edgeAB);
 
 		QuadEdgePtr diag = mEdges->spawn();
 		diag->init(diag);
-		splice(ed->Sym(), diag);
-		splice(eb->Sym(), diag->Sym());
+		splice(edgeDA->Sym(), diag);
+		splice(edgeBC->Sym(), diag->Sym());
 		diag->setEndPoints(a, c);
 
-		mStartingEdge = ea;
+		mStartingEdge = edgeAB;
 
 		mFirstFace.clear();
 
-		makeFace(ea->Sym());
-		makeFace(ec->Sym());
+		makeFace(edgeAB->Sym());
+		makeFace(edgeCD->Sym());
 	}
 
 	bool DelaunayMesh::shouldSwap(const glm::dvec2 p, QuadEdgePtr e)
 	{
 		QuadEdgePtr t = e->Oprev();
-		return inCircle(e->Org(), t->Dest(), e->Dest(), x);
+		return TriangleUlit::inCircle(e->Org(), t->Dest(), e->Dest(), p);
 	}
 
 
@@ -106,7 +106,7 @@ namespace WT {
 			e = base->Oprev();
 		} while (e->Lnext() != mStartingEdge);
 
-		if (boundary_edge) delete_edge(boundary_edge);
+		if (boundary_edge) deleteEdge(boundary_edge);
 
 		// Update all the faces in our new spoked polygon.
 		// If point x on perimeter, then don't add an exterior face.
@@ -130,7 +130,7 @@ namespace WT {
 		return mStartingEdge;
 	}
 
-	void DelaunayMesh::optimize(const glm::dvec2 x, QuadEdgePtr e)
+	void DelaunayMesh::optimize(const glm::dvec2 x, QuadEdgePtr s)
 	{
 		QuadEdgePtr start_spoke = s;
 		QuadEdgePtr spoke = s;
@@ -155,7 +155,7 @@ namespace WT {
 		do
 		{
 			QuadEdgePtr e = spoke->Lnext();
-			dt_ptr t = e->Lface();
+			DelaunayTrianglePtr t = e->Lface();
 
 			if (t) this->scanTriagnle(t);
 
@@ -163,7 +163,7 @@ namespace WT {
 		} while (spoke != start_spoke);
 	}
 
-	QuadEdgePtr DelaunayMesh::locate(const glm::dvec2 x, QuadEdgePtr hint)
+	QuadEdgePtr DelaunayMesh::locate(const glm::dvec2 x, QuadEdgePtr start)
 	{
 		QuadEdgePtr e = start;
 		double t = TriangleUlit::triAreaDouble(x, e->Dest(), e->Org());
@@ -218,7 +218,7 @@ namespace WT {
 				else
 				{
 					// x is on or below eo
-					if (t == 0 && !leftOf(eo->Dest(), e))
+					if (t == 0 && !TriangleUlit::leftOf(eo->Dest(), e))
 					{
 						// x on e but DelaunayMesh is to right
 						e = e->Sym();
@@ -304,7 +304,7 @@ namespace WT {
 
 		splice(e, a->Lnext());
 		splice(e->Sym(), b);
-		e->set_end_points(a->Dest(), b->Org());
+		e->setEndPoints(a->Dest(), b->Org());
 		return e;
 	}
 
@@ -320,7 +320,7 @@ namespace WT {
 		splice(e->Sym(), b);
 		splice(e, a->Lnext());
 		splice(e->Sym(), b->Lnext());
-		e->set_end_points(a->Dest(), b->Dest());
+		e->setEndPoints(a->Dest(), b->Dest());
 
 		f1->reshape(e);
 		f2->reshape(e->Sym());
@@ -328,10 +328,10 @@ namespace WT {
 
 	bool DelaunayMesh::ccwBoundary(QuadEdgePtr e)
 	{
-		return !rightOf(e->Oprev()->Dest(), e);
+		return !TriangleUlit::rightOf(e->Oprev()->Dest(), e);
 	}
 
-	bool DelaunayMesh::onEdge(const glm::dvec2 p, QuadEdgePtr e)
+	bool DelaunayMesh::onEdge(const glm::dvec2 x, QuadEdgePtr e)
 	{
 		double EPS = 1e-7;
 		double t1, t2, t3;
@@ -349,6 +349,26 @@ namespace WT {
 		return (fabs(line.eval(x)) < EPS);
 	}
 
+	TerraMesh::TerraMesh(int width, int height, IOFileInfo* fileInfo)
+	{
+		this->mWidth = width;
+		this->mHeigth = height;
+		this->mFileInfo = fileInfo;
+	}
 
+	void TerraMesh::greedyInsert(double maxError)
+	{
+		this->mMaxError = maxError;
+	}
+
+	bool TerraMesh::scanTriagnle(DelaunayTrianglePtr t)
+	{
+
+	}
+
+	void TerraMesh::convertToOBJ()
+	{
+
+	}
 
 };

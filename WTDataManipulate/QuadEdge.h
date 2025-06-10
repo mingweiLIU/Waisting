@@ -123,7 +123,7 @@ namespace WT {
         //右面上的next边
         QuadEdgePtr Rnext()const { return Rot()->Onext()->invRot(); }
         //右面上的prev边
-        QuadEdgePtr Lprev()const { return Sym()->Onext(); }
+        QuadEdgePtr Rprev()const { return Sym()->Onext(); }
 
         //获取起点
         glm::dvec2 Org()const noexcept { return mOrigin; }
@@ -152,7 +152,7 @@ namespace WT {
     protected:
         glm::dvec2 mOrigin;
         void* data;//预留的其他数据
-        QuadEdgePtr mNext;
+        QuadEdgePtr mNext;//就是Onext
         DelaunayTrianglePtr mLeftFace;
 
 	private:
