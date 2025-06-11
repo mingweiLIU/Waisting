@@ -1,4 +1,5 @@
 #include "DelaunayTriangle.h"
+#include <fstream>
 #include "TriangleUlit.h"
 namespace WT {
 	DelaunayMesh::DelaunayMesh() :
@@ -359,16 +360,191 @@ namespace WT {
 	void TerraMesh::greedyInsert(double maxError)
 	{
 		this->mMaxError = maxError;
+		mCounter = 0;
+		mToken.resize(mWidth*mHeigth);
+		mUsed.resize(mWidth * mHeigth);
+
+		this->initMesh(glm::dvec2(0, 0), glm::dvec2(0, mHeigth - 1), glm::dvec2(mWidth - 1, mHeigth - 1), glm::dvec2(mWidth - 1, 0));
+		mUsed[getPosOfRaster(0, 0)] = true;
+		mUsed[getPosOfRaster(mHeigth - 1, 0)] = true;
+		mUsed[getPosOfRaster(mHeigth - 1, mWidth-1)] = true;
+		mUsed[getPosOfRaster(0, mWidth - 1)] = true;
+
+		DelaunayTrianglePtr t = mFirstFace;
+		while (t)
+		{
+			scanTriagnle(t);
+			t = t->getLink();
+		}
+
+		while (!mCandidates.empty())
+		{
+			Candidate oneCandidate = mCandidates.getGreatest();
+			if (oneCandidate.importance<mMaxError) continue;
+
+			if (mToken[getPosOfRaster(oneCandidate.y, oneCandidate.x)] != oneCandidate.token) continue;
+
+			mUsed[getPosOfRaster(oneCandidate.y, oneCandidate.x)] = true;
+			this->insert(glm::dvec2(oneCandidate.y, oneCandidate.x), oneCandidate.triangle);
+		}
 	}
 
 	bool TerraMesh::scanTriagnle(DelaunayTrianglePtr t)
 	{
+		Plane zPlane;
+		computePlane(zPlane, t, mFileInfo);
 
+		std::array<glm::dvec2, 3> byY = { {
+				t->point1(),t->point2(),t->point3(),
+		} };
+
+		orderTrianglePoints(byY);
+		const double v0_x = byY[0].x;
+		const double v0_y = byY[0].y;
+		const double v1_x = byY[1].x;
+		const double v1_y = byY[1].y;
+		const double v2_x = byY[2].x;
+		const double v2_y = byY[2].y;
+
+		Candidate oneCadidate = { 0,0,0.0,-DBL_MAX,mCounter++,t };
+
+		const double dx2 = (v2_x - v0_x) / (v2_y - v0_y);
+		if (v1_y!=v0_y)
+		{
+			const double dx1 = (v1_x - v0_x) / (v1_y - v0_y);
+			double x1 = v0_x;
+			double x2 = v0_x;
+			const int startY = v0_y;
+			const int endY = v1_y;
+
+			for (int y=startY;y<endY;++y)
+			{
+				scanTriangleLine(zPlane, y, x1, x2, oneCadidate);
+				x1 += dx1; x2 += dx2;
+			}
+		}
+
+		if (v2_y!=v1_y)
+		{
+			const double dx1 = (v2_x - v1_x) / (v2_y - v1_y);
+			double x1 = v1_x; double x2 = v0_x;
+			const int startY = v1_y, endY = v2_y;
+			for (size_t y = startY; y < endY; y++)
+			{
+				scanTriangleLine(zPlane, y, x1, x2, oneCadidate);
+				x1 += dx1; x2 += dx2;
+			}
+		}
+
+		mToken[getPosOfRaster(oneCadidate.y, oneCadidate.x)] = oneCadidate.token;
+		mCandidates.push_back(oneCadidate);
+	}
+
+	void TerraMesh::scanTriangleLine(const Plane& plane, int y, double x1, double x2, Candidate& candidate) {
+		const int startX = static_cast<int>(ceil(fmin(x1, x2)));
+		const int endX = static_cast<int>(floor(fmax(x1, x2)));
+
+		if (startX > endX) return;
+
+		double z0 = plane.eval(startX, y);
+		double dz = plane.a;
+
+		for (size_t x = startX; x < endX; x++)
+		{
+			if (!mUsed[getPosOfRaster(y,x)])
+			{
+				const double z = mFileInfo->data[getPosOfRaster(y, x)];
+				const double diff = fabs(z - z0);
+				candidate.consider(x, y, z, diff);
+			}
+			z0 += dz;
+		}
 	}
 
 	void TerraMesh::convertToOBJ()
 	{
+		//这里将导出obj
+		std::vector < glm::dvec3> pos;
+		std::vector<int> indies;
 
+		std::vector<int> vertexID;
+		vertexID.resize(mWidth * mHeigth);
+		
+		int index = 0;
+		for (int y=0;y<mHeigth;++y)
+		{
+			for (int x = 0; x < mWidth; x++)
+			{
+				if (mUsed[getPosOfRaster(y,x)] == 1)
+				{
+					const double z = mFileInfo->data[getPosOfRaster(y, x)];
+					//TODO 这里是将影像位置空间化 为了检验代码可用性我先简单处理
+					glm::dvec3 onePos(5 * x, 5 * y, z);
+					pos.push_back(onePos);
+					vertexID[getPosOfRaster(y, x)] = index;
+					index++;
+				}
+			}
+		}
+
+		DelaunayTrianglePtr t = mFirstFace;
+		while (t)
+		{
+			glm::dvec2 p1 = t->point1();
+			glm::dvec2 p2 = t->point2();
+			glm::dvec2 p3 = t->point3();
+
+			if (TriangleUlit::triCCW(p1,p2,p3))
+			{
+				indies.push_back(vertexID[getPosOfRaster((int)p1.y, (int)p1.x)]);
+				indies.push_back(vertexID[getPosOfRaster((int)p2.y, (int)p2.x)]);
+				indies.push_back(vertexID[getPosOfRaster((int)p3.y, (int)p3.x)]);
+			}
+			else
+			{
+				indies.push_back(vertexID[getPosOfRaster((int)p3.y, (int)p3.x)]);
+				indies.push_back(vertexID[getPosOfRaster((int)p2.y, (int)p2.x)]);
+				indies.push_back(vertexID[getPosOfRaster((int)p1.y, (int)p1.x)]);
+			}
+			t = t->getLink();
+		}
+		//输出obj
+		//简单输出
+		exportToObj(pos, indies, "terraTestMesh.obj");
+
+	}
+
+	void TerraMesh::exportToObj(const std::vector<glm::dvec3>& positions,
+		const std::vector<int>& indices,
+		const std::string& filename) {
+		std::ofstream outfile(filename);
+
+		if (!outfile.is_open()) {
+			throw std::runtime_error("无法打开文件: " + filename);
+		}
+
+		// 写入文件头
+		outfile << "# 导出的3D模型\n";
+		outfile << "# 顶点数: " << positions.size() << "\n";
+		outfile << "# 面数: " << indices.size() / 3 << "\n\n";
+
+		// 写入顶点数据 (v x y z)
+		for (const auto& pos : positions) {
+			outfile << "v " << pos.x << " " << pos.y << " " << pos.z << "\n";
+		}
+
+		outfile << "\n"; // 顶点和面之间空一行
+
+		// 写入面数据 (f v1 v2 v3)
+		// 假设索引是三角形列表形式，每3个索引一个面
+		for (size_t i = 0; i < indices.size(); i += 3) {
+			// OBJ索引从1开始，所以每个索引+1
+			outfile << "f " << indices[i] + 1 << " "
+				<< indices[i + 1] + 1 << " "
+				<< indices[i + 2] + 1 << "\n";
+		}
+
+		outfile.close();
 	}
 
 };

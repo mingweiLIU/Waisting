@@ -45,7 +45,7 @@ namespace WT {
 		double a, b, c;
 		Plane() = default;
 		Plane(const glm::dvec3& p, const glm::dvec3& q, const glm::dvec3& r) { init(p, q, r); }
-		inline init(const glm::dvec3& p, const glm::dvec3& q, const glm::dvec3& r) noexcept;
+		inline void init(const glm::dvec3& p, const glm::dvec3& q, const glm::dvec3& r) noexcept;
 		double eval(double x, double y) const noexcept {
 			return a * x + b * y + c;
 		}
