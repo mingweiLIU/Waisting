@@ -19,8 +19,10 @@ void main() {
     //options->outputDir = "C:\\Users\\ROG\\Desktop\\12";
 	//options->inputFile = "C:\\Users\\MW\\Desktop\\11.tif";
 	//options->outputDir = "D:\\Data\\DOM1\\palete";
-	options->inputFile = "D:\\Data\\DOM1\\32\\forZYT.tif";
-	options->outputDir = "D:\\Data\\DOM1\\teTe";
+	//options->inputFile = "D:\\Data\\DOM1\\32\\forZYT.tif";
+	//options->outputDir = "D:\\Data\\DOM1\\teTe";
+    options->inputFile = "E:\\Data\\dq\\DEM\\forZYT.tif";
+    options->outputDir = "E:\\Data\\DEMTest";
     options->isImg = false;
     
     std::shared_ptr<WT::IProgressInfo> p = std::make_shared<WT::IProgressInfo>();
@@ -36,7 +38,9 @@ void main() {
     std::cout << "开始生成切片..." << std::endl;
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    bool success = cutter.process(p);
+    //bool success = cutter.process(p);
+
+    bool success = cutter.processTest(17,  43249, 218361, p);
 
     auto end_time = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count();

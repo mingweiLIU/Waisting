@@ -15,6 +15,7 @@
 #include"WebMercatorTilingSheme.h"
 #include "GeographicTilingScheme.h"
 #include "MemoryPool.h"
+#include "DelaunayTriangle.h"
 
 namespace WT {
 	SlippyMapTiler::SlippyMapTiler(std::shared_ptr<SlippyMapTilerOptions> options) {
@@ -268,6 +269,12 @@ namespace WT {
 				MemoryPool::GetInstance(this->getName())->deallocate(scaledData, image_info.output_band_count * options->tileSize * options->tileSize);
 				oneFileInfo = new IOFileInfo{ file.string(), pMergedData,(size_t)(image_info.output_band_count + 1) * options->tileSize * options->tileSize, this->getName() };
 			}
+
+			TerraMesh terraMesh(options->tileSize, options->tileSize, oneFileInfo);
+			terraMesh.greedyInsert(1.19);
+
+			terraMesh.convertToOBJ();
+
 			fileBatchOutputer->addFile(oneFileInfo);
 
 			return true;
@@ -770,6 +777,7 @@ namespace WT {
 		std::cout << std::endl;
 	}
 
+
 	bool SlippyMapTiler::initialize()
 	{
 		// 注册GDAL驱动
@@ -1080,6 +1088,77 @@ namespace WT {
 
 		return true;
 	}
+
+
+	bool  SlippyMapTiler::processTest(int level, int y, int x, std::shared_ptr<IProgressInfo> progressorInfo) {
+
+		if (!dataset) {
+			std::cerr << "数据集未初始化，请先调用initialize()" << std::endl;
+			return false;
+		}
+		progressInfo = progressorInfo;
+		progressInfo->setTotalNum(1);
+		progressInfo->setTicNum(1);
+
+		// 创建根输出目录
+		if (!fs::exists(options->outputDir)) {
+			if (!fs::create_directories(options->outputDir)) {
+				std::cerr << "无法创建输出目录: " << options->outputDir << std::endl;
+				return false;
+			}
+		}
+
+		// 创建内存管理器和文件缓冲管理器
+		fileBatchOutputer = std::make_shared<FileBatchOutput>();
+		std::unique_ptr<ImageFileParallelIOAdapter> imageIOAdatper = std::make_unique<ImageFileParallelIOAdapter>(options->outputDir, true
+			, options->tileSize, options->tileSize, options->outputFormat
+			, image_info.output_band_count, options->nodata);
+		imageIOAdatper->setProgressCallback(progressInfo);
+		fileBatchOutputer->setAdapter(std::move(imageIOAdatper));
+
+		// 记录开始时间
+		start_time = std::chrono::high_resolution_clock::now();
+
+		// 处理每个缩放级别
+		for (int zoom = level; zoom <= level; ++zoom) {
+			if (!progressInfo->isCanceled())
+			{
+				std::cout << "\n处理缩放级别: " << zoom << std::endl;
+				// 确保输出目录存在
+				create_directories(zoom);
+				// 使用线程本地数据集生成瓦片
+				if (generate_tile(zoom, x, y, dataset)) {
+					progressInfo->addProgress(1, "", "");
+				}
+			}
+		}
+
+		//所有处理完毕后 需要清空
+		fileBatchOutputer->output();
+
+		//输出元数据
+		nlohmann::json metaInfo;
+		metaInfo["extent"] = { min_x, min_y, max_x, max_y };
+		metaInfo["center"] = { (min_x + max_x) / 2,(min_y + max_y) / 2 };
+		metaInfo["levels"] = { options->minLevel,options->maxLevel };
+		std::ofstream fStream((fs::path(options->outputDir) / "meta.json").string().c_str());
+		fStream << std::setw(4) << metaInfo << std::endl;
+		fStream.close();
+
+		// 等待所有文件写入完成
+		std::cout << "等待文件写入完成..." << std::endl;
+
+		// 计算总处理时间
+		auto end_time = std::chrono::high_resolution_clock::now();
+		auto duration = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count();
+
+		// 输出统计信息
+		std::cout << "\n切片完成!" << std::endl;
+		std::cout << "总处理时间: " << duration << " 秒" << std::endl;
+
+		return true;
+	}
+
 
 	void  SlippyMapTiler::cancle() {
 		progressInfo->cancel();

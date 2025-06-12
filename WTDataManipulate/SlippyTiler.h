@@ -57,6 +57,8 @@ namespace WT{
 		SlippyMapTiler(std::shared_ptr<SlippyMapTilerOptions> options);
 		~SlippyMapTiler();
 		bool process(std::shared_ptr<IProgressInfo> progressInfo) override;
+
+		bool processTest(int level,int y,int x,std::shared_ptr<IProgressInfo> progressInfo);
 		void cancle() override;
 		//获取处理器名称
 		virtual std::string getName()const { return "影像切片器"; };

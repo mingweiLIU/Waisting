@@ -143,11 +143,59 @@ namespace WT {
 			Destroyed   // 已销毁
 		};
 
-		// 对象槽位
+		// 对象槽位 - 修复：添加移动构造函数和移动赋值操作符
 		struct Slot {
 			alignas(T) std::byte storage[sizeof(T)];
 			ObjectState state = ObjectState::Destroyed;
-			std::atomic<size_t> ref_count{0};
+			std::atomic<size_t> ref_count{ 0 };
+
+			// 默认构造函数
+			Slot() = default;
+
+			// 删除拷贝构造和拷贝赋值
+			Slot(const Slot&) = delete;
+			Slot& operator=(const Slot&) = delete;
+
+			// 移动构造函数
+			Slot(Slot&& other) noexcept
+				: state(other.state), ref_count(other.ref_count.load()) {
+				// 拷贝存储内容
+				std::memcpy(storage, other.storage, sizeof(T));
+				// 重置源对象
+				other.state = ObjectState::Destroyed;
+				other.ref_count.store(0);
+			}
+
+			// 移动赋值操作符
+			Slot& operator=(Slot&& other) noexcept {
+				if (this != &other) {
+					// 如果当前槽位有活跃对象，先析构
+					if (state == ObjectState::Active || state == ObjectState::Recycled) {
+						if constexpr (!std::is_trivially_destructible_v<T>) {
+							get_object()->~T();
+						}
+					}
+
+					// 移动数据
+					std::memcpy(storage, other.storage, sizeof(T));
+					state = other.state;
+					ref_count.store(other.ref_count.load());
+
+					// 重置源对象
+					other.state = ObjectState::Destroyed;
+					other.ref_count.store(0);
+				}
+				return *this;
+			}
+
+			// 析构函数
+			~Slot() {
+				if (state == ObjectState::Active || state == ObjectState::Recycled) {
+					if constexpr (!std::is_trivially_destructible_v<T>) {
+						get_object()->~T();
+					}
+				}
+			}
 
 			T* get_object() noexcept {
 				return reinterpret_cast<T*>(storage);
@@ -163,6 +211,7 @@ namespace WT {
 		EntityPool(EntityPool&&) = delete;
 		EntityPool& operator=(const EntityPool&) = delete;
 		EntityPool& operator=(EntityPool&&) = delete;
+		EntityPool() = delete;
 
 		struct private_tag {};
 
@@ -176,7 +225,10 @@ namespace WT {
 		}
 
 		// 构造函数（仅供make_shared使用）
-		explicit EntityPool(const private_tag&) = default;
+		explicit EntityPool(const private_tag&) {
+			// 预留一些初始容量以减少重新分配
+			m_slots.reserve(16);
+		};
 
 		// 析构函数
 		~EntityPool() {
@@ -342,7 +394,15 @@ namespace WT {
 	private:
 		friend class pool_ptr<T>;
 
-		T* get_addr(size_t index) const {
+		const T* get_addr(size_t index) const {
+			std::lock_guard<std::mutex> lock(m_mutex);
+			if (index >= m_slots.size() || m_slots[index].state == ObjectState::Destroyed) {
+				return nullptr;
+			}
+			return m_slots[index].get_object();
+		}
+
+		T* get_addr(size_t index) {
 			std::lock_guard<std::mutex> lock(m_mutex);
 			if (index >= m_slots.size() || m_slots[index].state == ObjectState::Destroyed) {
 				return nullptr;
@@ -370,17 +430,17 @@ namespace WT {
 		return pool->spawn(std::forward<Args>(args)...);
 	}
 
-} // namespace tntn
+} // namespace WT
 
-// std::hash 特化
+// std::hash 特化 - 修复：使用正确的命名空间
 namespace std {
 	template<typename T>
 	struct hash<WT::pool_ptr<T>> {
 		std::size_t operator()(const WT::pool_ptr<T>& ptr) const noexcept {
 			std::size_t seed = 0;
-			tntn::hash_combine(seed, reinterpret_cast<std::uintptr_t>(ptr.pool()));
-			tntn::hash_combine(seed, ptr.index());
+			WT::hash_combine(seed, reinterpret_cast<std::uintptr_t>(ptr.pool()));
+			WT::hash_combine(seed, ptr.index());
 			return seed;
 		}
 	};
-};
+}

@@ -365,10 +365,13 @@ namespace WT {
 		mUsed.resize(mWidth * mHeigth);
 
 		this->initMesh(glm::dvec2(0, 0), glm::dvec2(0, mHeigth - 1), glm::dvec2(mWidth - 1, mHeigth - 1), glm::dvec2(mWidth - 1, 0));
-		mUsed[getPosOfRaster(0, 0)] = true;
-		mUsed[getPosOfRaster(mHeigth - 1, 0)] = true;
-		mUsed[getPosOfRaster(mHeigth - 1, mWidth-1)] = true;
-		mUsed[getPosOfRaster(0, mWidth - 1)] = true;
+		mUsed[getPosOfRaster(0, 0)] = 1;
+		mUsed[getPosOfRaster(mHeigth - 1, 0)] = 1;
+		mUsed[getPosOfRaster(mHeigth - 1, mWidth-1)] = 1;
+		mUsed[getPosOfRaster(0, mWidth - 1)] = 1;
+
+		int N = 1;
+		convertToOBJ(N);
 
 		DelaunayTrianglePtr t = mFirstFace;
 		while (t)
@@ -384,12 +387,14 @@ namespace WT {
 
 			if (mToken[getPosOfRaster(oneCandidate.y, oneCandidate.x)] != oneCandidate.token) continue;
 
-			mUsed[getPosOfRaster(oneCandidate.y, oneCandidate.x)] = true;
+			mUsed[getPosOfRaster(oneCandidate.y, oneCandidate.x)] = 1;
 			this->insert(glm::dvec2(oneCandidate.y, oneCandidate.x), oneCandidate.triangle);
+
+			convertToOBJ(++N);
 		}
 	}
 
-	bool TerraMesh::scanTriagnle(DelaunayTrianglePtr t)
+	void TerraMesh::scanTriagnle(DelaunayTrianglePtr t)
 	{
 		Plane zPlane;
 		computePlane(zPlane, t, mFileInfo);
@@ -461,7 +466,7 @@ namespace WT {
 		}
 	}
 
-	void TerraMesh::convertToOBJ()
+	void TerraMesh::convertToOBJ(int N)
 	{
 		//这里将导出obj
 		std::vector < glm::dvec3> pos;
@@ -479,7 +484,7 @@ namespace WT {
 				{
 					const double z = mFileInfo->data[getPosOfRaster(y, x)];
 					//TODO 这里是将影像位置空间化 为了检验代码可用性我先简单处理
-					glm::dvec3 onePos(5 * x, 5 * y, z);
+					glm::dvec3 onePos(2 * x, 2 * y, z);
 					pos.push_back(onePos);
 					vertexID[getPosOfRaster(y, x)] = index;
 					index++;
@@ -510,7 +515,13 @@ namespace WT {
 		}
 		//输出obj
 		//简单输出
-		exportToObj(pos, indies, "terraTestMesh.obj");
+		if (N>0)
+		{
+			exportToObj(pos, indies, "terraTestMesh_"+std::to_string(N) +".obj");
+		}
+		else {
+			exportToObj(pos, indies, "terraTestMesh.obj");
+		}
 
 	}
 

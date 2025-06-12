@@ -5,6 +5,7 @@
 #include <array>
 #include<glm/glm.hpp>
 #include"QuadEdge.h"
+#include "TriangleUlit.h"
 #include "EntityPool.h"
 #include "IOAdapter.h"
 
@@ -39,7 +40,7 @@ namespace WT {
 		//void initMesh(const BBox2D& bb);
 		
 		virtual bool shouldSwap(const glm::dvec2 p, QuadEdgePtr e);
-		virtual bool scanTriagnle(DelaunayTrianglePtr t) {};
+		virtual void scanTriagnle(DelaunayTrianglePtr t) {};
 
 		bool isInterior(QuadEdgePtr e);
 
@@ -124,10 +125,14 @@ namespace WT {
 		double mMaxError;
 		int mCounter;
 		std::vector<int> mToken;
-		std::vector<bool> mUsed;
+		std::vector<char> mUsed;
 		CandidateList mCandidates;
 
 		void scanTriangleLine(const Plane& plane, int y, double x1, double x2, Candidate& candidate);
+
+		void exportToObj(const std::vector<glm::dvec3>& positions,
+			const std::vector<int>& indices,
+			const std::string& filename);
 
 		int getPosOfRaster(int height, int width) {
 			return height * mWidth + width;
@@ -156,7 +161,7 @@ namespace WT {
 	public:
 		TerraMesh(int width,int height,IOFileInfo* fileInfo);
 		void greedyInsert(double maxError);
-		bool scanTriagnle(DelaunayTrianglePtr t) override;
-		void convertToOBJ();
+		void scanTriagnle(DelaunayTrianglePtr t) override;
+		void convertToOBJ(int N=-999);
 	};
 };
