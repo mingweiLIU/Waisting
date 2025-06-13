@@ -501,15 +501,21 @@ namespace WT {
 
 			if (TriangleUlit::triCCW(p1,p2,p3))
 			{
-				indies.push_back(vertexID[getPosOfRaster((int)p1.y, (int)p1.x)]);
-				indies.push_back(vertexID[getPosOfRaster((int)p2.y, (int)p2.x)]);
-				indies.push_back(vertexID[getPosOfRaster((int)p3.y, (int)p3.x)]);
+				//indies.push_back(vertexID[getPosOfRaster((int)p1.y, (int)p1.x)]);
+				//indies.push_back(vertexID[getPosOfRaster((int)p2.y, (int)p2.x)]);
+				//indies.push_back(vertexID[getPosOfRaster((int)p3.y, (int)p3.x)]);
+				indies.push_back(vertexID[getPosOfRaster((int)p3.x, (int)p3.y)]);
+				indies.push_back(vertexID[getPosOfRaster((int)p2.x, (int)p2.y)]);
+				indies.push_back(vertexID[getPosOfRaster((int)p1.x, (int)p1.y)]);
 			}
 			else
 			{
-				indies.push_back(vertexID[getPosOfRaster((int)p3.y, (int)p3.x)]);
-				indies.push_back(vertexID[getPosOfRaster((int)p2.y, (int)p2.x)]);
-				indies.push_back(vertexID[getPosOfRaster((int)p1.y, (int)p1.x)]);
+				indies.push_back(vertexID[getPosOfRaster((int)p1.x, (int)p1.y)]);
+				indies.push_back(vertexID[getPosOfRaster((int)p2.x, (int)p2.y)]);
+				indies.push_back(vertexID[getPosOfRaster((int)p3.x, (int)p3.y)]);
+				//indies.push_back(vertexID[getPosOfRaster((int)p3.y, (int)p3.x)]);
+				//indies.push_back(vertexID[getPosOfRaster((int)p2.y, (int)p2.x)]);
+				//indies.push_back(vertexID[getPosOfRaster((int)p1.y, (int)p1.x)]);
 			}
 			t = t->getLink();
 		}
