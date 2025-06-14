@@ -271,7 +271,7 @@ namespace WT {
 			}
 
 			TerraMesh terraMesh(options->tileSize, options->tileSize, oneFileInfo);
-			terraMesh.greedyInsert(0.19);
+			terraMesh.greedyInsert(0.1);
 
 			terraMesh.convertToOBJ();
 

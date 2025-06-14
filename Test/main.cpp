@@ -19,10 +19,10 @@ void main() {
     //options->outputDir = "C:\\Users\\ROG\\Desktop\\12";
 	//options->inputFile = "C:\\Users\\MW\\Desktop\\11.tif";
 	//options->outputDir = "D:\\Data\\DOM1\\palete";
-	//options->inputFile = "D:\\Data\\DOM1\\32\\forZYT.tif";
-	//options->outputDir = "D:\\Data\\DOM1\\teTe";
-    options->inputFile = "E:\\Data\\dq\\DEM\\forZYT.tif";
-    options->outputDir = "E:\\Data\\DEMTest";
+	options->inputFile = "D:\\Data\\DOM1\\32\\forZYT.tif";
+	options->outputDir = "D:\\Data\\DOM1\\teTe";
+    //options->inputFile = "E:\\Data\\dq\\DEM\\forZYT.tif";
+    //options->outputDir = "E:\\Data\\DEMTest";
     options->isImg = false;
     
     std::shared_ptr<WT::IProgressInfo> p = std::make_shared<WT::IProgressInfo>();

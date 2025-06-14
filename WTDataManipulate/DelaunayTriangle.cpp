@@ -388,7 +388,7 @@ namespace WT {
 			if (mToken[getPosOfRaster(oneCandidate.y, oneCandidate.x)] != oneCandidate.token) continue;
 
 			mUsed[getPosOfRaster(oneCandidate.y, oneCandidate.x)] = 1;
-			this->insert(glm::dvec2(oneCandidate.y, oneCandidate.x), oneCandidate.triangle);
+			this->insert(glm::dvec2(oneCandidate.x, oneCandidate.y), oneCandidate.triangle);
 
 			convertToOBJ(++N);
 		}
@@ -434,7 +434,7 @@ namespace WT {
 			const double dx1 = (v2_x - v1_x) / (v2_y - v1_y);
 			double x1 = v1_x; double x2 = v0_x;
 			const int startY = v1_y, endY = v2_y;
-			for (size_t y = startY; y < endY; y++)
+			for (size_t y = startY; y <= endY; y++)
 			{
 				scanTriangleLine(zPlane, y, x1, x2, oneCadidate);
 				x1 += dx1; x2 += dx2;
@@ -454,7 +454,7 @@ namespace WT {
 		double z0 = plane.eval(startX, y);
 		double dz = plane.a;
 
-		for (size_t x = startX; x < endX; x++)
+		for (size_t x = startX; x <= endX; x++)
 		{
 			if (!mUsed[getPosOfRaster(y,x)])
 			{
@@ -501,21 +501,21 @@ namespace WT {
 
 			if (TriangleUlit::triCCW(p1,p2,p3))
 			{
-				//indies.push_back(vertexID[getPosOfRaster((int)p1.y, (int)p1.x)]);
-				//indies.push_back(vertexID[getPosOfRaster((int)p2.y, (int)p2.x)]);
-				//indies.push_back(vertexID[getPosOfRaster((int)p3.y, (int)p3.x)]);
-				indies.push_back(vertexID[getPosOfRaster((int)p3.x, (int)p3.y)]);
-				indies.push_back(vertexID[getPosOfRaster((int)p2.x, (int)p2.y)]);
-				indies.push_back(vertexID[getPosOfRaster((int)p1.x, (int)p1.y)]);
+				indies.push_back(vertexID[getPosOfRaster((int)p1.y, (int)p1.x)]);
+				indies.push_back(vertexID[getPosOfRaster((int)p2.y, (int)p2.x)]);
+				indies.push_back(vertexID[getPosOfRaster((int)p3.y, (int)p3.x)]);
+				//indies.push_back(vertexID[getPosOfRaster((int)p3.x, (int)p3.y)]);
+				//indies.push_back(vertexID[getPosOfRaster((int)p2.x, (int)p2.y)]);
+				//indies.push_back(vertexID[getPosOfRaster((int)p1.x, (int)p1.y)]);
 			}
 			else
 			{
-				indies.push_back(vertexID[getPosOfRaster((int)p1.x, (int)p1.y)]);
-				indies.push_back(vertexID[getPosOfRaster((int)p2.x, (int)p2.y)]);
-				indies.push_back(vertexID[getPosOfRaster((int)p3.x, (int)p3.y)]);
-				//indies.push_back(vertexID[getPosOfRaster((int)p3.y, (int)p3.x)]);
-				//indies.push_back(vertexID[getPosOfRaster((int)p2.y, (int)p2.x)]);
-				//indies.push_back(vertexID[getPosOfRaster((int)p1.y, (int)p1.x)]);
+				//indies.push_back(vertexID[getPosOfRaster((int)p1.x, (int)p1.y)]);
+				//indies.push_back(vertexID[getPosOfRaster((int)p2.x, (int)p2.y)]);
+				//indies.push_back(vertexID[getPosOfRaster((int)p3.x, (int)p3.y)]);
+				indies.push_back(vertexID[getPosOfRaster((int)p3.y, (int)p3.x)]);
+				indies.push_back(vertexID[getPosOfRaster((int)p2.y, (int)p2.x)]);
+				indies.push_back(vertexID[getPosOfRaster((int)p1.y, (int)p1.x)]);
 			}
 			t = t->getLink();
 		}
