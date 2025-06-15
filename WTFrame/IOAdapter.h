@@ -18,6 +18,7 @@ namespace WT {
 		unsigned char* data= nullptr;//数据
 		size_t dataSize;
 		std::string memoryPoolInstanceName = "";
+		void* userData;//预留的用于记录特殊数据的参数
 	};
 	class IOAdapter {
 	public:

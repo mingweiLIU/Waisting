@@ -158,10 +158,15 @@ namespace WT {
 			if (p[0].y > p[1].y) std::swap(p[0], p[1]);
 		}
 
+		std::vector<glm::dvec3> getPointsOnLineX(int x);
+		std::vector<glm::dvec3> getPointsOnLineY(int y);
+
 	public:
 		TerraMesh(int width,int height,IOFileInfo* fileInfo);
 		void greedyInsert(double maxError);
 		void scanTriagnle(DelaunayTrianglePtr t) override;
 		void convertToOBJ(int N=-999);
+		//获取边界点
+		std::array<std::vector<glm::dvec3>,4> getBoundaryPoints();
 	};
 };

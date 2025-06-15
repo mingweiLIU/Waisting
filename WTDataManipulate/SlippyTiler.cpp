@@ -271,7 +271,8 @@ namespace WT {
 			}
 
 			TerraMesh terraMesh(options->tileSize, options->tileSize, oneFileInfo);
-			terraMesh.greedyInsert(0.1);
+			terraMesh.greedyInsert(1.9);
+			std::array<std::vector<glm::dvec3>,4> boundaryPs= terraMesh.getBoundaryPoints();
 
 			terraMesh.convertToOBJ();
 

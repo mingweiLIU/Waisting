@@ -504,15 +504,9 @@ namespace WT {
 				indies.push_back(vertexID[getPosOfRaster((int)p1.y, (int)p1.x)]);
 				indies.push_back(vertexID[getPosOfRaster((int)p2.y, (int)p2.x)]);
 				indies.push_back(vertexID[getPosOfRaster((int)p3.y, (int)p3.x)]);
-				//indies.push_back(vertexID[getPosOfRaster((int)p3.x, (int)p3.y)]);
-				//indies.push_back(vertexID[getPosOfRaster((int)p2.x, (int)p2.y)]);
-				//indies.push_back(vertexID[getPosOfRaster((int)p1.x, (int)p1.y)]);
 			}
 			else
 			{
-				//indies.push_back(vertexID[getPosOfRaster((int)p1.x, (int)p1.y)]);
-				//indies.push_back(vertexID[getPosOfRaster((int)p2.x, (int)p2.y)]);
-				//indies.push_back(vertexID[getPosOfRaster((int)p3.x, (int)p3.y)]);
 				indies.push_back(vertexID[getPosOfRaster((int)p3.y, (int)p3.x)]);
 				indies.push_back(vertexID[getPosOfRaster((int)p2.y, (int)p2.x)]);
 				indies.push_back(vertexID[getPosOfRaster((int)p1.y, (int)p1.x)]);
@@ -521,14 +515,29 @@ namespace WT {
 		}
 		//Êä³öobj
 		//¼òµ¥Êä³ö
-		if (N>0)
+		if (N > 0)
 		{
-			exportToObj(pos, indies, "terraTestMesh_"+std::to_string(N) +".obj");
+			exportToObj(pos, indies, "terraTestMesh_" + std::to_string(N) + ".obj");
 		}
 		else {
 			exportToObj(pos, indies, "terraTestMesh.obj");
 		}
 
+	}
+
+	std::array<std::vector<glm::dvec3>, 4> TerraMesh::getBoundaryPoints()
+	{
+		//1.×ó²àwest
+		std::vector<glm::dvec3> west=getPointsOnLineX(0);
+		//2ÏÂ²á south
+		std::vector<glm::dvec3> south = getPointsOnLineY(mHeigth-1);
+		//3 ÓÒ²à east
+		std::vector<glm::dvec3> east = getPointsOnLineX(mWidth-1);
+		//4 ÉÏ²à north
+		std::vector<glm::dvec3> north = getPointsOnLineY(0);
+
+		std::array<std::vector<glm::dvec3>, 4> boundaryPoints = { west,south,east,north };
+		return std::move(boundaryPoints);
 	}
 
 	void TerraMesh::exportToObj(const std::vector<glm::dvec3>& positions,
@@ -562,6 +571,36 @@ namespace WT {
 		}
 
 		outfile.close();
+	}
+
+	std::vector<glm::dvec3> TerraMesh::getPointsOnLineX(int x)
+	{
+		std::vector<glm::dvec3> points;
+		for (int y=0;y<mHeigth;++y)
+		{
+			if (mUsed[getPosOfRaster(y,x)]==1)
+			{
+				double z=mFileInfo->data[getPosOfRaster(y, x)];
+				glm::dvec3 onePos(2 * x, 2 * y, z);
+				points.push_back(onePos);
+			}
+		}
+		return std::move(points);
+	}
+
+	std::vector<glm::dvec3> TerraMesh::getPointsOnLineY(int y)
+	{
+		std::vector<glm::dvec3> points;
+		for (int x = 0; x < mWidth; ++x)
+		{
+			if (mUsed[getPosOfRaster(y, x)] == 1)
+			{
+				double z = mFileInfo->data[getPosOfRaster(y, x)];
+				glm::dvec3 onePos(2 * x, 2 * y, z);
+				points.push_back(onePos);
+			}
+		}
+		return std::move(points);
 	}
 
 };
