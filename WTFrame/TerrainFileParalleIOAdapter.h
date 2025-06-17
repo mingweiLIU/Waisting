@@ -49,9 +49,37 @@ namespace WT {
 		struct VertexData
 		{
 			unsigned int vertexCount;
-			unsigned short u[vertexCount];
-			unsigned short v[vertexCount];
-			unsigned short height[vertexCount];
+			std::vector<unsigned short> u;
+			std::vector<unsigned short>v;// v[vertexCount];
+			std::vector<unsigned short> height;// [vertexCount] ;
+		};
+		struct IndexData
+		{
+		public:
+			IndexData(unsigned int triangleCount,std::vector<unsigned int> data) {
+				this->triangleCount = triangleCount;
+				if (this->triangleCount<65536)
+				{
+					mIndices.resize(this->triangleCount * 2);
+				}
+				else
+				{
+					mIndices.resize(this->triangleCount * 4);
+				}
+			}
+			bool writeToFile(FILE** fp) {
+				if (triangleCount<65536 )
+				{
+					//需要转为16位再输出
+
+				}
+				else {
+					//直接输出32位
+				}
+			}
+		private:
+			unsigned int triangleCount;
+			std::vector<uint8_t> mIndices;
 		};
 		struct IndexData16
 		{
