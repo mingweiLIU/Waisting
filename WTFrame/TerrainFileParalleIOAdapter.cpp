@@ -47,4 +47,9 @@ namespace WT {
 
 
 
+	bool TerrainFileParalleIOAdapter::output(const IOFileInfo* fileInfo)
+	{
+
+	}
+
 };
