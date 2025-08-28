@@ -270,6 +270,7 @@ namespace WT {
 				oneFileInfo = new IOFileInfo{ file.string(), pMergedData,(size_t)(image_info.output_band_count + 1) * options->tileSize * options->tileSize, this->getName() };
 			}
 
+			oneFileInfo->userData = &(tilingScheme->tileXYToNativeRectangle(tile_x, tile_y, zoom));
 			TerraMesh terraMesh(options->tileSize, options->tileSize, oneFileInfo);
 			terraMesh.greedyInsert(1.9);
 			std::array<std::vector<glm::dvec3>,4> boundaryPs= terraMesh.getBoundaryPoints();
@@ -302,7 +303,7 @@ namespace WT {
 				needAlpha = true;
 				return;
 			}
-			}, context);
+		}, context);
 		//如果需要透明通道 那么就合并
 		if (needAlpha)
 		{

@@ -138,6 +138,8 @@ namespace WT {
 			return height * mWidth + width;
 		}
 
+
+
 		//计算平面
 		inline void computePlane(Plane& plane, DelaunayTrianglePtr tri, IOFileInfo* file) {
 			const glm::dvec2& p1 = tri->point1();
@@ -166,6 +168,7 @@ namespace WT {
 		void greedyInsert(double maxError);
 		void scanTriagnle(DelaunayTrianglePtr t) override;
 		void convertToOBJ(int N=-999);
+		void getMeshData(std::vector<int> indices, std::vector<glm::dvec3> pos);
 		//获取边界点
 		std::array<std::vector<glm::dvec3>,4> getBoundaryPoints();
 	};

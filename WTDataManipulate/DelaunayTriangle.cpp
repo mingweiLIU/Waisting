@@ -484,7 +484,7 @@ namespace WT {
 				{
 					const double z = mFileInfo->data[getPosOfRaster(y, x)];
 					//TODO 这里是将影像位置空间化 为了检验代码可用性我先简单处理
-					glm::dvec3 onePos(2 * x, 2 * y, z);
+					glm::dvec3 onePos(x, y, z);
 					pos.push_back(onePos);
 					vertexID[getPosOfRaster(y, x)] = index;
 					index++;
@@ -523,6 +523,57 @@ namespace WT {
 			exportToObj(pos, indies, "terraTestMesh.obj");
 		}
 
+	}
+
+	void TerraMesh::getMeshData(std::vector<int> indices, std::vector<glm::dvec3> pos)
+	{
+		indices.swap(std::vector<int>());
+		pos.swap(std::vector<glm::dvec3>());//清空数据
+
+		indices.reserve(mWidth * mHeigth*3);//预估大小 提升性能
+		pos.reserve(mWidth * mHeigth);
+
+		std::vector<int> vertexID;
+		vertexID.resize(mWidth * mHeigth);
+
+		int index = 0;
+		for (int y = 0; y < mHeigth; ++y)
+		{
+			for (int x = 0; x < mWidth; x++)
+			{
+				if (mUsed[getPosOfRaster(y, x)] == 1)
+				{
+					const double z = mFileInfo->data[getPosOfRaster(y, x)];
+					//TODO 这里是将影像位置空间化 为了检验代码可用性我先简单处理
+					glm::dvec3 onePos(x, y, z);
+					pos.push_back(onePos);
+					vertexID[getPosOfRaster(y, x)] = index;
+					index++;
+				}
+			}
+		}
+
+		DelaunayTrianglePtr t = mFirstFace;
+		while (t)
+		{
+			glm::dvec2 p1 = t->point1();
+			glm::dvec2 p2 = t->point2();
+			glm::dvec2 p3 = t->point3();
+
+			if (TriangleUlit::triCCW(p1, p2, p3))
+			{
+				indices.push_back(vertexID[getPosOfRaster((int)p1.y, (int)p1.x)]);
+				indices.push_back(vertexID[getPosOfRaster((int)p2.y, (int)p2.x)]);
+				indices.push_back(vertexID[getPosOfRaster((int)p3.y, (int)p3.x)]);
+			}
+			else
+			{
+				indices.push_back(vertexID[getPosOfRaster((int)p3.y, (int)p3.x)]);
+				indices.push_back(vertexID[getPosOfRaster((int)p2.y, (int)p2.x)]);
+				indices.push_back(vertexID[getPosOfRaster((int)p1.y, (int)p1.x)]);
+			}
+			t = t->getLink();
+		}		
 	}
 
 	std::array<std::vector<glm::dvec3>, 4> TerraMesh::getBoundaryPoints()
