@@ -370,8 +370,8 @@ namespace WT {
 		mUsed[getPosOfRaster(mHeigth - 1, mWidth-1)] = 1;
 		mUsed[getPosOfRaster(0, mWidth - 1)] = 1;
 
-		int N = 1;
-		convertToOBJ(N);
+		//int N = 1;
+		//convertToOBJ(N);
 
 		DelaunayTrianglePtr t = mFirstFace;
 		while (t)
@@ -390,7 +390,7 @@ namespace WT {
 			mUsed[getPosOfRaster(oneCandidate.y, oneCandidate.x)] = 1;
 			this->insert(glm::dvec2(oneCandidate.x, oneCandidate.y), oneCandidate.triangle);
 
-			convertToOBJ(++N);
+			//convertToOBJ(++N);
 		}
 	}
 
@@ -525,7 +525,7 @@ namespace WT {
 
 	}
 
-	void TerraMesh::getMeshData(std::vector<int> indices, std::vector<glm::dvec3> pos)
+	void TerraMesh::getMeshData(std::vector<int>& indices, std::vector<glm::dvec3>& pos)
 	{
 		indices.swap(std::vector<int>());
 		pos.swap(std::vector<glm::dvec3>());//Çå¿ÕÊý¾Ý

@@ -168,7 +168,7 @@ namespace WT {
 		void greedyInsert(double maxError);
 		void scanTriagnle(DelaunayTrianglePtr t) override;
 		void convertToOBJ(int N=-999);
-		void getMeshData(std::vector<int> indices, std::vector<glm::dvec3> pos);
+		void getMeshData(std::vector<int>& indices, std::vector<glm::dvec3>& pos);
 		//获取边界点
 		std::array<std::vector<glm::dvec3>,4> getBoundaryPoints();
 	};

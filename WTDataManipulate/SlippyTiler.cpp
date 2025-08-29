@@ -16,6 +16,7 @@
 #include "GeographicTilingScheme.h"
 #include "MemoryPool.h"
 #include "DelaunayTriangle.h"
+#include "QuantifiedMeshData.h"
 
 namespace WT {
 	SlippyMapTiler::SlippyMapTiler(std::shared_ptr<SlippyMapTilerOptions> options) {
@@ -271,11 +272,12 @@ namespace WT {
 			}
 
 			oneFileInfo->userData = &(tilingScheme->tileXYToNativeRectangle(tile_x, tile_y, zoom));
-			TerraMesh terraMesh(options->tileSize, options->tileSize, oneFileInfo);
-			terraMesh.greedyInsert(1.9);
-			std::array<std::vector<glm::dvec3>,4> boundaryPs= terraMesh.getBoundaryPoints();
+			QuantifiedMeshData quantifiedMeshData(oneFileInfo);
+			//TerraMesh terraMesh(options->tileSize, options->tileSize, oneFileInfo);
+			//terraMesh.greedyInsert(1.9);
+			//std::array<std::vector<glm::dvec3>,4> boundaryPs= terraMesh.getBoundaryPoints();
 
-			terraMesh.convertToOBJ();
+			//terraMesh.convertToOBJ();
 
 			fileBatchOutputer->addFile(oneFileInfo);
 
